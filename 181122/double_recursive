@@ -1,0 +1,37 @@
+double (Suc n) = Suc (Suc (double n))
+
+let n = 0 => Suc n = 1
+
+then
+
+double (Suc 0) = Suc (Suc (double 0))
+
+by definition, double 0 = 0
+
+hence we now have 
+
+double (Suc 0) = Suc (Suc 1)
+
+Suc 1 = 2
+
+double 1 = 2, which is true.
+
+Now by induction, assume K is a value where double K = 2 * K
+
+we want to prove double (K + 1) = (2 * K) + 2
+
+double (Suc K) = Suc (Suc (double K))
+
+=>
+
+double K+1 = Suc (Suc 2*K)
+
+=>
+
+double K+1 = Suc 2*K+1
+
+=>
+
+double K+1 = Suc 2*K+2
+
+qed
