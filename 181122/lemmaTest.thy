@@ -54,4 +54,9 @@ lemma reverse_reverse [simp]: "reverse(reverse xs) = xs"
   apply (auto)
   done
 
+value "1+(3::nat)"
+value "1+(3::int)"
+value "1-(3::nat)"
+value "1-(3::int)"
+
 end
