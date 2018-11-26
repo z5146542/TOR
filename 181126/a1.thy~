@@ -90,68 +90,21 @@ lemma prop_g:
 lemma prop_h:
   "(x = False) = (\<not> x)"
   apply (rule iffI)
-   apply (erule iffE)
-   apply (case_tac x)
-    apply (erule impE)
-     apply assumption
-    apply (erule impE)
-     apply assumption
-    apply (rule ccontr)
-    apply assumption
-   apply assumption
-  apply (rule iffI)
-   apply (erule notE)
-   apply assumption
-  apply (erule notE)
-  apply (rule ccontr)
-  apply assumption
+   apply (rule ccontr)
+  apply 
   done
 
 lemma prop_i:
   "(P \<longrightarrow> Q) = (\<not> (P \<and> \<not> Q))"
-  apply (rule iffI)
-   apply (rule notI)
-   apply (erule conjE)
-  apply (erule impE)
-    apply assumption
-   apply (erule notE)
-   apply assumption
-  apply (rule impI)
-  apply (case_tac Q)
-   apply assumption
-  apply (erule notE)
-  apply (rule conjI)
-   apply assumption
-  apply assumption
-  done
+  oops
 
 lemma prop_j:
   "(P \<or> \<not> P) \<longrightarrow> (\<not>\<not> P \<longrightarrow> P)"
-  apply (rule impI)
-  apply (rule impI)
-  apply (erule disjE)
-   apply assumption
-  apply (erule notE)
-  apply assumption
-  done
+  oops
 
 lemma prop_k:
   "(P \<or> (Q \<and> R)) \<longrightarrow> ((P \<or> Q) \<and> (P \<or> R))"
-  apply (rule impI)
-  apply (rule conjI)
-   apply (erule disjE)
-    apply (rule disjI1)
-  apply assumption
-   apply (rule disjI2)
-   apply (erule conjE)
-   apply assumption
-  apply (erule disjE)
-   apply (rule disjI1)
-   apply assumption
-  apply (rule disjI2)
-  apply (erule conjE)
-  apply assumption
-  done
+  oops
 
 text {*
 Which of the above statements are provable only in a classical logic?
