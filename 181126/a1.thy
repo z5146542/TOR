@@ -43,9 +43,8 @@ lemma prop_c:
 lemma prop_d:
   "\<not>\<not>P \<longrightarrow> P"
   apply (rule impI)
-  apply (rule classical)
-  apply (erule notE)
-  apply assumption
+  apply (case_tac P)
+  apply 
   done
 
 lemma prop_e:
@@ -112,13 +111,12 @@ lemma prop_i:
   apply (rule iffI)
    apply (rule notI)
    apply (erule conjE)
-  apply (erule impE)
+   apply (erule impE)
     apply assumption
    apply (erule notE)
    apply assumption
   apply (rule impI)
-  apply (case_tac Q)
-   apply assumption
+  apply (rule classical)
   apply (erule notE)
   apply (rule conjI)
    apply assumption
