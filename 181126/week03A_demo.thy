@@ -118,7 +118,7 @@ text {* Epsilon *}
 lemma "(\<exists>x. P x) = P (SOME x. P x)"
 (*TODO*)
   apply (rule iffI)
-   apply (erule exE)
+   apply (erule exE) thm someI
    apply (rule_tac x = "x" in someI)
    apply assumption            
   apply (rule_tac x = "SOME x. P x" in exI)
@@ -176,9 +176,11 @@ text {*
    proof methods: rule, erule, rule_tac, erule_tac and assumption, prove:
 *}
 
+thm someI
+
 lemma choice:
   "\<forall>x. \<exists>y. R x y \<Longrightarrow> \<exists> f. \<forall>x. R x (f x)"
-  
-oops
+  apply (fast elim: someI)
+  done
 
 end

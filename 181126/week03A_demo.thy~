@@ -95,12 +95,13 @@ done
 
 
 lemma "\<forall>x. P x \<Longrightarrow> P t \<and> P t'"
-thm spec
+  thm spec
+  thm allE
 (*TODO*)
   apply (frule_tac x = "t" in spec)
   apply (drule_tac x = "t'" in spec)
   apply (rule conjI)
-  apply assumption
+   apply assumption
   apply assumption
   done
 
