@@ -52,7 +52,7 @@ lemma "(A \<union> B \<subseteq> C) = (A \<subseteq> C \<and> B \<subseteq> C)"
 lemma "{a,b} \<inter> {b,c} = (if a \<noteq> c then {b} else {a, b})"
   (*TODO*)
   using [[simp_trace]]
-  find_theorems "_ \<subseteq> _ \<inter> _"
+  
   apply (rule equalityI)
    apply (rule subsetI)
   apply (simp)
@@ -62,17 +62,11 @@ lemma "{a,b} \<inter> {b,c} = (if a \<noteq> c then {b} else {a, b})"
      apply assumption
     apply (erule conjE)
     apply (erule disjE)
-     apply simp
-    apply simp
-   apply (rule impI)
-   apply (erule disjE)
-    apply (rule disjI2)
-    apply assumption
-   apply (erule conjE)
-   apply (erule disjI1)
-  apply (rule Int_greatest)
-   apply (simp)
-  apply (simp)
+     prefer 2
+     apply assumption
+    prefer 2
+    apply (rule 
+  apply auto
   done
 
 
@@ -106,10 +100,10 @@ term "eq"
 -- {* type definition: pairs *}
 
 typedef three = "{0::nat,1,2}"
-  apply (rule_tac x=0 in exI)
- apply fast
+ apply (rule_tac x=1 in exI)
+ apply blast
  done
-term Abs_three
+
 print_theorems
 
 definition prd :: "('a \<Rightarrow> 'b \<Rightarrow> bool) set" where
@@ -117,12 +111,16 @@ definition prd :: "('a \<Rightarrow> 'b \<Rightarrow> bool) set" where
 
 typedef  
   ('a, 'b) prd = "prd::('a \<Rightarrow> 'b \<Rightarrow> bool) set"
+  by (auto simp: prd_def)
+  (* To understand this proof, try:
   apply (simp add: prd_def)
+  -- "just need to exhibit *one* pair, any"
   apply (rule_tac x="\<lambda>x y. x=blah1 \<and> y=blah2" in exI)
   apply (rule_tac x=blah1 in exI)
   apply (rule_tac x=blah2 in exI)
   apply (rule refl)
   done
+  *)
   
 print_theorems 
 
@@ -150,10 +148,7 @@ lemma in_prd: "(\<lambda>x y. x = c \<and> y = d) \<in> prd"
 lemma pair_inject:
   "pair a b = pair a' b' \<Longrightarrow> a=a' \<and> b=b'"
   (*TODO*)
-  apply (unfold pair_def)
-  apply (simp add: Abs_prd_inject[OF in_prd in_prd])
-  apply (blast dest: fun_cong)
-  done
+  sorry
 
 lemma pair_eq:
   "(pair a b = pair a' b') = (a=a' \<and> b=b')"
@@ -196,10 +191,7 @@ print_theorems
 
 text{* Using the introduction rules: *}
 lemma "Suc(Suc(Suc(Suc 0))) \<in> Ev"
-  apply (rule Add2I)
-  apply (rule Add2I)
-  apply (rule ZeroI)
-  done
+  sorry
 
 text{* Using the case elimination rules: *}
 lemma "n \<in> Ev \<Longrightarrow> n = 0 \<or> (\<exists>n' \<in> Ev. n = Suc (Suc n'))"
@@ -209,14 +201,7 @@ lemma "n \<in> Ev \<Longrightarrow> n = 0 \<or> (\<exists>n' \<in> Ev. n = Suc (
 
 text{*A simple inductive proof: *}
 lemma "n \<in> Ev \<Longrightarrow> n+n \<in> Ev"
-  thm Ev.induct
-  apply (erule Ev.induct)
-   apply (simp)
-   apply (rule ZeroI)
-  apply (simp)
-  apply (rule Add2I)
-  apply (rule Add2I)
-  apply assumption
+thm Ev.induct
   sorry
 
 text{* You can also use the rules for Ev as conditional simplification
@@ -270,7 +255,7 @@ thm Fin.intros
 lemma "\<lbrakk> A \<in> Fin; B \<in> Fin \<rbrakk> \<Longrightarrow> A \<union> B \<in> Fin"
   apply(erule Fin.induct)
    apply simp
-  apply (auto)
+  apply auto
   done
 
 lemma "\<lbrakk> A \<in> Fin; B \<subseteq> A \<rbrakk> \<Longrightarrow> B \<in> Fin"
