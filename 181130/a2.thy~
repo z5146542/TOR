@@ -189,13 +189,13 @@ lemma chop'_set:
   "\<lbrakk> ls \<in> set (chop' ys a xs); a \<notin> set ys \<rbrakk> \<Longrightarrow> a \<notin> set ls"
   apply (induct xs arbitrary: ys ls)
   apply (auto split: if_split_asm)
-  done
+  sorry
 
 lemma chop_sep:
   "ls \<in> set (chop a xs) \<Longrightarrow> a \<notin> set ls"
   (*TODO*)
   apply (simp add: chop'_set chop_def)
-  done
+  oops
 
 lemma chop'_neq_Nil[simp]:
   "chop' ys a xs \<noteq> []"
