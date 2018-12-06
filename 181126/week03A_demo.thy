@@ -180,6 +180,11 @@ thm someI
 
 lemma choice:
   "\<forall>x. \<exists>y. R x y \<Longrightarrow> \<exists> f. \<forall>x. R x (f x)"
+  apply (rule classical)
+  apply (rule_tac x = "f" in exI)
+  apply (rule allI)
+  apply (erule notE)
+  apply simp
   apply (fast elim: someI)
   done
 
