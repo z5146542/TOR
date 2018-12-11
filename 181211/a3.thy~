@@ -199,10 +199,7 @@ text \<open> fill in the array_list definition \<close>
 definition array_list :: "(u_int ptr \<Rightarrow> u_int) \<Rightarrow> s_int ptr \<Rightarrow> int \<Rightarrow> int list" where
   "array_list h p len = map (uint o h o ptr_coerce) (array_addrs p (nat len))"
 
-
-thm uint
 thm array_list_def
-find_theorems "map (_ o _) _"
 
 (*******************************************************************************)
 text \<open> Prove the following lemma: \<close>
