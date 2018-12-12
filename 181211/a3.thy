@@ -199,6 +199,14 @@ text \<open> fill in the array_list definition \<close>
 definition array_list :: "(u_int ptr \<Rightarrow> u_int) \<Rightarrow> s_int ptr \<Rightarrow> int \<Rightarrow> int list" where
   "array_list h p len = map (uint o h o ptr_coerce) (array_addrs p (nat len))"
 
+(* Convert len to nat first
+   Then obtain the array address list using array_addrs
+   Upon completion of (array_addrs p (nat len)) we will have a list of signed pointers
+   ptr_coerce will convert the list of signed pointers to unsigned pointers
+   Then the heap function will dereference the value
+   Finally, uint will convert the type from signed int to isabelle int
+   the map function will apply the above to all elements in the list and will return a list*)
+
 
 thm uint
 thm array_list_def
@@ -219,32 +227,48 @@ text \<open> fill in the valid_array definition. It might make sense to do this 
 
 definition valid_array1 :: "(u_int ptr \<Rightarrow> bool) \<Rightarrow> s_int ptr \<Rightarrow> int \<Rightarrow> bool" where
   "valid_array1 vld p len = 
-  (\<forall>p' \<in> ptr_coerce ` set (array_addrs p (nat len)). vld p' )"
+  (\<forall>p' \<in> ptr_coerce ` set (array_addrs p (nat len)). vld p')"
+
+(* set (array_addrs p (nat len)) will return a set of signed integer pointers given p
+   p' is the set of unsigned integer pointers given p, applied via ptr_coerce '
+   vld p' checks for each element in the modified set whether the pointer value is valid*)
 
 definition valid_array2 :: "(u_int ptr \<Rightarrow> bool) \<Rightarrow> (u_int ptr \<Rightarrow> u_int) \<Rightarrow> s_int ptr \<Rightarrow> int \<Rightarrow> bool" where
   "valid_array2 vld h p len = 
-  (\<forall>p' \<in> ptr_coerce ` set (array_addrs p (nat len)).  unat (h p') \<le> nat INT_MAX)"
+  (\<forall>p' \<in> ptr_coerce ` set (array_addrs p (nat len)). unat (h p') \<le> nat INT_MAX)"
+
+(* same procedure as before; this time the validity of the actual elements are being checked
+   this time, we check if each element does not exceed the upper bound of INT_MAX, which
+   for 32-bit systems would be estimated to 2^31 - 1 *)
 
 definition valid_array :: "(u_int ptr \<Rightarrow> bool) \<Rightarrow> (u_int ptr \<Rightarrow> u_int) \<Rightarrow> s_int ptr \<Rightarrow> int \<Rightarrow> bool" where
   "valid_array vld h p len = (valid_array1 vld p len \<and> valid_array2 vld h p len)"
+
+(* valid_array checks two things:
+    1. if the pointer value is valid
+    2. assuming 1 holds, if the actual value pointed by the pointer is valid
+   if both conditions are met, the the array is valid. *)
 
 (*******************************************************************************)
 
 
 text \<open> Prove the following lemma: \<close>
+
+thm sorted_equals_nth_mono
+
 lemma key_lt:
   "\<lbrakk> key < xs ! nat mid;  mid - 1 < x; sorted xs; 0 \<le> mid; x < int (length xs) \<rbrakk> 
   \<Longrightarrow> key < xs ! nat x"
-  apply (simp add: sorted_equals_nth_mono) thm sorted_equals_nth_mono
+  apply (simp add: sorted_equals_nth_mono)
   apply (case_tac "mid = x")
-   apply (simp)
+   apply simp+
   apply (erule_tac x = "nat x" in allE)
-  apply (rule impE) 
-    apply (simp+)
+  apply (erule impE)
+   apply simp+
   apply (erule_tac x = "nat mid" in allE)
-  apply (erule impE) 
-   apply (arith+)
-  apply fastforce
+  apply (erule impE)
+   apply arith+
+  apply (simp add: less_le_trans)
   done
 
 text \<open> Prove the following lemma: \<close>
@@ -253,14 +277,14 @@ lemma key_gt:
   \<Longrightarrow> xs ! nat x < key"
   apply (simp add: sorted_equals_nth_mono)
   apply (case_tac "mid = x")
-   apply (simp)
+   apply simp+
   apply (erule_tac x = "nat mid" in allE)
-  apply (rule impE) 
-    apply (simp+)
+  apply (erule impE)
+   apply simp+
   apply (erule_tac x = "nat x" in allE)
-  apply (erule impE) 
-   apply (arith+)
-   apply fastforce
+  apply (erule impE)
+  apply arith+
+  apply simp
   done
 
 (*******************************************************************************)
@@ -292,20 +316,23 @@ lemma valid_arrayD:
 lemma binary_search_correct:
   notes ptr_array [where len=len, simp]
   shows
-  "\<lbrace>\<lambda>s. sorted (array_list (heap_w32 s) a len) \<and>
-        valid_array (is_valid_w32 s) (heap_w32 s) a len \<and> 
-        0 \<le> len \<and> len + len -2 \<le> INT_MAX \<rbrace>
+   (* precondition *)
+  "\<lbrace>\<lambda>s. sorted (array_list (heap_w32 s) a len) \<and> (* array is sorted *)
+        valid_array (is_valid_w32 s) (heap_w32 s) a len \<and> (* all elements and pointers in array is valid *)
+        (*TODO*) 0 \<le> len \<and> len + len -2 \<le> INT_MAX \<rbrace> (* range/size of length is valid *)
+   (* program *)
    binary_search' a len key
-   \<lbrace> \<lambda>r s. (r < 0 \<longrightarrow> key \<notin> set (array_list (heap_w32 s) a len)) \<and>
-           (0 \<le> r \<longrightarrow> r < len \<and> (array_list (heap_w32 s) a len ! nat r) = key)\<rbrace>!"
+   (* postcondition *)
+   \<lbrace> \<lambda>r s. (r < 0 \<longrightarrow> key \<notin> set (array_list (heap_w32 s) a len)) \<and> (* key is not in the array *)
+           (0 \<le> r \<longrightarrow> r < len \<and> (array_list (heap_w32 s) a len ! nat r) = key)\<rbrace>! (* if r is a valid nonnegative value, then the rth element is the key *)"
   unfolding binary_search'_def
   apply(subst whileLoopE_add_inv[where
-               I="\<lambda>(high,low) s. valid_array (is_valid_w32 s) (heap_w32 s) a len \<and>
-                                 sorted (array_list (heap_w32 s) a len) \<and>
-                                 0 \<le> low \<and> low \<le> len \<and> high < len \<and> len + len -2 \<le> INT_MAX \<and>
-                                 (\<forall>x. 0 \<le> x \<longrightarrow> x < low \<longrightarrow> array_list (heap_w32 s) a len ! nat x < key) \<and>
-                                 (\<forall>x. high < x \<longrightarrow> x < len \<longrightarrow> array_list (heap_w32 s) a len ! nat x > key)" and 
-               M="\<lambda>((high,low),_). nat (high + 1 - low)"])
+               I="\<lambda>(high,low) s. valid_array (is_valid_w32 s) (heap_w32 s) a len \<and> (* check the validity of the array *)
+                                 sorted (array_list (heap_w32 s) a len) \<and> (* check if the elements in the array are sorted *)
+                                 (*TODO*) 0 \<le> low \<and> low \<le> len \<and> high < len \<and> len + len -2 \<le> INT_MAX \<and> (* check low and high are within a valid range *)
+                                 (\<forall>x. 0 \<le> x \<longrightarrow> x < low \<longrightarrow> array_list (heap_w32 s) a len ! nat x < key) \<and> (* all x less than low are positioned before the key *)
+                                 (\<forall>x. high < x \<longrightarrow> x < len \<longrightarrow> array_list (heap_w32 s) a len ! nat x > key) (*  all x greater than high are positioned after the key*)" and 
+               M="\<lambda>((high,low),_).(*TODO*) nat (high + 1 - low)"]) (* idk *)
   apply (simp add:INT_MAX_def INT_MIN_def)
   apply wp
       prefer 3
@@ -329,7 +356,6 @@ lemma binary_search_correct:
   apply (drule_tac x="int i" in spec)
   apply clarsimp
   apply arith
-  done
 
 end
 
