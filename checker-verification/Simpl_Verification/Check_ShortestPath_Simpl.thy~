@@ -253,7 +253,7 @@ lemma (in trian_impl) trian_spec:
   "\<forall>G d c. \<Gamma> \<turnstile>\<^sub>t \<lbrace> \<acute>G = G \<and> \<acute>dist = d \<and> \<acute>c = c\<rbrace>
     \<acute>R :== PROC trian(\<acute>G, \<acute>dist, \<acute>c)
     \<lbrace> \<acute>R = trian_inv G d c (iedge_cnt G)\<rbrace>"
-  apply vcg
+  apply vcg   
   apply (auto simp add: trian_inv_step)
   apply (auto simp: trian_inv_def) 
 done
