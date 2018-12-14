@@ -139,6 +139,7 @@ tail_value_helper
 
 the head of a list is the tail of the path
 all elements in the list are unique and at least one exists
+(?)
 
 *)
 
@@ -164,14 +165,21 @@ basis: let length p = 0
        as we know, dist s = 0
        both are equivalent, so the assumption holds
 induction:
-       basic intuition is to break up the path into two
-       and check how dist v scales with any other distinct paths
+       we get new variables p' e u, where
+       p = p' @ [e]
+       the path is defined as
+       s \<rightarrow> awalk p' \<rightarrow> u \<rightarrow> [e] \<rightarrow> v
+       s \<longrightarrow> u \<longrightarrow> v
+       p' is a path from s to v
+       e is an edge from u to v
+       define dist u \<le> awalk_cost c p' (why?)
+       
 
 *)
 
 lemma (in basic_sp) dist_le_cost:
   fixes v :: 'a
-  fixes p :: "'b list" 
+  fixes p :: "'b list"
   assumes "awalk s p v"
   shows "dist v \<le> awalk_cost c p"
   using assms
@@ -184,13 +192,13 @@ next
   case (Suc n)
   then obtain p' e where p'e: "p = p' @ [e]"
     by (cases p rule: rev_cases) auto
-  then obtain u where ewu: "awalk s p' u \<and> awalk u [e] v" 
+  then obtain u where ewu: "awalk s p' u \<and> awalk u [e] v"
     using awalk_append_iff Suc(3) by simp
-  then have du: "dist u \<le> ereal (awalk_cost c p')"
+  hence du: "dist u \<le> ereal (awalk_cost c p')"
     using Suc p'e by simp
   from ewu have ust: "u = tail G e" and vta: "v = head G e"
     by auto
-  then have "dist v \<le> dist u + c e"
+  hence "dist v \<le> dist u + c e"
     using ewu du ust trian[where e=e] by force
   with du have "dist v \<le> ereal (awalk_cost c p') + c e"
     by (metis add_right_mono order_trans)
@@ -202,7 +210,7 @@ qed
 
 witness_path
 
-assume the shortest path cost from s to v is denoted as r, which may be inifinite
+assume the shortest path cost from s to v is denoted as r, which may be infinite
 we show that there exists a path from s to v such that the shortest path is equal to the cost of 
 
 *)
