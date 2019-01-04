@@ -14,7 +14,7 @@ section {*Shortest Path (with general edge costs)*}
 (* 
   In this locale we assume we are given a 
   wellformed directed graph $G = (V,E)$ with 
-  finite $V$ and $E$ (this is the assumption 
+  fitnite $V$ and $E$ (this is the assumption 
   $graphG$). Moreover, a source vertex $s$ in 
   $V$ . In addition, a cost function c, a function
  $num:V\to \Nat$, $parent\dash edge:V\to E \cup $*)
