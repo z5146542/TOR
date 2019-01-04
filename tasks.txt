@@ -1,0 +1,10 @@
+Check out Check_ShrotestPath_Simpl.thy and try to understand the Simpl implemntation of the checker algorithm. 
+This applies for the nonnegative weight cost case.
+1. From code we have locale assumptions
+2. From locale assumption we have dist = shortest path
+From 1 and 2 we conclude the code accepts IF AND ONLY IF it is a shortest path.
+
+TODO:
+- Look at check_connected.c
+- Reimplement the Shortest Path Simpl Checker in C (nonnegative cost) (Use the Simpl theory file and manually parse)
+- Understand how Check_Connected.thy works

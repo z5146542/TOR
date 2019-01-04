@@ -8,20 +8,6 @@ begin
 section {*Shortest Path (with non-negative edge costs)*}
 text{* The following theory is used in the verification of a certifying algorithm's checker for shortest path. For more information see \cite{FrameworkVerificationofCertifyingComputations}. *}
 
-(*
-
-basic_sp (basic shortest path)
-
-assumes a finite digraph G that contains a set of vertices V
-set the dist function as a real value (includes -\<infinity> and \<infinity>)
-set s as the source vertex
-
-assumes the distance from s to s is less than or equal to 0
-assumes the triangle inequality holds for edges
-(given vertices x, y, z and edges x\<rightarrow>y y\<rightarrow>z and x\<rightarrow>z,
- the value of x\<rightarrow>y + y\<rightarrow>z cannot be less than the value of x\<rightarrow>z)
-
-*)
 
 locale basic_sp = 
   fin_digraph +
@@ -33,16 +19,6 @@ locale basic_sp =
     "\<And>e. e \<in> arcs G \<Longrightarrow> 
       dist (head G e) \<le> dist (tail G e) + c e"
 
-(*
-
-basic_just_sp
-
-in addition to basic_sp,
-
-set num to be the total number of vertices traversed
-for the shortest path
-
-*)
 
 locale basic_just_sp = 
   basic_sp +
@@ -54,21 +30,6 @@ locale basic_just_sp =
         dist v = dist (tail G e) + c e  \<and>
         num v = num (tail G e) + (enat 1)"
 
-(*
-
-shortest_path_pos_cost
-
-in addition to basic_just_sp
-
-assume the source vertex is in G(V)
-assume the distance from s to s is 0
-dist v = \<infinity> if and only if num v = \<infinity>
-(in other words, if a certain vertex
- is unreachable from s, then
- the value of num is set to \<infinity>)
-assume the cost of each edge is nonnegative
-
-*)
 
 locale shortest_path_pos_cost =
   basic_just_sp +
@@ -76,18 +37,6 @@ locale shortest_path_pos_cost =
   assumes tail_val: "dist s = 0"
   assumes no_path: "\<And>v. v \<in> verts G \<Longrightarrow> dist v = \<infinity> \<longleftrightarrow> num v = \<infinity>"
   assumes pos_cost: "\<And>e. e \<in> arcs G \<Longrightarrow> 0 \<le> c e"
-
-(*
-
-basic_just_sp_pred
-
-in addition to basic_sp
-
-shares the same conditions as basic_just_sp
-with an additional condition:
-e is the predecessor of v
-
-*)
 
 locale basic_just_sp_pred = 
   basic_sp +
@@ -110,15 +59,7 @@ unfolding basic_just_sp_pred_def
    basic_just_sp_pred_axioms_def
   by unfold_locales (blast)
 
-(*
 
-shortest_path_pos_cost_pred
-
-virtially the same as sortest_path_pos_cost
-except it uses basic_just_sp_pred instead of
-basic_just_sp
-
-*)
 
 locale shortest_path_pos_cost_pred =
   basic_just_sp_pred +
@@ -133,15 +74,7 @@ by unfold_locales
    (auto simp: shortest_path_pos_cost_pred_def 
    shortest_path_pos_cost_pred_axioms_def)
 
-(*
 
-tail_value_helper
-
-the head of a list is the tail of the path
-all elements in the list are unique and at least one exists
-(?)
-
-*)
 
 lemma tail_value_helper:
   assumes "hd p = last p"
@@ -149,33 +82,6 @@ lemma tail_value_helper:
   assumes "p \<noteq> []"
   shows "p = [hd p]"
   by (metis assms distinct.simps(2) list.sel(1) neq_Nil_conv last_ConsR last_in_set)
-
-(*
-
-dist_le_cost
-
-given v \<in> V
-and p is the path
-assumes there exists a path from s to v (not necessarily optimal?)
-then dist v, value of the sum of edges of the optimal path, never exceeds any awalk_cost
-
-proof by induction:
-basis: let length p = 0
-       then this implies v is the source vertex
-       as we know, dist s = 0
-       both are equivalent, so the assumption holds
-induction:
-       we get new variables p' e u, where
-       p = p' @ [e]
-       the path is defined as
-       s \<rightarrow> awalk p' \<rightarrow> u \<rightarrow> [e] \<rightarrow> v
-       s \<longrightarrow> u \<longrightarrow> v
-       p' is a path from s to v
-       e is an edge from u to v
-       define dist u \<le> awalk_cost c p' (why?)
-       
-
-*)
 
 lemma (in basic_sp) dist_le_cost:
   fixes v :: 'a
@@ -205,15 +111,6 @@ next
   thus "dist v \<le> awalk_cost c p" 
     using awalk_cost_append p'e by simp
 qed
-
-(*
-
-witness_path
-
-assume the shortest path cost from s to v is denoted as r, which may be infinite
-we show that there exists a path from s to v such that the shortest path is equal to the cost of 
-
-*)
 
 lemma (in fin_digraph) witness_path:
   assumes "\<mu> c s v = ereal r"

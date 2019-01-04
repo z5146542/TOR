@@ -1,7 +1,7 @@
-(* uses Isabelle2014 and autocorres version 1.0 *)
+(* uses Isabelle2017 and autocorres version 1.0 *)
 theory Check_Connected
   imports 
-  "../Library/AutoCorres_Misc"
+  "../Library/Autocorres_Misc"
   "../Witness_Property/Connected_Components"
 begin
 (* Parse the input file. *)

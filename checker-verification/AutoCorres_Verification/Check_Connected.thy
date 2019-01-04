@@ -472,8 +472,8 @@ lemma check_parent_num_spc':
   apply (simp add: skipE_def)
   apply wp
     unfolding is_graph_def is_numm_def is_pedge_def parent_num_assms_inv_def
-    apply (subst if_bool_eq_conj)+
-    apply (simp split: if_split_asm, safe, simp_all add: arrlist_nth)  
+      apply (subst if_bool_eq_conj)+
+      apply (simp split: if_split_asm, safe, simp_all add: arrlist_nth)  
                               apply (rule_tac i=" (uint vv)" in arrlist_nth_valid, simp+)
                               apply (metis uint_nat word_less_def)
                              apply (rule_tac x="unat vv" in exI) 
