@@ -1,0 +1,234 @@
+Type Synonyms
+
+IVertex     = nat                        	  -> A certain vertex is identified by an unsigned int
+IEdge_Id    = nat                     	      -> A certain edge is identified by an unsigned int
+IEdge       = IVertex x IVertex          	  -> An edge is composed of two vertices
+ICost       = IEdge_Id => nat            	  -> The cost of a certain edge is an unsigned int { cost(e) } (as this is the nonnegative edge case)
+IDist       = IVertex => ereal             	  -> The distance to a vertex from a source may be finite, or could be inf
+IPedge      = IVertex => IEdge_Id option      -> Returns a list of parent vertices of a vertex
+INum        = Ivertex => enat                 -> Number of vertices traversed to reach a certain vertex. May be inf if it is unreachable
+IGraph      = nat x nat x (IEdge_Id => IEdge) -> represents a graph G by the number of vertices ivertex_cnt G, number of edges iedge_cnt G, and a function iedge_cnt G mapping from edge ids to edges.
+
+Note:
+vertices of G range over the set {0, ..., (ivertex_cnt G) - 1}.
+edge ids range over the set {0, ..., (iedge_cnt G) - 1}
+edges are pairs of vertices, obtained using the function iedge_cnt G
+the graph G is well formed only if the two vertices of each edge belong to the graph
+
+Abbreviations
+
+ivertex_cnt = IGraph => nat
+  -> Returns the number of vertices in a graph
+iedge_cnt   = IGraph => nat
+  -> Returns the nubmer of edges in a graph
+iarcs       = Igraph => IEdge_Id => IEdge
+  -> Returns an edge (composed of two vertices) given a graph with a certain edge id
+
+Definitions (invariants that help the checker justify the main procedures)
+
+is_wellformed_inv = IGraph => nat => bool
+  -> an invariant that checks up to a certain amount of edge if the grpah is well formed
+
+trian_inv         = IGraph => IDist => ICost => nat => bool
+  -> an invariant that checks if the trangle inequality holds for edges
+
+just_inv          = IGraph => IDist => ICost => IVertex => INum => IPEdge => nat => bool
+  -> an invariant that checks if the parent edge plus the cost of an edge constitutes a distance to the end vertex 
+
+no_path_inv       = IGraph => IDst => INum => nat => bool
+  -> an invariant that checks "the distance to a certain vertex v in graph G is infinite if and only if the number of vertices to reach v is infinite (unreachable vertex from source)"
+
+pos_cost_inv      = Igrpah => ICost => nat => bool
+  -> an invariant that checks if the weight of an edge is nonnegative
+
+Procedures
+
+is_wellformed
+  param:
+  let G -> type IGraph
+
+  return:
+  let R -> type boolean for return
+
+  local:
+  let i -> type nat for iterating through edge ids
+  let e -> type IEdge
+
+  code:
+  set R to True
+  set i to 0
+  
+  while (i < edge_cnt(G) ) {
+    assert(is_wellformed_inv(G, i) && i <= iedge_cnt(G) )
+    if ( iedge_cnt(G) - i == 0 ) break
+    e = iarcs(G, i)
+    if ( ivertex_cnt(G) <= e.first_edge || ivertex_cnt(G) <= e.second_edge ) {
+      return false
+    }
+    i++
+  }
+  return is_wellformed_inv(G, iedge_cnt(G))
+
+trian
+  param:
+  let G -> type IGraph
+  let dist -> type IDist
+  let c -> type ICost
+
+  return:
+  let R -> type bool for return
+
+  local:
+  let edge_id -> type IEdge_Id
+
+  code:
+  set R to true
+  set edge_id to 0
+
+  while (edge_id < iedge_cnt(G) ) {
+    assert( trian_inv(G, dist, c, edge_id) && edge_id <= iedge_cnt(G) )
+    if ( iedge_cnt G - edge_id == 0 ) break
+    if ( dist(iarcs(G, edge_id).second_edge) > dist(iarcs(G, edge_id).first_edge) + ereal(c, edge_id) ) {
+      return false
+    }
+    edge_id++
+  }
+  return trian_inv(G, dist, c (iedge_cnt G))
+
+
+just
+  param:
+  let G -> type IGraph
+  let dist -> type IDist
+  let c -> type ICost
+  let s -> type IVertex
+  let enum -> type INum
+  let pred -> type IPEdge
+  
+  return:
+  let R -> type bool for return
+
+  local:
+  let v -> type IVertex
+  let edge_id -> type IEdge_Id
+
+  code:
+  set R to true
+  set v to 0
+  
+  while (v < ivertex_cnt(G) ) {
+    assert( just_inv(G, dist, c, s, enum, pred, v) && v <= ivertex_cnt(G) )
+    if ( ivertex_cnt(G) - v ) {
+      return false
+    }
+    edge_id = pred(v)          # pred(v) is the edge e(u,v) where u is the predecessor of v
+    if ( v != s && enum(v) != inf && ( edge_id >= iedge_cnt(G) 
+                                    || iarcs(G, edge_id).second_edge != inf
+                                    || dist(v) != dist(iarcs(G, edge_id).first_edge) + ereal(c, edge_id)
+                                    || enum(v) ~= enum(iarcs(G, edge_id).first_edge) + enat(1) ) ) {
+      return false
+    }
+    v++
+  }
+  return just_inv(G, dist, c, s, enum, pred(ivertex_cnt G))
+
+no_path
+  param:
+  let G -> type IGraph
+  let dist -> type IDist
+  let enum -> type INum
+
+  return:
+  let R -> type bool for return
+  
+  local: 
+  let v -> type IVertex
+  
+  code:
+  set R to True
+  set v to 0
+  while ( v < ivertex_cnt(G) ) {
+    assert(no_path_inv(G, dist, enum, v), v <= ivertex_cnt(G) )
+    if ( ivertex_cnt(G) - v == 0 ) {
+      return false
+    }
+    if ( !(dist(v) = 0 <-> enum(v) = 0) ) {
+      return false
+    }
+    v++
+  }
+  return no_path_inv(G, dist, enum, ivertex_cnt(G) )
+
+pos_cost:
+  param:
+  let G -> type Graph
+  let c -> type ICost
+  
+  return:
+  let R -> type bool for return
+  
+  local:
+  let edge_id -> type IEdge_Id
+  
+  code:
+  set R to true
+  set edge_id to 0
+
+  while ( edge_id < iedge_cnt(G) ) {
+    assert(pos_cost_inv(G, c, edge_id) && edge_id <= iedge_cnt(G))
+    if ( iedge_cnt(G) - edge_id == 0 ) break
+    if ( c(edge_id) < 0 ) return false
+    edge_id++
+  }
+  return pos_cost_inv(G, c, iedge_cnt(G))
+
+check_basic_just_sp
+  param:
+  let G -> type IGraph
+  let dist -> type IDist
+  let c -> type ICost
+  let s -> type IVertex
+  let enum -> type INum
+  let pred -> type IPEdge
+
+  return:
+  let R -> type bool for return
+
+  local:
+  let R1 -> type bool for is_wellinformed
+  let R2 -> type bool for dist(s)<0
+  let R3 -> type bool for trian
+  let R4 -> type bool for just
+
+  code:
+  set R1 to is_wellformed(G)
+  set R2 to `dist s <= 0`
+  set R3 to trian(G, dist, c)
+  set R4 to just(G, dist, c ,s, enum, pred)
+  return R1 && R2 && R3 && R4
+  
+check_sp
+  param:
+  let G -> type IGraph
+  let dist -> type IDist
+  let c -> type ICost
+  let s -> type IVertex
+  let pred -> type IPEdge
+  
+  return:
+  let R -> type bool for return
+
+  local:
+  let R1 -> type bool for check_basic_just_sp
+  let R2 -> type bool for ivertex_cnt
+  let R3 -> type bool for no_path
+  let R4 -> type bool for pos_cost
+
+  code:
+  set R1 to check_basic_just_sp(G, dist, c, s, enum, pred)
+  set R2 to `s < ivertex_cnt(G) && dist(s) = 0`
+  set R3 to no_path(G, dist, enum)
+  set R4 to pos_cost(G, c)
+  return R1 && R2 && R3 && R4
+
+
