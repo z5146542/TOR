@@ -4,8 +4,10 @@
 // Type Synonums
 
 typedef unsigned int nat;
-typedef int enat; // negative numbers will be treated as infinity for this purpose
-// typedef float ereal; // the INFINITY constnat in math.h will be used for infinity
+typedef struct enat {
+	nat val;
+	int isInf;
+} enat;
 
 typedef nat IVertex;
 typedef nat IEdge_Id;
@@ -49,7 +51,7 @@ int is_wellformed(IGraph *g) {
 int trian(IGraph *g, IDist *dist, ICost *c) {
 	IEdge_Id edge_id;
 	for(edge_id = 0; edge_id < iedge_cnt(g); edge_id++) {
-		if (dist[iarcs(g, edge_id).second] > dist[iarcs(g, edge_id).first] + c[edge_id]) return 0;
+		if (dist[iarcs(g, edge_id).second].val > dist[iarcs(g, edge_id).first].val + c[edge_id]) return 0;
 	}
 	return 1;
 }
@@ -58,13 +60,13 @@ int just(IGraph *g, IDist *dist, ICost *c, IVertex s, INum *enu, IPEdge *pred) {
 	IEdge_Id edge_id;
 	IVertex v;
 	for(v = 0; v < ivertex_cnt(g); v++) {
-		edge_id = pred[v];
+		edge_id = pred[v].val;
 		if(v != s) {
-			if(enu[v] >= 0) {
+			if(enu[v].isInf > 0) {
 				if(edge_id >= iedge_cnt(g)) return 0;
 				if(iarcs(g, edge_id).second != v) return 0;
-				if(dist[v] != dist[iarcs(g, edge_id).first] + c[edge_id]) return 0;
-				if(enu[v] != enu[iarcs(g, edge_id).first] + 1) return 0; // onum
+				if(dist[v].val != dist[iarcs(g, edge_id).first].val + c[edge_id]) return 0;
+				if(enu[v].val != enu[iarcs(g, edge_id).first].val + 1) return 0;
 			}
 		}
 	}
@@ -72,12 +74,13 @@ int just(IGraph *g, IDist *dist, ICost *c, IVertex s, INum *enu, IPEdge *pred) {
 }
 
 int no_path(IGraph *g, IDist *dist, INum *enu) {
-	for(IVertex v = 0; v < ivertex_cnt(g); v++) {
-		if(dist[v] < 0) {
-			if(enu[v] >= 0) return 0;
+	IVertex v;
+	for(v = 0; v < ivertex_cnt(g); v++) {
+		if(dist[v].isInf) {
+			if(!enu[v].isInf) return 0;
 		}
 		else {
-			if(enu[v] < 0) return 0;
+			if(enu[v].isInf) return 0;
 		}
 	}
 	return 1;
@@ -93,7 +96,7 @@ int pos_cost(IGraph *g, ICost *c) {
 
 int check_basic_just_sp(IGraph *g, IDist *dist, ICost *c, IVertex s, INum *enu, IPEdge *pred) {
 	if(!is_wellformed(g)) return 0;
-	if(dist[s] > 0) return 0;
+	if(dist[s].val > 0) return 0;
 	if(!trian(g, dist, c)) return 0;
 	if(!just(g, dist, c, s, enu, pred)) return 0;
 	return 1;
@@ -102,7 +105,7 @@ int check_basic_just_sp(IGraph *g, IDist *dist, ICost *c, IVertex s, INum *enu, 
 int check_sp(IGraph *g, IDist *dist, ICost *c, IVertex s, INum *enu, IPEdge *pred) {
 	if(!check_basic_just_sp(g, dist, c, s, enu, pred)) return 0;
 	if(s >= ivertex_cnt(g)) return 0;
-	if(dist[s] != 0) return 0;
+	if(dist[s].val != 0) return 0;
 	if(!no_path(g, dist, enu)) return 0;
 	if(!pos_cost(g, c)) return 0;
 	return 1;

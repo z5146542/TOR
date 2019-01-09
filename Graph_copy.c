@@ -3,25 +3,14 @@
 
 // Type Synonums
 
-typedef unsigned int nat;
-typedef int enat; // negative numbers will be treated as infinity for this purpose
-// typedef float ereal; // the INFINITY constnat in math.h will be used for infinity
-
-typedef nat IVertex;
-typedef nat IEdge_Id;
-typedef nat ICost;
-typedef enat IDist; // use enat for now to avoid messy float calculations
-typedef enat IPEdge;
-typedef enat INum;
-
 typedef struct IEdge {
-	IVertex first;
-	IVertex second;
+	unsigned int first;
+	unsigned int second;
 } IEdge;
 
 typedef struct IGraph {
-	nat num_vertices;
-	nat num_edges;
+	unsigned int num_vertices;
+	unsigned int num_edges;
 	IEdge *arcs;
 } IGraph;
 
@@ -37,8 +26,7 @@ typedef struct IGraph {
 
 int is_wellformed(IGraph *g) {
 	IEdge e;
-	nat i;
-	for(i = 0; i < iedge_cnt(g); i++) {
+	for(unsigned int i = 0; i < iedge_cnt(g); i++) {
 		e = iarcs(g, i);
 		if(ivertex_cnt(g) <= e.first) return 0;
 		if(ivertex_cnt(g) <= e.second) return 0;
@@ -46,18 +34,16 @@ int is_wellformed(IGraph *g) {
 	return 1;
 }
 
-int trian(IGraph *g, IDist *dist, ICost *c) {
-	IEdge_Id edge_id;
-	for(edge_id = 0; edge_id < iedge_cnt(g); edge_id++) {
+int trian(IGraph *g, int *dist, unsigned int *c) {
+	for(unsigned int edge_id = 0; edge_id < iedge_cnt(g); edge_id++) {
 		if (dist[iarcs(g, edge_id).second] > dist[iarcs(g, edge_id).first] + c[edge_id]) return 0;
 	}
 	return 1;
 }
 
-int just(IGraph *g, IDist *dist, ICost *c, IVertex s, INum *enu, IPEdge *pred) {
-	IEdge_Id edge_id;
-	IVertex v;
-	for(v = 0; v < ivertex_cnt(g); v++) {
+int just(IGraph *g, int *dist, unsigned int *c, unsigned int s, int *enu, int *pred) {
+	unsigned int edge_id;
+	for(unsigned int v = 0; v < ivertex_cnt(g); v++) {
 		edge_id = pred[v];
 		if(v != s) {
 			if(enu[v] >= 0) {
@@ -71,8 +57,8 @@ int just(IGraph *g, IDist *dist, ICost *c, IVertex s, INum *enu, IPEdge *pred) {
 	return 1;
 }
 
-int no_path(IGraph *g, IDist *dist, INum *enu) {
-	for(IVertex v = 0; v < ivertex_cnt(g); v++) {
+int no_path(IGraph *g, int *dist, int *enu) {
+	for(unsigned int v = 0; v < ivertex_cnt(g); v++) {
 		if(dist[v] < 0) {
 			if(enu[v] >= 0) return 0;
 		}
@@ -83,15 +69,14 @@ int no_path(IGraph *g, IDist *dist, INum *enu) {
 	return 1;
 }
 
-int pos_cost(IGraph *g, ICost *c) {
-	IEdge_Id edge_id;
-	for(edge_id = 0; edge_id < iedge_cnt(g); edge_id++) {
+int pos_cost(IGraph *g, unsigned int *c) {
+	for(unsigned int edge_id = 0; edge_id < iedge_cnt(g); edge_id++) {
 		if(c[edge_id] < 0) return 0;
 	}
 	return 1;
 }
 
-int check_basic_just_sp(IGraph *g, IDist *dist, ICost *c, IVertex s, INum *enu, IPEdge *pred) {
+int check_basic_just_sp(IGraph *g, int *dist, unsigned int *c, unsigned int s, int *enu, int *pred) {
 	if(!is_wellformed(g)) return 0;
 	if(dist[s] > 0) return 0;
 	if(!trian(g, dist, c)) return 0;
@@ -99,7 +84,7 @@ int check_basic_just_sp(IGraph *g, IDist *dist, ICost *c, IVertex s, INum *enu, 
 	return 1;
 }
 
-int check_sp(IGraph *g, IDist *dist, ICost *c, IVertex s, INum *enu, IPEdge *pred) {
+int check_sp(IGraph *g, int *dist, unsigned int *c, unsigned int s, int *enu, int *pred) {
 	if(!check_basic_just_sp(g, dist, c, s, enu, pred)) return 0;
 	if(s >= ivertex_cnt(g)) return 0;
 	if(dist[s] != 0) return 0;
