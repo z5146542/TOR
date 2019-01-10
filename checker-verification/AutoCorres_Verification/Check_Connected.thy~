@@ -11,8 +11,10 @@ autocorres "check_connected.c"
 
 context check_connected begin
 
-(* Autocorres wp lemmas *)
+thm "check_r_body_def"
 
+(* Autocorres wp lemmas *)
+thm "check_parent_num_body_def"
 lemma validNFE_getsE[wp]: 
   "\<lbrace>\<lambda>s. P (f s) s\<rbrace> getsE f \<lbrace>P\<rbrace>, \<lbrace>E\<rbrace>!"
   by (auto simp: getsE_def) wp
@@ -124,8 +126,8 @@ where
   "mk_ipedge_list G pedge = mk_list' (unat (ivertex_cnt G)) pedge"
 
 (* Equate to Implementation *)
-fun 
-  to_edge :: "IEdge \<Rightarrow> Edge_C" 
+fun
+  to_edge :: "IEdge \<Rightarrow> Edge_C"
 where
   "to_edge (u,v) = Edge_C u v"
 

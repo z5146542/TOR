@@ -274,10 +274,10 @@ lemma is_wellformed_spc':
   using le_step not_less 
      apply blast
     apply (metis (mono_tags, hide_lams) diff_diff_add diff_self_eq_0 eq_iff_diff_eq_0 measure_unat not_less0 word_less_nat_alt zero_less_diff)
-   apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
-  apply wp
-  apply fast
-  done
+   prefer 2
+   apply wp
+   apply fast
+  apply clarsimp
 
 end
 
