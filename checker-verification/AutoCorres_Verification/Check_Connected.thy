@@ -164,7 +164,7 @@ where
   "is_root iG r iP iN \<equiv> r < (ivertex_cnt iG) \<and> (iN r = 0) \<and> (sint (iP r) < 0)"
 
 definition 
-  parent_num_assms_inv :: "IGraph \<Rightarrow> IVertex \<Rightarrow> IPEdge \<Rightarrow> INum \<Rightarrow> nat \<Rightarrow> bool" 
+  parent_num_assms_inv :: "IGraph \<Rightarrow> IVertex \<Rightarrow> IPEdge \<Rightarrow> INum \<Rightarrow> nat \<Rightarrow> bool"
 where
   "parent_num_assms_inv G r p n k \<equiv> 
     \<forall>i < k. (of_nat i) \<noteq> r \<longrightarrow> 

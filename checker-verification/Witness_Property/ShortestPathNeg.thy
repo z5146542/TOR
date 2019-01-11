@@ -90,15 +90,6 @@ locale shortest_paths_locale_step2_pred =
   assumes source_val: "(\<exists>v \<in> verts G. enum v \<noteq> \<infinity>) \<Longrightarrow> dist s = 0"
   assumes no_edge_Vm_Vf: 
     "\<And>e. e \<in> arcs G \<Longrightarrow> dist (tail G e) = - \<infinity> \<Longrightarrow> \<forall> r. dist (head G e) \<noteq> ereal r"
-(*
-sublocale shortest_paths_locale_step2_pred \<subseteq> shortest_paths_locale_step2
-using shortest_paths_locale_step2_pred_axioms 
-unfolding shortest_paths_locale_step2_pred_def 
-   shortest_paths_locale_step2_pred_axioms_def 
-   shortest_paths_locale_step2_def 
-   shortest_paths_locale_step2_axioms_def
-try0
-*)
 
 lemma (in shortest_paths_locale_step1) num_s_is_min:
   assumes "v \<in> verts G"
