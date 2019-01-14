@@ -19,7 +19,7 @@ typedef nat Edge_Id;
 typedef int Cost;
 typedef enat Dist;
 typedef int PEdge;
-typedef enat Num;
+typedef int Num;
 
 typedef struct Edge {
 	Vertex first;
@@ -32,12 +32,12 @@ typedef struct Graph {
 	Edge *arcs;
 } Graph;
 
-// for set of cycles?
+// Cycle contains a starting vertex, the length of the path, and the path itself
 
 typedef struct Cycle {
 	Vertex start;
 	nat length;
-	Vertex *path;
+	PEdge *path;
 } Cycle;
 
 // Abbreviations
@@ -66,7 +66,10 @@ int is_wellformed(Graph *g) {
 int trian(Graph *g, Dist *dist, Cost *c) {
 	Edge_Id edge_id;
 	for(edge_id = 0; edge_id < edge_cnt(g); edge_id++) {
-		if (dist[arcs(g, edge_id).second].val > dist[arcs(g, edge_id).first].val + c[edge_id]) return 0;
+		// confirms the distance to some vertices are finite
+		if(dist[arcs(g, edge_id).second].inf_status > 0) return 0;
+		if(dist[arcs(g, edge_id).first].inf_status > 0) return 0;
+		if(dist[arcs(g, edge_id).second].val > dist[arcs(g, edge_id).first].val + c[edge_id]) return 0;
 	}
 	return 1;
 }
@@ -77,24 +80,27 @@ int just(Graph *g, Dist *dist, Cost *c, Vertex s, Num *onum, PEdge *pred) {
 	for(v = 0; v < vertex_cnt(g); v++) {
 		edge_id = pred[v];
 		if(v != s) {
-			if(onum[v].inf_status <= 0) {
+			if(onum[v] >= 0) {
 				if(edge_id >= edge_cnt(g)) return 0;
 				if(arcs(g, edge_id).second != v) return 0;
+				// confirms the distance to some vertices are finite
+				if(dist[v].inf_status != 0) return 0;
+				if(dist[arcs(g, edge_id).first].inf_status != 0) return 0;
 				if(dist[v].val != dist[arcs(g, edge_id).first].val + c[edge_id]) return 0;
-				if(onum[v].val != onum[arcs(g, edge_id).first].val + 1) return 0; // onum
+				if(onum[v] != onum[arcs(g, edge_id).first] + 1) return 0;
 			}
 		}
 	}
-	return 1;
+	return 1; 
 }
 
 int no_path(Graph *g, Dist *dist, Num *onum) {
 	for(Vertex v = 0; v < vertex_cnt(g); v++) {
 		if(dist[v].inf_status > 0) {
-			if(onum[v].inf_status <= 0) return 0;
+			if(onum[v] >= 0) return 0;
 		}
 		else {
-			if(onum[v].inf_status > 0) return 0;
+			if(onum[v] < 0) return 0;
 		}
 	}
 	return 1;
@@ -108,8 +114,9 @@ int pos_cost(Graph *g, Cost *c) {
 	return 1;
 }
 
-int check_basic_just_sp(Gist[s].inf_status raph *g, Dist *dist, Cost *c, Vertex s, Num *onum, PEdge *pred) {
+int check_basic_just_sp(Graph *g, Dist *dist, Cost *c, Vertex s, Num *onum, PEdge *pred) {
 	if(!is_wellformed(g)) return 0;
+	if(dist[s].inf_status != 0) return 0;
 	if(dist[s].val > 0) return 0;
 	if(!trian(g, dist, c)) return 0;
 	if(!just(g, dist, c, s, onum, pred)) return 0;
@@ -119,6 +126,7 @@ int check_basic_just_sp(Gist[s].inf_status raph *g, Dist *dist, Cost *c, Vertex 
 int check_sp(Graph *g, Dist *dist, Cost *c, Vertex s, Num *onum, PEdge *pred) {
 	if(!check_basic_just_sp(g, dist, c, s, onum, pred)) return 0;
 	if(s >= vertex_cnt(g)) return 0;
+	if(dist[s].inf_status != 0) return 0;
 	if(dist[s].val != 0) return 0;
 	if(!no_path(g, dist, onum)) return 0;
 	if(!pos_cost(g, c)) return 0;
@@ -131,7 +139,7 @@ int s_assums(Graph *g, Vertex s, Dist *dist, PEdge *pred, Num *onum) {
 	if(s >= vertex_cnt(g)) return 0;
 	if(dist[s].inf_status > 0) return 0;
 	if(pred[s] >= 0) return 0;
-	if(onum[s].val != 0) return 0;
+	if(onum[s] != 0) return 0;
 	return 1;
 }
 
@@ -145,9 +153,9 @@ int parent_num_assms(Graph *g, Vertex s, Dist *dist, PEdge *pred, Num *onum) {
 				if(edge_id >= edge_cnt(g)) return 0;
 				if(arcs(g, edge_id).second != v) return 0;
 				if(dist[arcs(g, edge_id).first].inf_status > 0) return 0;
-				if(onum[v].val != onum[arcs(dist[s].inf_status > 0) retcs(g, edge_id).first].val + 1) return 0;
+				if(onum[v] != onum[arcs(g, edge_id).first] + 1) return 0;
 			}
-		}(dist[s].inf_status > 0) ret
+		}
 	}
 	return 1;
 }
@@ -165,8 +173,9 @@ int no_p_edge(Graph *g, Dist *dist) {
 int source_val(Graph *g, Vertex s, Dist *dist, Num *onum){
 	Vertex v;
 	for(v = 0; v < vertex_cnt(g); v++) {
-		if(onum[v].inf_status == 0) {
-			if((dist[s].inf_status == 0 && dist[s].val != 0) || dist[s].inf_status != 0) return 0;
+		if(onum[v] > 0) {
+			if(dist[s].inf_status != 0) return 0;
+			if(dist[s].val != 0) return 0;
 		}
 	}
 	return 1;
@@ -182,12 +191,47 @@ int no_edge_Vm_Vf(Graph *g, Dist *dist) {
 	return 1;
 }
 
-int C_se(Cycle C) {
-	
+// helpers
+
+int awalk_cost(Graph *g, Cost *c, PEdge *p, nat length) {
+	int total = 0;
+	nat e;
+	for(e = 0; e < length; e++) {
+		total = total + c[p[e]];
+	}
+	return total;
+}
+
+int pwalk_verts() {
 	return 1;
 }
 
-int int_neg_cyc() {
+// assume that a cycle is defined with a fixed length
+// then the following holds
+
+int C_se(Graph *g, Cycle *C, Cost *c, nat nc, Dist *dist) {
+	nat y;
+	Edge_Id last_edge;
+	for(y = 0; y < nc; y++) {
+		last_edge = C[y].length - 1;
+		if(dist[C[y].start].inf_status > 0) return 0;
+		if(C[y].start != arcs(g, last_edge).second) return 0;
+		if(awalk_cost(g, c, C[y].path, C[y].length) >= 0) return 0;
+	}
+	return 1;
+}
+
+int int_neg_cyc(Graph *g, Dist *dist, Cycle *C, Cost *c, nat nc) {
+	Vertex v;
+	nat y;
+	for(v = 0; v < vertex_cnt(g); v++) {
+		if(dist[v].inf_status < 0) {
+			for(y = 0; y < nc; y++) {
+				// TODO: finish implementation "(fst ` C) \cap pwalk_verts v != {}"
+				if(pwalk_verts()) return 0;
+			}
+		}
+	}
 	return 1;
 }
 
