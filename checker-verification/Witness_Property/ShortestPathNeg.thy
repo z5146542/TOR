@@ -81,7 +81,7 @@ locale shortest_paths_locale_step3 =
     "C \<subseteq> {(u, p). dist u \<noteq> \<infinity> \<and> awalk u p u \<and> awalk_cost c p < 0}"
   assumes int_neg_cyc: 
     "\<And>v. v \<in> verts G \<Longrightarrow> dist v = -\<infinity> \<Longrightarrow> 
-      (fst ` C) \<inter> pwalk_verts v  \<noteq> {}"
+      (fst ` C) \<inter> pwalk_verts v \<noteq> {}"
 
 locale shortest_paths_locale_step2_pred = 
   shortest_paths_locale_step1 +

@@ -193,6 +193,20 @@ int no_edge_Vm_Vf(Graph *g, Dist *dist) {
 
 // helpers
 
+// checks if the sequence of edge_ids are connected
+// also checks if the last vertex and the first vertex are the same
+
+int awalk(Graph *g, Cycle *C, nat y, nat last_edge) {
+	nat z;
+	for(z = 0; z < last_edge; z++) {
+		if(arcs(g, C[y].path[z]).second != arcs(g, C[y].path[z+1]).first) return 0;
+	}
+	if(C[y].start != arcs(g, C[y].path[last_edge]).second) return 0;
+	return 1;
+}
+
+// returns the total cost of the path
+
 int awalk_cost(Graph *g, Cost *c, PEdge *p, nat length) {
 	int total = 0;
 	nat e;
@@ -200,10 +214,6 @@ int awalk_cost(Graph *g, Cost *c, PEdge *p, nat length) {
 		total = total + c[p[e]];
 	}
 	return total;
-}
-
-int pwalk_verts() {
-	return 1;
 }
 
 // assume that a cycle is defined with a fixed length
@@ -215,25 +225,53 @@ int C_se(Graph *g, Cycle *C, Cost *c, nat nc, Dist *dist) {
 	for(y = 0; y < nc; y++) {
 		last_edge = C[y].length - 1;
 		if(dist[C[y].start].inf_status > 0) return 0;
-		if(C[y].start != arcs(g, last_edge).second) return 0;
+		if(awalk(g, C, y, last_edge) == 0) return 0;
 		if(awalk_cost(g, c, C[y].path, C[y].length) >= 0) return 0;
 	}
 	return 1;
 }
 
-int int_neg_cyc(Graph *g, Dist *dist, Cycle *C, Cost *c, nat nc) {
+// pwalk: function from vertices to paths.
+// it is the pathobtained by concatenating the edges defined by the parent-edge function form v to s for vertices in Vf union Vm different from s, otherwise it is the empty path.
+
+// int_neg_cyc: For each vertex v in Vm, pwalk v intersects a cycle in C
+// hence, each vertex v in Vm is connected to s with a walk that contains a negative cycle 
+
+int int_neg_cyc(Graph *g, Dist *dist, Cycle *C, Cost *c, PEdge *p, nat nc) {
 	Vertex v;
-	nat y;
 	for(v = 0; v < vertex_cnt(g); v++) {
 		if(dist[v].inf_status < 0) {
-			for(y = 0; y < nc; y++) {
-				// TODO: finish implementation "(fst ` C) \cap pwalk_verts v != {}"
-				if(pwalk_verts()) return 0;
-			}
+			// check if any vertex in pwalk v intersects with the first vertex on a cycle struct
+			// done by obtaining pwalk v first
+			// then check for each element in pwalk v if it matches an element in one of the cycle
+			// once there is a match halt
 		}
 	}
 	return 1;
 }
+
+int shortest_paths_locale_step1(Graph *g, Vertex s, Cost *c, Num *onum, PEdge *pred, Dist *dist) {
+	if(s_assums(g, s, dist, pred, onum) == 0) return 0;
+	if(parent_num_assms(g, s, dist, pred, onum) == 0) return 0;
+	if(no_p_edge(g, dist) == 0) return 0;
+	return 1;
+}
+
+int shortest_paths_locale_step2(Graph *g, Vertex s, Cost *c, Num *onum, PEdge *pred, Dist *dist) {
+	if(shortest_paths_locale_step1(g, s, c, onum, pred, dist) == 0) return 0;
+	if(check_basic_just_sp(g, dist, c, s, onum, pred) == 0) return 0;
+	if(source_val(g, s, dist, onum) == 0) return 0;
+	if(no_edge_Vm_Vf(g, dist) == 0) return 0;
+	return 1;
+}
+
+int shortest_paths_locale_step3(Graph *g, Vertex s, Cost *c, Num *onum, PEdge *pred, Dist *dist, Cycle *C, nat nc) {
+	if(shortest_paths_locale_step1(g, s, c, onum, pred, dist, C, nc) == 0) return 0;
+	if(C_se(g, C, c, nc, dist) == 0) return 0;
+	if(int_neg_cyc(g, dist, C, c, pred, nc) == 0) return 0;
+	return 1;
+}
+
 
 int main(int argc, char **argv) {
 	return 0;
