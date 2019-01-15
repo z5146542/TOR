@@ -67,8 +67,8 @@ int trian(Graph *g, Dist *dist, Cost *c) {
 	Edge_Id edge_id;
 	for(edge_id = 0; edge_id < edge_cnt(g); edge_id++) {
 		// confirms the distance to some vertices are finite
-		if(dist[arcs(g, edge_id).second].inf_status > 0) return 0;
-		if(dist[arcs(g, edge_id).first].inf_status > 0) return 0;
+		if(dist[arcs(g, edge_id).second].inf_status != 0) return 0;
+		if(dist[arcs(g, edge_id).first].inf_status != 0) return 0;
 		if(dist[arcs(g, edge_id).second].val > dist[arcs(g, edge_id).first].val + c[edge_id]) return 0;
 	}
 	return 1;
@@ -209,7 +209,7 @@ int awalk(Graph *g, Cycle *C, nat y, nat last_edge) {
 
 // returns the total cost of the path
 
-int awalk_cost(Graph *g, Cost *c, Edge_Id *path, nat length) {
+int awalk_cost(Cost *c, Edge_Id *path, nat length) {
 	int total = 0;
 	nat e;
 	for(e = 0; e < length; e++) {
@@ -228,28 +228,35 @@ int C_se(Graph *g, Cycle *C, Cost *c, nat nc, Dist *dist) {
 		last_edge = C[y].length - 1;
 		if(dist[C[y].start].inf_status > 0) return 0;
 		if(awalk(g, C, y, last_edge) == 0) return 0;
-		if(awalk_cost(g, c, C[y].path, C[y].length) >= 0) return 0;
+		if(awalk_cost(c, C[y].path, C[y].length) >= 0) return 0;
 	}
 	return 1;
 }
 
 // pwalk: function from vertices to paths.
-// it is the pathobtained by concatenating the edges defined by the parent-edge function form v to s for vertices in Vf union Vm different from s, otherwise it is the empty path.
+// it is the path obtained by concatenating the edges defined by the parent-edge function form v to s for vertices in Vf union Vm different from s, otherwise it is the empty path.
 
 // int_neg_cyc: For each vertex v in Vm, pwalk v intersects a cycle in C
 // hence, each vertex v in Vm is connected to s with a walk that contains a negative cycle 
-// maybe define pwalk internally? should this be done on the verification level?
+// maybe define pwalk internally?
 
-int int_neg_cyc(Graph *g, Dist *dist, Cycle *C, Cost *c, PEdge *p, nat nc) {
+int int_neg_cyc(Graph *g, Vertex s, Dist *dist, Cycle *C, Cost *c, PEdge *p, nat nc) {
 	Vertex v;
-	int u;
+	Vertex u;
+	nat i;
+	nat is_neg;
 	for(v = 0; v < vertex_cnt(g); v++) {
 		if(dist[v].inf_status < 0) {
-			// check if any vertex in pwalk v intersects with the first vertex on a cycle struct
-			// done by obtaining pwalk v first
-			// then check for each element in pwalk v if it matches an element in one of the cycle
-			// once there is a match halt
-			for(u = v; u >= 0; u = )
+			// the following loop goes through every element in pwalk(v). It checks if the vertex is associated to the starting vertex of a negative cycle
+			is_neg = 0;
+			for(u = v; u != s; u = arcs(g, p[u]).second) {
+				// check if any vertex in pwalk v is part of the negative cycle
+				for(i = 0; i < nc; i++) {
+					if(u == C[i].start) is_neg = 1;
+				}
+			}
+			// if none of the vertices in pwalk(v) relates to a negative cycle, return false
+			if(is_neg == 0) return 0;
 		}
 	}
 	return 1;
@@ -273,7 +280,7 @@ int shortest_paths_locale_step2(Graph *g, Vertex s, Cost *c, Num *onum, PEdge *p
 int shortest_paths_locale_step3(Graph *g, Vertex s, Cost *c, Num *onum, PEdge *pred, Dist *dist, Cycle *C, nat nc) {
 	if(shortest_paths_locale_step2(g, s, c, onum, pred, dist) == 0) return 0;
 	if(C_se(g, C, c, nc, dist) == 0) return 0;
-	if(int_neg_cyc(g, dist, C, c, pred, nc) == 0) return 0;
+	if(int_neg_cyc(g, s, dist, C, c, pred, nc) == 0) return 0;
 	return 1;
 }
 
