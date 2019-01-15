@@ -37,7 +37,7 @@ typedef struct Graph {
 typedef struct Cycle {
 	Vertex start;
 	nat length;
-	PEdge *path;
+	Edge_Id *path;
 } Cycle;
 
 // Abbreviations
@@ -199,19 +199,21 @@ int no_edge_Vm_Vf(Graph *g, Dist *dist) {
 int awalk(Graph *g, Cycle *C, nat y, nat last_edge) {
 	nat z;
 	for(z = 0; z < last_edge; z++) {
+		// return false if the second vertex of the first edge is not the same as the first vertex of the second edge
 		if(arcs(g, C[y].path[z]).second != arcs(g, C[y].path[z+1]).first) return 0;
 	}
+	// if the first vertex and the last vertex are not the same return false
 	if(C[y].start != arcs(g, C[y].path[last_edge]).second) return 0;
 	return 1;
 }
 
 // returns the total cost of the path
 
-int awalk_cost(Graph *g, Cost *c, PEdge *p, nat length) {
+int awalk_cost(Graph *g, Cost *c, Edge_Id *path, nat length) {
 	int total = 0;
 	nat e;
 	for(e = 0; e < length; e++) {
-		total = total + c[p[e]];
+		total = total + c[path[e]];
 	}
 	return total;
 }
@@ -236,15 +238,18 @@ int C_se(Graph *g, Cycle *C, Cost *c, nat nc, Dist *dist) {
 
 // int_neg_cyc: For each vertex v in Vm, pwalk v intersects a cycle in C
 // hence, each vertex v in Vm is connected to s with a walk that contains a negative cycle 
+// maybe define pwalk internally? should this be done on the verification level?
 
 int int_neg_cyc(Graph *g, Dist *dist, Cycle *C, Cost *c, PEdge *p, nat nc) {
 	Vertex v;
+	int u;
 	for(v = 0; v < vertex_cnt(g); v++) {
 		if(dist[v].inf_status < 0) {
 			// check if any vertex in pwalk v intersects with the first vertex on a cycle struct
 			// done by obtaining pwalk v first
 			// then check for each element in pwalk v if it matches an element in one of the cycle
 			// once there is a match halt
+			for(u = v; u >= 0; u = )
 		}
 	}
 	return 1;
