@@ -266,7 +266,7 @@ int shortest_paths_locale_step2(Graph *g, Vertex s, Cost *c, Num *onum, PEdge *p
 }
 
 int shortest_paths_locale_step3(Graph *g, Vertex s, Cost *c, Num *onum, PEdge *pred, Dist *dist, Cycle *C, nat nc) {
-	if(shortest_paths_locale_step1(g, s, c, onum, pred, dist, C, nc) == 0) return 0;
+	if(shortest_paths_locale_step2(g, s, c, onum, pred, dist, C, nc) == 0) return 0;
 	if(C_se(g, C, c, nc, dist) == 0) return 0;
 	if(int_neg_cyc(g, dist, C, c, pred, nc) == 0) return 0;
 	return 1;
