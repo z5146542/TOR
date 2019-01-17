@@ -1,0 +1,9 @@
+Edge_C
+	s_C:Word 32
+	t_C:Word 32
+
+Graph_C
+	m_C:Word 32
+	n_C:Word 32
+	es_C:Ptr Edge_C
+

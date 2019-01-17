@@ -35,6 +35,7 @@ type_synonym IEdge = "IVertex \<times> IVertex"
 type_synonym IPEdge = "IVertex \<Rightarrow> 32 word"
 type_synonym INum = "IVertex \<Rightarrow> 32 word"
 type_synonym IDist = "IVertex \<Rightarrow> 32 word"
+type_synonym ICost = "IVertex \<Rightarrow> 32 word"
 type_synonym IGraph = "32 word \<times> 32 word \<times> (IEdge_Id \<Rightarrow> IEdge)"
 
 abbreviation 
@@ -85,6 +86,16 @@ fun
 where
   "mk_ipedge_list G pedge = mk_list' (unat (ivertex_cnt G)) pedge"
 
+fun
+  mk_idist_list :: "IGraph \<Rightarrow> IDist \<Rightarrow> 32 word list"
+where
+  "mk_idist_list G dis = mk_list' (unat (ivertex_cnt G)) dis"
+
+fun
+  mk_icost_list :: "IGraph \<Rightarrow> ICost \<Rightarrow> 32 word list"
+where
+  "mk_icost_list G cost = mk_list' (unat (ivertex_cnt G)) cost"
+
 (* Equate to Implementation *)
 fun
   to_edge :: "IEdge \<Rightarrow> IEdge_C"
@@ -108,11 +119,19 @@ definition is_graph where
       (map to_edge (mk_iedge_list iG)) (arcs_C (heap_IGraph_C h p))"
 
 definition 
-  "is_numm h iG iN p \<equiv> arrlist (heap_w32 h) (is_valid_w32 h) (mk_inum_list iG iN) p"
+  "is_numm h iG iN (p:: 32 signed word ptr) \<equiv> arrlist (\<lambda>p. heap_w32 h (ptr_coerce p))
+        (\<lambda>p. is_valid_w32 h (ptr_coerce p)) (mk_inum_list iG iN) p"
 
 definition
   "is_pedge h iG iP (p:: 32 signed word ptr) \<equiv> arrlist (\<lambda>p. heap_w32 h (ptr_coerce p))
         (\<lambda>p. is_valid_w32 h (ptr_coerce p)) (mk_ipedge_list iG iP) p"
+
+definition
+  "is_dist h iG iD (p:: 32 signed word ptr) \<equiv> arrlist (\<lambda>p. heap_w32 h (ptr_coerce p))
+        (\<lambda>p. is_valid_w32 h (ptr_coerce p)) (mk_idist_list iG iD) p"
+
+definition 
+  "is_cost h iG iC p \<equiv> arrlist (heap_w32 h) (is_valid_w32 h) (mk_icost_list iG iC) p"
 
 (* Abstract Graph *)
 
@@ -138,6 +157,11 @@ definition
 where
   "abs_pedge p \<equiv> (\<lambda>v. if sint (p v) < 0 then None else Some (p v))"
 
+definition 
+  abs_num :: "(32 word \<Rightarrow> 32 word) \<Rightarrow> 32 word \<Rightarrow> 32 word option" 
+where
+  "abs_num n \<equiv> (\<lambda>v. if sint (n v) < 0 then None else Some (n v))"
+
 lemma None_abs_pedgeI[simp]: 
   "((abs_pedge p) v = None) = (sint (p v) < 0)"
   using abs_pedge_def by auto
@@ -146,6 +170,15 @@ lemma Some_abs_pedgeI[simp]:
   "(\<exists>e. (abs_pedge p) v = Some e) = (sint (p v) \<ge> 0)"
   using None_not_eq None_abs_pedgeI 
   by (metis abs_pedge_def linorder_not_le option.simps(3))
+
+lemma None_abs_numI[simp]: 
+  "((abs_num n) v = None) = (sint (n v) < 0)"
+  using abs_num_def by auto
+
+lemma Some_abs_numI[simp]: 
+  "(\<exists>e. (abs_num n) v = Some e) = (sint (n v) \<ge> 0)"
+  using None_not_eq None_abs_numI 
+  by (metis abs_num_def linorder_not_le option.simps(3))
     
 (*Helper Lemmas*)
 
@@ -237,15 +270,17 @@ definition is_wellformed_inv :: "IGraph \<Rightarrow> 32 word \<Rightarrow> bool
 
 lemma is_wellformed_spc':
   "\<lbrace> P and 
-    (\<lambda>s. is_graph s iG g) \<rbrace>
-  is_wellformed' g
-  \<lbrace> (\<lambda>_ s. P s) And 
-    (\<lambda>rr s. rr \<noteq> 0 \<longleftrightarrow> is_wellformed_inv iG (iedge_cnt iG)) \<rbrace>!"
+     (\<lambda>s. wf_digraph (abs_IGraph iG) \<and>
+          is_graph s iG g) \<rbrace>
+   is_wellformed' g
+   \<lbrace> (\<lambda>_ s. P s) And 
+     (\<lambda>rr s. rr \<noteq> 0 \<longleftrightarrow> is_wellformed_inv iG (iedge_cnt iG)) \<rbrace>!"
   apply (clarsimp simp: is_wellformed'_def)
   apply (subst whileLoopE_add_inv [where 
         M="\<lambda>(ee, s). unat (iedge_cnt iG - ee)" and
         I="\<lambda>ee s. P s \<and> is_wellformed_inv iG ee \<and> 
                    ee \<le> iedge_cnt iG \<and> 
+                   wf_digraph (abs_IGraph iG) \<and>
                    is_graph s iG g"])
   apply (simp add: skipE_def)
   apply wp
@@ -278,6 +313,38 @@ lemma is_wellformed_spc':
   apply wp
   apply fast
   done
+
+definition trian_inv :: "IGraph \<Rightarrow> IDist \<Rightarrow> ICost \<Rightarrow> 32 word \<Rightarrow> bool" where
+  "trian_inv G d c m \<equiv> 
+    \<forall>i < m. d (snd (iedges G i)) \<le> d (fst (iedges G i)) + c i"
+
+lemma trian_spc':
+  "\<lbrace> P and 
+     (\<lambda>s. wf_digraph (abs_IGraph iG) \<and>
+          is_graph s iG g \<and>
+          is_dist s iG iD d \<and>
+          is_cost s iG iC c)\<rbrace>
+   trian' g d c
+   \<lbrace> (\<lambda>_ s. P s) And 
+     (\<lambda>rr s. rr \<noteq> 0 \<longleftrightarrow> trian_inv iG iD iC (iedge_cnt iG)) \<rbrace>!"
+  apply (clarsimp simp: trian'_def)
+  apply (subst whileLoopE_add_inv [where 
+        M="\<lambda>(ee, s). unat (iedge_cnt iG - ee)" and
+        I="\<lambda>ee s. P s \<and> trian_inv iG iD iC ee \<and> 
+                   ee \<le> iedge_cnt iG \<and>
+                   wf_digraph (abs_IGraph iG) \<and> 
+                   is_graph s iG g \<and>
+                   is_dist s iG iD d \<and>
+                   is_cost s iG iC c"])
+  apply (simp add: skipE_def)
+  apply wp
+  unfolding is_graph_def is_dist_def is_cost_def trian_inv_def
+    apply (subst if_bool_eq_conj)+
+    apply (simp split: if_split_asm, safe, simp_all add: arrlist_nth)
+          apply (rule_tac x = "ee" in exI)
+          apply (subgoal_tac 
+
+
 
 end
 

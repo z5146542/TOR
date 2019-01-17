@@ -35,6 +35,7 @@ type_synonym IEdge = "IVertex \<times> IVertex"
 type_synonym IPEdge = "IVertex \<Rightarrow> 32 word"
 type_synonym INum = "IVertex \<Rightarrow> 32 word"
 type_synonym IDist = "IVertex \<Rightarrow> 32 word"
+type_synonym ICost = "IVertex \<Rightarrow> 32 word"
 type_synonym IGraph = "32 word \<times> 32 word \<times> (IEdge_Id \<Rightarrow> IEdge)"
 
 abbreviation 
@@ -85,6 +86,16 @@ fun
 where
   "mk_ipedge_list G pedge = mk_list' (unat (ivertex_cnt G)) pedge"
 
+fun
+  mk_idist_list :: "IGraph \<Rightarrow> IDist \<Rightarrow> 32 word list"
+where
+  "mk_idist_list G dis = mk_list' (unat (ivertex_cnt G)) dis"
+
+fun
+  mk_icost_list :: "IGraph \<Rightarrow> ICost \<Rightarrow> 32 word list"
+where
+  "mk_icost_list G cost = mk_list' (unat (ivertex_cnt G)) cost"
+
 (* Equate to Implementation *)
 fun
   to_edge :: "IEdge \<Rightarrow> IEdge_C"
@@ -108,11 +119,19 @@ definition is_graph where
       (map to_edge (mk_iedge_list iG)) (arcs_C (heap_IGraph_C h p))"
 
 definition 
-  "is_numm h iG iN p \<equiv> arrlist (heap_w32 h) (is_valid_w32 h) (mk_inum_list iG iN) p"
+  "is_numm h iG iN (p:: 32 signed word ptr) \<equiv> arrlist (\<lambda>p. heap_w32 h (ptr_coerce p))
+        (\<lambda>p. is_valid_w32 h (ptr_coerce p)) (mk_inum_list iG iN) p"
 
 definition
   "is_pedge h iG iP (p:: 32 signed word ptr) \<equiv> arrlist (\<lambda>p. heap_w32 h (ptr_coerce p))
         (\<lambda>p. is_valid_w32 h (ptr_coerce p)) (mk_ipedge_list iG iP) p"
+
+definition
+  "is_dist h iG iD (p:: 32 signed word ptr) \<equiv> arrlist (\<lambda>p. heap_w32 h (ptr_coerce p))
+        (\<lambda>p. is_valid_w32 h (ptr_coerce p)) (mk_idist_list iG iD) p"
+
+definition 
+  "is_cost h iG iC p \<equiv> arrlist (heap_w32 h) (is_valid_w32 h) (mk_icost_list iG iC) p"
 
 (* Abstract Graph *)
 
@@ -138,6 +157,11 @@ definition
 where
   "abs_pedge p \<equiv> (\<lambda>v. if sint (p v) < 0 then None else Some (p v))"
 
+definition 
+  abs_num :: "(32 word \<Rightarrow> 32 word) \<Rightarrow> 32 word \<Rightarrow> 32 word option" 
+where
+  "abs_num n \<equiv> (\<lambda>v. if sint (n v) < 0 then None else Some (n v))"
+
 lemma None_abs_pedgeI[simp]: 
   "((abs_pedge p) v = None) = (sint (p v) < 0)"
   using abs_pedge_def by auto
@@ -146,6 +170,15 @@ lemma Some_abs_pedgeI[simp]:
   "(\<exists>e. (abs_pedge p) v = Some e) = (sint (p v) \<ge> 0)"
   using None_not_eq None_abs_pedgeI 
   by (metis abs_pedge_def linorder_not_le option.simps(3))
+
+lemma None_abs_numI[simp]: 
+  "((abs_num n) v = None) = (sint (n v) < 0)"
+  using abs_num_def by auto
+
+lemma Some_abs_numI[simp]: 
+  "(\<exists>e. (abs_num n) v = Some e) = (sint (n v) \<ge> 0)"
+  using None_not_eq None_abs_numI 
+  by (metis abs_num_def linorder_not_le option.simps(3))
     
 (*Helper Lemmas*)
 
@@ -205,6 +238,32 @@ lemma ptr_coerce_ptr_add_uint[simp]:
   "ptr_coerce (p +\<^sub>p uint x) =  p +\<^sub>p  (uint x)"
   by auto
 
+lemma pedge_num_dist_heap:
+  "\<lbrakk>arrlist (\<lambda>p. heap_w32 h (ptr_coerce p)) (\<lambda>p. is_valid_w32 h (ptr_coerce p)) 
+  (map (iL \<circ> of_nat) [0..<unat n]) l; i < n\<rbrakk> \<Longrightarrow>
+    iL i = heap_w32 h (l +\<^sub>p int (unat i))" 
+  apply (subgoal_tac 
+  "heap_w32 h (l +\<^sub>p int (unat i)) = map (iL \<circ> of_nat) [0..<unat n] ! unat i") 
+   apply (subgoal_tac "map (iL \<circ> of_nat) [0..<unat n] ! unat i = iL i") 
+    apply fastforce
+   apply (metis (hide_lams, mono_tags) unat_mono word_unat.Rep_inverse 
+    minus_nat.diff_0 nth_map_upt o_apply plus_nat.add_0)
+  apply (simp add: arrlist_nth_value unat_mono)
+  done
+
+lemma pedge_num_dist_heap_ptr_coerce:
+  "\<lbrakk>arrlist (\<lambda>p. heap_w32 h (ptr_coerce p)) (\<lambda>p. is_valid_w32 h (ptr_coerce p)) 
+  (map (iL \<circ> of_nat) [0..<unat n]) l; i < n; 0 \<le> i\<rbrakk> \<Longrightarrow>
+    iL i = heap_w32 h (ptr_coerce (l +\<^sub>p int (unat i)))" 
+  apply (subgoal_tac 
+  "heap_w32 h (ptr_coerce (l +\<^sub>p int (unat i))) = map (iL \<circ> of_nat) [0..<unat n] ! unat i") 
+   apply (subgoal_tac "map (iL \<circ> of_nat) [0..<unat n] ! unat i = iL i") 
+    apply fastforce
+   apply (metis (hide_lams, mono_tags) unat_mono word_unat.Rep_inverse 
+    minus_nat.diff_0 nth_map_upt o_apply plus_nat.add_0)
+  apply (drule arrlist_nth_value[where i="int (unat i)"], (simp add:unat_mono)+)
+  done
+
 lemma edge_heap:
   "\<lbrakk> arrlist h v (map (to_edge \<circ> (iedges iG \<circ> of_nat)) [0..<unat m]) ep;
   e < m\<rbrakk> \<Longrightarrow> to_edge ((iedges iG) e) = h (ep +\<^sub>p (int (unat e)))" 
@@ -237,7 +296,8 @@ definition is_wellformed_inv :: "IGraph \<Rightarrow> 32 word \<Rightarrow> bool
 
 lemma is_wellformed_spc':
   "\<lbrace> P and 
-     (\<lambda>s. is_graph s iG g) \<rbrace>
+     (\<lambda>s. wf_digraph (abs_IGraph iG) \<and>
+          is_graph s iG g) \<rbrace>
    is_wellformed' g
    \<lbrace> (\<lambda>_ s. P s) And 
      (\<lambda>rr s. rr \<noteq> 0 \<longleftrightarrow> is_wellformed_inv iG (iedge_cnt iG)) \<rbrace>!"
@@ -246,6 +306,7 @@ lemma is_wellformed_spc':
         M="\<lambda>(ee, s). unat (iedge_cnt iG - ee)" and
         I="\<lambda>ee s. P s \<and> is_wellformed_inv iG ee \<and> 
                    ee \<le> iedge_cnt iG \<and> 
+                   wf_digraph (abs_IGraph iG) \<and>
                    is_graph s iG g"])
   apply (simp add: skipE_def)
   apply wp
@@ -278,6 +339,55 @@ lemma is_wellformed_spc':
   apply wp
   apply fast
   done
+
+definition trian_inv :: "IGraph \<Rightarrow> IDist \<Rightarrow> ICost \<Rightarrow> 32 word \<Rightarrow> bool" where
+  "trian_inv G d c m \<equiv> 
+    \<forall>i < m. d (snd (iedges G i)) \<le> d (fst (iedges G i)) + c i"
+
+lemma trian_spc':
+  "\<lbrace> P and 
+     (\<lambda>s. wf_digraph (abs_IGraph iG) \<and>
+          is_graph s iG g \<and>
+          is_dist s iG iD d \<and>
+          is_cost s iG iC c)\<rbrace>
+   trian' g d c
+   \<lbrace> (\<lambda>_ s. P s) And 
+     (\<lambda>rr s. rr \<noteq> 0 \<longleftrightarrow> trian_inv iG iD iC (iedge_cnt iG)) \<rbrace>!"
+  apply (clarsimp simp: trian'_def)
+  apply (subst whileLoopE_add_inv [where 
+        M="\<lambda>(ee, s). unat (iedge_cnt iG - ee)" and
+        I="\<lambda>ee s. P s \<and> trian_inv iG iD iC ee \<and> 
+                   ee \<le> iedge_cnt iG \<and>
+                   wf_digraph (abs_IGraph iG) \<and> 
+                   is_graph s iG g \<and>
+                   is_dist s iG iD d \<and>
+                   is_cost s iG iC c"])
+  apply (simp add: skipE_def)
+  apply wp
+  unfolding is_graph_def is_dist_def is_cost_def trian_inv_def
+    apply (subst if_bool_eq_conj)+
+    apply (simp split: if_split_asm, safe, simp_all add: arrlist_nth)
+          prefer 9
+          apply wp
+          apply fast
+         prefer 8
+         apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+        prefer 3
+  using le_step not_less 
+        apply blast
+       prefer 3
+       apply (metis (no_types, hide_lams) diff_diff_add eq_iff_diff_eq_0 measure_unat word_not_le)
+      prefer 4
+      apply (rule_tac i="(uint ee)" in arrlist_nth_valid, simp+)
+  
+
+
+
+
+          
+
+
+
 
 end
 
