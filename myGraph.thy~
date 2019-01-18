@@ -238,6 +238,32 @@ lemma ptr_coerce_ptr_add_uint[simp]:
   "ptr_coerce (p +\<^sub>p uint x) =  p +\<^sub>p  (uint x)"
   by auto
 
+lemma pedge_num_dist_heap:
+  "\<lbrakk>arrlist (\<lambda>p. heap_w32 h (ptr_coerce p)) (\<lambda>p. is_valid_w32 h (ptr_coerce p)) 
+  (map (iL \<circ> of_nat) [0..<unat n]) l; i < n\<rbrakk> \<Longrightarrow>
+    iL i = heap_w32 h (l +\<^sub>p int (unat i))" 
+  apply (subgoal_tac 
+  "heap_w32 h (l +\<^sub>p int (unat i)) = map (iL \<circ> of_nat) [0..<unat n] ! unat i") 
+   apply (subgoal_tac "map (iL \<circ> of_nat) [0..<unat n] ! unat i = iL i") 
+    apply fastforce
+   apply (metis (hide_lams, mono_tags) unat_mono word_unat.Rep_inverse 
+    minus_nat.diff_0 nth_map_upt o_apply plus_nat.add_0)
+  apply (simp add: arrlist_nth_value unat_mono)
+  done
+
+lemma pedge_num_dist_heap_ptr_coerce:
+  "\<lbrakk>arrlist (\<lambda>p. heap_w32 h (ptr_coerce p)) (\<lambda>p. is_valid_w32 h (ptr_coerce p)) 
+  (map (iL \<circ> of_nat) [0..<unat n]) l; i < n; 0 \<le> i\<rbrakk> \<Longrightarrow>
+    iL i = heap_w32 h (ptr_coerce (l +\<^sub>p int (unat i)))" 
+  apply (subgoal_tac 
+  "heap_w32 h (ptr_coerce (l +\<^sub>p int (unat i))) = map (iL \<circ> of_nat) [0..<unat n] ! unat i") 
+   apply (subgoal_tac "map (iL \<circ> of_nat) [0..<unat n] ! unat i = iL i") 
+    apply fastforce
+   apply (metis (hide_lams, mono_tags) unat_mono word_unat.Rep_inverse 
+    minus_nat.diff_0 nth_map_upt o_apply plus_nat.add_0)
+  apply (drule arrlist_nth_value[where i="int (unat i)"], (simp add:unat_mono)+)
+  done
+
 lemma edge_heap:
   "\<lbrakk> arrlist h v (map (to_edge \<circ> (iedges iG \<circ> of_nat)) [0..<unat m]) ep;
   e < m\<rbrakk> \<Longrightarrow> to_edge ((iedges iG) e) = h (ep +\<^sub>p (int (unat e)))" 
@@ -341,8 +367,25 @@ lemma trian_spc':
   unfolding is_graph_def is_dist_def is_cost_def trian_inv_def
     apply (subst if_bool_eq_conj)+
     apply (simp split: if_split_asm, safe, simp_all add: arrlist_nth)
-          apply (rule_tac x = "ee" in exI)
-          apply (subgoal_tac 
+          prefer 9
+          apply wp
+          apply fast
+         prefer 8
+         apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+        prefer 3
+  using le_step not_less 
+        apply blast
+       prefer 3
+       apply (metis (no_types, hide_lams) diff_diff_add eq_iff_diff_eq_0 measure_unat word_not_le)
+      prefer 4
+      apply (rule_tac i="(uint ee)" in arrlist_nth_valid, simp+)
+  
+
+
+
+
+          
+
 
 
 
