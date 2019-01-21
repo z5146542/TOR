@@ -230,6 +230,18 @@ int C_se(Graph *g, Cycle *C, Cost *c, nat nc, Dist *dist) {
 	return 1;
 }
 
+// checks if a vertex s is connected to the vertex v given a list of parent edges of each respective vertices
+
+int is_connected(Graph *g, Vertex s, PEdge *p, Vertex v) {
+	int n = v;
+	// the while loop will eventually terminate given n is either the source vertex or some other disjoint vertex
+	while(1) {
+		if(n == s) return 1;
+		if(p[n] < 0) return 0;
+		n = arcs(g, p[n]).first;
+	}
+}
+
 // pwalk: function from vertices to paths.
 // it is the path obtained by concatenating the edges defined by the parent-edge function form v to s for vertices in Vf union Vm different from s, otherwise it is the empty path.
 
@@ -237,23 +249,32 @@ int C_se(Graph *g, Cycle *C, Cost *c, nat nc, Dist *dist) {
 // hence, each vertex v in Vm is connected to s with a walk that contains a negative cycle 
 // maybe define pwalk internally?
 
+// note pedge defines the edgeid of parent edges of vertices
 int int_neg_cyc(Graph *g, Vertex s, Dist *dist, Cycle *C, Cost *c, PEdge *p, nat nc) {
 	Vertex v;
 	Vertex u;
 	nat i;
-	nat is_neg;
+	nat is_neg_cycle;
 	for(v = 0; v < vertex_cnt(g); v++) {
 		if(dist[v].inf_status < 0) {
-			// the following loop goes through every element in pwalk(v). It checks if the vertex is associated to the starting vertex of a negative cycle
-			is_neg = 0;
-			for(u = v; u != s; u = arcs(g, p[u]).first) {
-				// check if any vertex in pwalk v is part of the negative cycle
+			is_neg_cycle = 0;
+			// check if v == s, whcih we then check if s itself is the start of a negative cycle
+			if(v == s) {
 				for(i = 0; i < nc; i++) {
-					if(u == C[i].start) is_neg = 1;
+					if(s == C[i].start) is_neg_cycle = 1;
 				}
 			}
-			// if none of the vertices in pwalk(v) relates to a negative cycle, return false
-			if(is_neg == 0) return 0;
+			// if is_connected returns false, then a path from s to v does not exist, which is false
+			if(is_connected(g, s, p, v) == 0) return 0;
+			// checks every vertex u between s and v.
+			// the next vertex on the loop will always be the predecessing vertex on the path
+			// since is_connected is true, the for loop will terminate towards s, where 
+			for(u = v; v != s; v = arcs(g, p[u]).first) {
+				for(i = 0; i < nc; i++) {
+					if(u == C[i].start) is_neg_cycle = 1;
+				}
+			}
+			if(is_neg_cycle == 0) return 0;
 		}
 	}
 	return 1;
