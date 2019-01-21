@@ -173,12 +173,13 @@ int no_p_edge(Graph *g, Dist *dist) {
 int source_val(Graph *g, Vertex s, Dist *dist, Num *onum){
 	Vertex v;
 	for(v = 0; v < vertex_cnt(g); v++) {
-		if(onum[v] > 0) {
-			if(dist[s].inf_status != 0) return 0;
-			if(dist[s].val != 0) return 0;
+		if(onum[v] == 0) {
+			if(dist[s].inf_status == 0) {
+				if(dist[s].val == 0) return 1;
+			}
 		}
 	}
-	return 1;
+	return 0;
 }
 
 int no_edge_Vm_Vf(Graph *g, Dist *dist) {
@@ -196,14 +197,12 @@ int no_edge_Vm_Vf(Graph *g, Dist *dist) {
 // checks if the sequence of edge_ids are connected
 // also checks if the last vertex and the first vertex are the same
 
-int awalk(Graph *g, Cycle *C, nat y, nat last_edge) {
+int awalk(Graph *g, Cycle C) {
 	nat z;
-	for(z = 0; z < last_edge; z++) {
+	for(z = 0; z < C.length - 1; z++) {
 		// return false if the second vertex of the first edge is not the same as the first vertex of the second edge
-		if(arcs(g, C[y].path[z]).second != arcs(g, C[y].path[z+1]).first) return 0;
+		if(arcs(g, C.path[z]).second != arcs(g, C.path[z+1]).first) return 0;
 	}
-	// if the first vertex and the last vertex are not the same return false
-	if(C[y].start != arcs(g, C[y].path[last_edge]).second) return 0;
 	return 1;
 }
 
@@ -223,11 +222,9 @@ int awalk_cost(Cost *c, Edge_Id *path, nat length) {
 
 int C_se(Graph *g, Cycle *C, Cost *c, nat nc, Dist *dist) {
 	nat y;
-	Edge_Id last_edge;
 	for(y = 0; y < nc; y++) {
-		last_edge = C[y].length - 1;
 		if(dist[C[y].start].inf_status > 0) return 0;
-		if(awalk(g, C, y, last_edge) == 0) return 0;
+		if(awalk(g, C[y]) == 0) return 0;
 		if(awalk_cost(c, C[y].path, C[y].length) >= 0) return 0;
 	}
 	return 1;
@@ -249,7 +246,7 @@ int int_neg_cyc(Graph *g, Vertex s, Dist *dist, Cycle *C, Cost *c, PEdge *p, nat
 		if(dist[v].inf_status < 0) {
 			// the following loop goes through every element in pwalk(v). It checks if the vertex is associated to the starting vertex of a negative cycle
 			is_neg = 0;
-			for(u = v; u != s; u = arcs(g, p[u]).second) {
+			for(u = v; u != s; u = arcs(g, p[u]).first) {
 				// check if any vertex in pwalk v is part of the negative cycle
 				for(i = 0; i < nc; i++) {
 					if(u == C[i].start) is_neg = 1;
