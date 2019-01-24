@@ -235,11 +235,11 @@ int C_se(Graph *g, Cycle *C, Cost *c, nat nc, Dist *dist) {
 int is_connected(Graph *g, Vertex s, PEdge *p, Vertex v) {
 	int n = v;
 	// the while loop will eventually terminate given n is either the source vertex or some other disjoint vertex
-	while(1) {
+	while(p[n] >= 0) {
 		if(n == s) return 1;
-		if(p[n] < 0) return 0;
 		n = arcs(g, p[n]).first;
 	}
+	return 0;
 }
 
 // pwalk: function from vertices to paths.
