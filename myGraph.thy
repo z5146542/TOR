@@ -162,11 +162,6 @@ definition
 where
   "abs_pedge p \<equiv> (\<lambda>v. if sint (p v) < 0 then None else Some (p v))"
 
-definition 
-  abs_num :: "(32 word \<Rightarrow> 32 word) \<Rightarrow> 32 word \<Rightarrow> 32 word option" 
-where
-  "abs_num n \<equiv> (\<lambda>v. if sint (n v) < 0 then None else Some (n v))"
-
 lemma None_abs_pedgeI[simp]: 
   "((abs_pedge p) v = None) = (sint (p v) < 0)"
   using abs_pedge_def by auto
@@ -175,15 +170,6 @@ lemma Some_abs_pedgeI[simp]:
   "(\<exists>e. (abs_pedge p) v = Some e) = (sint (p v) \<ge> 0)"
   using None_not_eq None_abs_pedgeI 
   by (metis abs_pedge_def linorder_not_le option.simps(3))
-
-lemma None_abs_numI[simp]: 
-  "((abs_num n) v = None) = (sint (n v) < 0)"
-  using abs_num_def by auto
-
-lemma Some_abs_numI[simp]: 
-  "(\<exists>e. (abs_num n) v = Some e) = (sint (n v) \<ge> 0)"
-  using None_not_eq None_abs_numI 
-  by (metis abs_num_def linorder_not_le option.simps(3))
     
 (*Helper Lemmas*)
 
@@ -397,6 +383,7 @@ lemma trian_spc':
        apply simp+
       apply (subst head_heap[where iG=iG], simp+)
       apply (subst tail_heap[where iG=iG], simp+)
+      apply clarsimp
 *)
 (*
       prefer 2
@@ -426,6 +413,50 @@ lemma trian_spc':
 *)
   sorry
 
+definition just_inv :: 
+  "IGraph \<Rightarrow> IDist \<Rightarrow> ICost \<Rightarrow> IVertex \<Rightarrow> INum \<Rightarrow> IPEdge \<Rightarrow> 32 word \<Rightarrow> bool" where
+  "just_inv G d c s n p k \<equiv>
+    \<forall>v < k. v \<noteq> s \<and> n v \<ge> 0 \<longrightarrow>
+      (\<exists> e. e = p v \<and> e < iedge_cnt G \<and>
+        v = snd (iedges G e) \<and>
+        d v = d (fst (iedges G e)) + c e \<and>
+        n v = n (fst (iedges G e)) + 1)"
+
+lemma just_spc':
+  "\<lbrace> P and 
+     (\<lambda>s. wf_digraph (abs_IGraph iG) \<and>
+          is_graph s iG g \<and>
+          is_dist s iG iD d \<and>
+          is_cost s iG iC c \<and>
+          sc < ivertex_cnt iG \<and>
+          is_numm s iG iN n \<and>
+          is_pedge s iG iP p)\<rbrace>
+   just' g d c sc n p
+   \<lbrace> (\<lambda>_ s. P s) And 
+     (\<lambda>rr s. rr \<noteq> 0 \<longleftrightarrow> just_inv iG iD iC sc iN iP (ivertex_cnt iG)) \<rbrace>!"
+  apply (clarsimp simp: just'_def)
+  apply (subst whileLoopE_add_inv [where 
+        M="\<lambda>(vv, s). unat (ivertex_cnt iG - vv)" and
+        I="\<lambda>vv s. P s \<and> just_inv iG iD iC sc iN iP vv \<and>
+                   vv \<le> ivertex_cnt iG \<and>
+                   wf_digraph (abs_IGraph iG) \<and>
+                   is_graph s iG g \<and>
+                   is_dist s iG iD d \<and>
+                   is_cost s iG iC c \<and>
+                   sc < ivertex_cnt iG \<and>
+                   is_numm s iG iN n \<and>
+                   is_pedge s iG iP p"])
+  apply (simp add: skipE_def)
+  apply wp
+  unfolding is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def just_inv_def
+    apply (subst if_bool_eq_conj)+
+    (* apply (simp split: if_split_asm, safe, simp_all add: arrlist_nth) *)
+                                       
+  sorry
+
+(* define something that shows the dist and num arrays are actually what it represents
+   and not some random array that happens to correspond to the structure of either arrays *)
+
 definition no_path_inv :: "IGraph \<Rightarrow> IDist \<Rightarrow> INum \<Rightarrow> 32 word \<Rightarrow> bool" where
   "no_path_inv G d n k \<equiv>  \<forall>v < k. (d v < 0 \<longleftrightarrow> n v < 0)"
 
@@ -446,7 +477,7 @@ lemma no_path_spc':
                    wf_digraph (abs_IGraph iG) \<and> 
                    is_graph s iG g \<and>
                    is_dist s iG iD d \<and>
-                   is_numm s iG iD d"])
+                   is_numm s iG iN n"])
   apply (simp add: skipE_def)
   apply wp
   unfolding is_graph_def is_dist_def is_numm_def no_path_inv_def
@@ -468,7 +499,25 @@ lemma no_path_spc':
        apply blast
       prefer 2
       apply (metis (no_types, hide_lams) diff_diff_add eq_iff_diff_eq_0 measure_unat word_not_le)
-     apply (simp add:sint_ucast)
+     prefer 2
+     apply (rule_tac i="(uint vv)" in arrlist_nth_valid, simp+)
+     apply (simp add:uint_nat word_less_def)
+    prefer 3
+    apply(rule_tac i="(uint vv)" in arrlist_nth_valid, simp+)
+    apply (simp add:uint_nat word_less_def)
+   prefer 2
+   apply (simp add:sint_ucast)
+   apply (subgoal_tac "sint (heap_w32 s (ptr_coerce (d +\<^sub>p uint vv))) < 0")
+    apply force
+   apply (thin_tac "\<not> sint (heap_w32 s (ptr_coerce (d +\<^sub>p uint vv))) < 0")
+  find_theorems "sint _ = uint _"
+(*
+  apply (subst "sint_eq_uint")
+  apply (rule not_msb_from_less)
+  find_theorems(99) "sint _ = uint _"
+  find_theorems "msb"
+*) 
+  
   sorry
 
 

@@ -97,6 +97,11 @@ where
   "mk_icost_list G cost = mk_list' (unat (ivertex_cnt G)) cost"
 
 (* Equate to Implementation *)
+
+lemma sint_ucast: 
+  "sint (ucast (x ::word32) :: sword32) = sint x"
+  by (clarsimp simp: sint_uint uint_up_ucast is_up)
+
 fun
   to_edge :: "IEdge \<Rightarrow> IEdge_C"
 where
@@ -377,15 +382,94 @@ lemma trian_spc':
         apply blast
        prefer 3
        apply (metis (no_types, hide_lams) diff_diff_add eq_iff_diff_eq_0 measure_unat word_not_le)
+(*
+      apply (rule_tac x = "ee" in exI)
+      apply (rule conjI, simp+)
+      apply (subst pedge_num_dist_heap_ptr_coerce[where l=d and iL=iD])
+         apply fast
+        apply (subst head_heap[where iG=iG], simp+)
+        apply (metis head_heap wellformed_iGraph, simp+)
+      apply (subst pedge_num_dist_heap_ptr_coerce[where l=d and iL=iD])
+         apply fast
+        apply (subst tail_heap[where iG=iG], simp+)
+        apply (metis tail_heap wellformed_iGraph, simp+)
+      apply (drule wellformed_iGraph[where G=iG])
+       apply simp+
+      apply (subst head_heap[where iG=iG], simp+)
+      apply (subst tail_heap[where iG=iG], simp+)
+*)
+(*
+      prefer 2
+      apply (subst pedge_num_dist_heap_ptr_coerce[where l=d and iL=iD])
+         apply fast
+        apply (subst head_heap[where iG=iG], simp+)
+  using le_step less_trans 
+         apply blast
+        apply (metis (no_types, hide_lams) head_heap wellformed_iGraph le_step less_trans)
+  using word_zero_le 
+       apply blast
+      apply (subst pedge_num_dist_heap_ptr_coerce[where l=d and iL=iD])
+         apply fast
+        apply (subst tail_heap[where iG=iG], simp+)
+  using le_step less_trans
+         apply blast
+        apply (metis (no_types, hide_lams) tail_heap wellformed_iGraph le_step less_trans)
+       apply simp
+      apply (subst pedge_num_dist_heap[where l=c and iL=iC])
+        apply force
+*)
+(*
       prefer 4
       apply (rule_tac i="(uint ee)" in arrlist_nth_valid, simp+)
-  
+      apply (simp add:uint_nat)
+      apply (simp add:word_less_def)
+*)
+  sorry
 
+definition no_path_inv :: "IGraph \<Rightarrow> IDist \<Rightarrow> INum \<Rightarrow> 32 word \<Rightarrow> bool" where
+  "no_path_inv G d n k \<equiv>  \<forall>v < k. (d v < 0 \<longleftrightarrow> n v < 0)"
 
-
-
-          
-
+lemma no_path_spc':
+  "\<lbrace> P and 
+     (\<lambda>s. wf_digraph (abs_IGraph iG) \<and>
+          is_graph s iG g \<and>
+          is_dist s iG iD d \<and>
+          is_numm s iG iN n)\<rbrace>
+   no_path' g d n
+   \<lbrace> (\<lambda>_ s. P s) And 
+     (\<lambda>rr s. rr \<noteq> 0 \<longleftrightarrow> no_path_inv iG iD iN (ivertex_cnt iG)) \<rbrace>!"
+  apply (clarsimp simp: no_path'_def)
+  apply (subst whileLoopE_add_inv [where 
+        M="\<lambda>(vv, s). unat (ivertex_cnt iG - vv)" and
+        I="\<lambda>vv s. P s \<and> no_path_inv iG iD iN vv \<and> 
+                   vv \<le> ivertex_cnt iG \<and>
+                   wf_digraph (abs_IGraph iG) \<and> 
+                   is_graph s iG g \<and>
+                   is_dist s iG iD d \<and>
+                   is_numm s iG iD d"])
+  apply (simp add: skipE_def)
+  apply wp
+  unfolding is_graph_def is_dist_def is_numm_def no_path_inv_def
+    apply (subst if_bool_eq_conj)+
+    apply (simp split: if_split_asm, safe, simp_all add: arrlist_nth)
+           prefer 10
+           apply wp
+           apply fast
+          prefer 9
+          apply (rule_tac i="(uint vv)" in arrlist_nth_valid, simp+)
+          apply (simp add: uint_nat word_less_def)
+         prefer 6
+  using le_step not_less 
+         apply blast
+        prefer 6
+        apply (metis (no_types, hide_lams) diff_diff_add eq_iff_diff_eq_0 measure_unat word_not_le)
+       prefer 2
+  using le_step not_less 
+       apply blast
+      prefer 2
+      apply (metis (no_types, hide_lams) diff_diff_add eq_iff_diff_eq_0 measure_unat word_not_le)
+     apply (simp add:sint_ucast)
+  sorry
 
 
 
