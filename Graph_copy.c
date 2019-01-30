@@ -9,8 +9,8 @@ typedef struct IEdge {
 } IEdge;
 
 typedef struct IGraph {
-	unsigned int num_vertices;
 	unsigned int num_edges;
+	unsigned int num_vertices;
 	IEdge *arcs;
 } IGraph;
 
