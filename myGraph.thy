@@ -426,8 +426,7 @@ lemma trian_spc':
   apply (subst tail_heap[where iG=iG], simp+)
   using le_step less_trans 
    apply blast
-  apply (erule_tac x="ee" in allE, simp+)
-  sledgehammer
+  
   sorry
 
 definition just_inv :: 
@@ -467,8 +466,101 @@ lemma just_spc':
   apply wp
   unfolding is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def just_inv_def
     apply (subst if_bool_eq_conj)+
-    (* apply (simp split: if_split_asm, safe, simp_all add: arrlist_nth) *)
-                                       
+    apply (simp split: if_split_asm, simp_all add: arrlist_nth, safe)
+                                                       apply (metis pedge_num_dist_heap_ptr_coerce uint_nat word_not_le word_zero_le)
+                                                      apply (metis (no_types) head_heap pedge_num_dist_heap_ptr_coerce uint_nat word_zero_le)
+                                                     prefer 52
+                                                     apply wp
+                                                     apply force
+                                                    prefer 51
+                                                    apply force
+                                                   prefer 50
+                                                   apply (rule_tac i="(uint sc)" in arrlist_nth_valid, simp+)
+                                                   apply (simp add: uint_nat word_less_def)
+                                                  prefer 49
+                                                  apply (metis (no_types, hide_lams) diff_diff_add eq_iff_diff_eq_0 measure_unat word_not_le)
+                                                 prefer 48
+                                                 apply argo
+                                                prefer 47
+                                                apply argo
+                                               prefer 46
+                                               apply argo
+                                              prefer 45
+                                              apply argo
+                                             prefer 44
+                                             apply argo
+                                            prefer 43
+                                            apply (metis (mono_tags, hide_lams) le_step not_less)
+                                           prefer 42
+  using le_step 
+                                           apply blast
+                                          prefer 41
+  using le_step 
+                                          apply blast
+                                         prefer 40
+  using le_step
+                                        apply blast
+                                       prefer 39
+  using le_step 
+                                       apply auto[1]
+                                      prefer 38
+                                      apply (rule_tac i="(uint vv)" in arrlist_nth_valid, simp+)
+                                      apply (simp add: uint_nat word_less_def)
+                                     prefer 37
+                                     apply (rule_tac i="(uint vv)" in arrlist_nth_valid, simp+)
+                                     apply (simp add: uint_nat word_less_def)
+                                    prefer 36
+                                    apply (metis (no_types, hide_lams) diff_diff_add eq_iff_diff_eq_0 measure_unat word_not_le)
+                                   prefer 35
+                                   apply argo
+                                  prefer 34
+                                  apply argo
+                                 prefer 33
+                                 apply presburger
+                                prefer 32
+                                apply argo
+                               prefer 31
+                               apply argo
+                              prefer 30
+                              apply presburger
+                             prefer 29
+                             apply (metis (mono_tags, hide_lams) le_step not_less)
+                            prefer 28
+                            prefer 27
+                            prefer 26
+                            prefer 25
+                            prefer 24
+                            apply (rule_tac i="(uint vv)" in arrlist_nth_valid, simp+)
+                            apply (simp add: uint_nat word_less_def)
+                           prefer 23
+                           prefer 22
+                           prefer 21
+                           apply (rule_tac i="(uint vv)" in arrlist_nth_valid, simp+)
+                           apply (simp add: uint_nat word_less_def)
+                          prefer 20
+                          apply (metis (mono_tags, hide_lams) diff_diff_add eq_iff_diff_eq_0 measure_unat word_not_le)
+                         prefer 19
+                         apply argo
+                        prefer 18
+                        apply argo
+                       prefer 17
+                       apply presburger
+                      prefer 16
+                      apply argo
+                      prefer 15
+                      apply argo
+                     prefer 14
+                     apply argo
+                    prefer 13
+                    apply (metis le_step not_less)
+                   prefer 12
+                   prefer 11
+                   apply (metis (no_types) edge_heap pedge_num_dist_heap_ptr_coerce t_C_pte le_step not_less uint_nat word_zero_le)
+                  prefer 10
+                  apply (metis (no_types) pedge_num_dist_heap_ptr_coerce le_step not_less uint_nat word_zero_le)
+                 prefer 9
+  sledgehammer
+                      
   sorry
 
 (* define something that shows the dist and num arrays are actually what it represents
@@ -527,6 +619,7 @@ lemma no_path_spc':
    apply (subgoal_tac "sint (heap_w32 s (ptr_coerce (d +\<^sub>p uint vv))) < 0")
     apply force
    apply (thin_tac "\<not> sint (heap_w32 s (ptr_coerce (d +\<^sub>p uint vv))) < 0")
+
 (*
   apply (subst "sint_eq_uint")
   apply (rule not_msb_from_less)
