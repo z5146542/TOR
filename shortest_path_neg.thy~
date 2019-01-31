@@ -123,17 +123,25 @@ fun to_edge :: "IEdge \<Rightarrow> Edge_C"
 where
   "to_edge (u,v) = Edge_C u v"
 
-fun to_enat :: "32 signed word \<times> 32 signed word \<Rightarrow> enat_C"
+fun to_enat :: "(32 word \<times> 32 word) \<Rightarrow> enat_C"
 where
-  "to_enat (val, is) = enat_C val is"
+  "to_enat (a,b) = enat_C (scast a) (scast b)"
 
-lemma s_C_pte[simp]:
+lemma first_C_pte[simp]:
   "first_C (to_edge e) = fst e"
   by (cases e) auto
 
-lemma t_C_pte[simp]:
+lemma second_C_pte[simp]:
   "second_C (to_edge e) = snd e"
   by (cases e) auto
+
+lemma val_C_pte[simp]:
+  "val_C (to_enat n) = scast (fst n)"
+  by (cases n) auto
+
+lemma inf_status_C_pte[simp]:
+  "inf_status_C (to_enat n) = scast (snd n)"
+  by (cases n) auto
 
 definition is_graph 
   where
@@ -268,12 +276,12 @@ lemma edge_heap:
 lemma head_heap:
   "\<lbrakk>arrlist h v (map (to_edge \<circ> (iedges iG \<circ> of_nat)) [0..<unat m]) ep; e < m\<rbrakk> \<Longrightarrow>
   snd ((iedges iG) e) = second_C (h (ep +\<^sub>p (uint e)))" 
-  using edge_heap to_edge.simps t_C_pte by (metis uint_nat)
+  using edge_heap to_edge.simps second_C_pte by (metis uint_nat)
 
 lemma tail_heap:
   "\<lbrakk>arrlist h v (map (to_edge \<circ> (iedges iG \<circ> of_nat)) [0..<unat m]) ep; e < m\<rbrakk> \<Longrightarrow>
   fst ((iedges iG) e) =  first_C (h (ep +\<^sub>p  (uint e)))" 
-  using edge_heap to_edge.simps s_C_pte uint_nat by metis
+  using edge_heap to_edge.simps first_C_pte uint_nat by metis
 
 subsection {* Verification *}
 
@@ -316,7 +324,7 @@ lemma is_wellformed_spc':
         apply (subst head_heap[where iG=iG], simp)
          apply blast
         apply blast
-       apply (metis edge_heap s_C_pte le_cases le_step uint_nat word_le_less_eq)
+       apply (metis edge_heap first_C_pte le_cases le_step uint_nat word_le_less_eq)
       apply (metis head_heap le_step not_less)
      apply (simp add: le_step word_not_le)
   using le_step not_less 

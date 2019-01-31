@@ -112,7 +112,7 @@ where
 
 fun mk_icost_list :: "IGraph \<Rightarrow> ICost \<Rightarrow> 32 word list"
 where                
-  "mk_icost_list G cost = mk_list' (unat (ivertex_cnt G)) cost"
+  "mk_icost_list G cost = mk_list' (unat (iedge_cnt G)) cost"
 
 fun mk_idist_list :: "IGraph \<Rightarrow> IDist \<Rightarrow> (32 word \<times> 32 word) list" 
 where                         
@@ -169,7 +169,7 @@ definition is_cost
 definition is_dist
   where
   "is_dist h iG iD (p:: enat_C ptr) \<equiv> arrlist (\<lambda>p. heap_enat_C h (ptr_coerce p))
-        (\<lambda>p. is_valid_enat_C h (ptr_coerce p)) (mk_idist_list iG iD) p"
+        (\<lambda>p. is_valid_enat_C h (ptr_coerce p)) (map to_enat (mk_idist_list iG iD)) p"
 
 subsection {* Abstract Graph *}
 
@@ -347,18 +347,29 @@ lemma trian_spc':
      (\<lambda>s. wf_digraph (abs_IGraph iG) \<and>
           is_graph s iG g \<and>
           is_dist s iG iD d \<and>
-          is_cost s iG iC c) \<rbrace>
+          is_cost s iG iC c)\<rbrace>
    trian' g d c
    \<lbrace> (\<lambda>_ s. P s) And 
      (\<lambda>rr s. rr \<noteq> 0 \<longleftrightarrow> trian_inv iG iD iC (iedge_cnt iG)) \<rbrace>!"
-  apply(clarsimp simp: trian'_def)
+  apply (clarsimp simp: trian'_def)
   apply (subst whileLoopE_add_inv [where 
         M="\<lambda>(ee, s). unat (iedge_cnt iG - ee)" and
-        I="\<lambda>ee s. P s \<and> trian_inv iG ee \<and> 
-                   ee \<le> iedge_cnt iG \<and> 
-                   is_graph s iG g"])
+        I="\<lambda>ee s. P s \<and> trian_inv iG iD iC ee \<and> 
+                   ee \<le> iedge_cnt iG \<and>
+                   wf_digraph (abs_IGraph iG) \<and> 
+                   is_graph s iG g \<and>
+                   is_dist s iG iD d \<and>
+                   is_cost s iG iC c"])
   apply (simp add: skipE_def)
   apply wp
+  unfolding is_graph_def is_dist_def is_cost_def trian_inv_def
+    apply (subst if_bool_eq_conj)+
+    apply (simp split: if_split_asm, safe, simp_all add: arrlist_nth)
+                    apply (rule_tac x = "ee" in exI)
+                    apply (subgoal_tac "snd (iD (snd (snd (snd iG) ee))) = inf_status_C (heap_enat_C s (d +\<^sub>p uint (second_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p uint ee)))))")
+  
+          
+  
   sorry
 
 end

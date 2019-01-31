@@ -230,7 +230,7 @@ lemma ptr_coerce_ptr_add_uint[simp]:
   by auto
 
 lemma pedge_num_dist_heap:
-  "\<lbrakk>arrlist (\<lambda>p. heap_w32 h (ptr_coerce p)) (\<lambda>p. is_valid_w32 h (ptr_coerce p)) 
+  "\<lbrakk>arrlist (\<lambda>p. heap_w32 h p) (\<lambda>p. is_valid_w32 h p) 
   (map (iL \<circ> of_nat) [0..<unat n]) l; i < n\<rbrakk> \<Longrightarrow>
     iL i = heap_w32 h (l +\<^sub>p int (unat i))" 
   apply (subgoal_tac 
@@ -426,7 +426,24 @@ lemma trian_spc':
   apply (subst tail_heap[where iG=iG], simp+)
   using le_step less_trans 
    apply blast
-  
+
+  apply (simp add: uint_nat unat_mono)+
+  apply (frule_tac i="fst (snd (snd iG) i)" in pedge_num_dist_heap_ptr_coerce[where l=d and iL=iD])
+    apply (metis (no_types, hide_lams) wellformed_iGraph le_step less_trans)
+   apply force
+  apply (drule_tac i="snd (snd (snd iG) i)" in pedge_num_dist_heap_ptr_coerce[where l=d and iL=iD])
+    apply (metis (no_types, hide_lams) wellformed_iGraph le_step less_trans)
+   apply force
+  apply (drule_tac i="ee" in pedge_num_dist_heap[where l=c and iL=iC])
+   apply simp
+  apply (frule_tac e="ee" in tail_heap[where iG=iG])
+   apply simp
+  apply (drule_tac e="ee" in wellformed_iGraph[where G=iG])
+   apply simp+
+  apply (drule_tac e="ee" in head_heap[where iG=iG])
+   apply simp+
+  apply (simp add: uint_nat unat_mono)+
+
   sorry
 
 definition just_inv :: 
@@ -559,7 +576,7 @@ lemma just_spc':
                   prefer 10
                   apply (metis (no_types) pedge_num_dist_heap_ptr_coerce le_step not_less uint_nat word_zero_le)
                  prefer 9
-  sledgehammer
+  text "sledgehammer"
                       
   sorry
 
@@ -629,7 +646,45 @@ lemma no_path_spc':
   
   sorry
 
+definition pos_cost_inv :: "IGraph \<Rightarrow> ICost \<Rightarrow> 32 word \<Rightarrow> bool" where
+  "pos_cost_inv G c m \<equiv>  \<forall>e < m. c e \<ge> 0"
 
+lemma pos_cost_spc':
+  "\<lbrace> P and 
+     (\<lambda>s. wf_digraph (abs_IGraph iG) \<and>
+          is_graph s iG g \<and>
+          is_cost s iG iC c)\<rbrace>
+   pos_cost' g c
+   \<lbrace> (\<lambda>_ s. P s) And 
+     (\<lambda>rr s. rr \<noteq> 0 \<longleftrightarrow> pos_cost_inv iG iC (iedge_cnt iG)) \<rbrace>!"
+  apply (clarsimp simp: pos_cost'_def)
+  apply (subst whileLoop_add_inv [where
+        M="\<lambda>(ee, s). unat (iedge_cnt iG - ee)" and
+        I="\<lambda>ee s. P s \<and> pos_cost_inv iG iC ee \<and>
+                   ee \<le> iedge_cnt iG \<and>
+                   wf_digraph (abs_IGraph iG) \<and>
+                   is_graph s iG g \<and>
+                   is_cost s iG iC c"])
+  apply wp
+  unfolding is_graph_def is_cost_def pos_cost_inv_def
+    apply (simp split: if_split_asm, safe, simp_all add: arrlist_nth)
+  using le_step not_less 
+     apply blast
+    apply (subgoal_tac "num_edges_C (heap_IGraph_C s g) - ee \<noteq> 0")
+     apply simp
+     apply (subgoal_tac "\<And>w wa. (w::32 word) - wa = 0 \<or> unat (w - 1 - wa) < unat (w - wa)")
+      apply (subgoal_tac "unat (num_edges_C (heap_IGraph_C s g) - 1 - ee) < unat (num_edges_C (heap_IGraph_C s g) - ee)")
+       apply (subgoal_tac "unat (num_edges_C (heap_IGraph_C s g) - (ee + 1)) < unat (num_edges_C (heap_IGraph_C s g) - ee)")
+        apply (simp add: add.commute diff_diff_add)
+       apply (simp add: diff_add_eq_diff_diff_swap)
+      apply fastforce
+     apply (metis (no_types) add.commute diff_diff_add measure_unat)
+    apply simp
+   apply (rule_tac i="(uint ee)" in arrlist_nth_valid, simp+)
+   apply (simp add: uint_nat word_less_def)
+  apply wp
+  apply fast
+  done
 
 end
 

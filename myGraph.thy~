@@ -94,7 +94,7 @@ where
 fun
   mk_icost_list :: "IGraph \<Rightarrow> ICost \<Rightarrow> 32 word list"
 where
-  "mk_icost_list G cost = mk_list' (unat (ivertex_cnt G)) cost"
+  "mk_icost_list G cost = mk_list' (unat (iedge_cnt G)) cost"
 
 (* Equate to Implementation *)
 
@@ -368,49 +368,65 @@ lemma trian_spc':
         apply blast
        prefer 3
        apply (metis (no_types, hide_lams) diff_diff_add eq_iff_diff_eq_0 measure_unat word_not_le)
-(*
-      apply (rule_tac x = "ee" in exI)
-      apply (rule conjI, simp+)
-      apply (subst pedge_num_dist_heap_ptr_coerce[where l=d and iL=iD])
-         apply fast
-        apply (subst head_heap[where iG=iG], simp+)
-        apply (metis head_heap wellformed_iGraph, simp+)
-      apply (subst pedge_num_dist_heap_ptr_coerce[where l=d and iL=iD])
-         apply fast
-        apply (subst tail_heap[where iG=iG], simp+)
-        apply (metis tail_heap wellformed_iGraph, simp+)
-      apply (drule wellformed_iGraph[where G=iG])
-       apply simp+
-      apply (subst head_heap[where iG=iG], simp+)
-      apply (subst tail_heap[where iG=iG], simp+)
-      apply clarsimp
-*)
-(*
-      prefer 2
-      apply (subst pedge_num_dist_heap_ptr_coerce[where l=d and iL=iD])
-         apply fast
-        apply (subst head_heap[where iG=iG], simp+)
+      prefer 3
+      apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+      apply (metis tail_heap wellformed_iGraph uint_nat word_less_nat_alt)
+     prefer 4
+     apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+     apply (metis head_heap wellformed_iGraph uint_nat word_less_nat_alt)
+    prefer 3
+    apply (rule_tac i="uint ee" in arrlist_nth_valid, simp+)
+    apply (simp add:uint_nat)
+  using word_less_nat_alt
+    apply blast
+   apply (rule_tac x = "ee" in exI)
+   apply (rule conjI, simp+)
+   apply (subst pedge_num_dist_heap_ptr_coerce[where l=d and iL=iD])
+      apply fast
+     apply (subst head_heap[where iG=iG], simp+)
+     apply (metis head_heap wellformed_iGraph, simp+)
+   apply (subst pedge_num_dist_heap_ptr_coerce[where l=d and iL=iD])
+      apply fast
+     apply (subst tail_heap[where iG=iG], simp+)
+     apply (metis tail_heap wellformed_iGraph, simp+)
+   apply (drule wellformed_iGraph[where G=iG])
+    apply simp+
+   apply (subst head_heap[where iG=iG], simp+)
+   apply (subst tail_heap[where iG=iG], simp+)
+   apply clarsimp
+   apply (subgoal_tac "heap_w32 s (ptr_coerce (d +\<^sub>p int (unat (second_C (heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p uint ee))))))
+             > heap_w32 s (ptr_coerce (d +\<^sub>p int (unat (first_C (heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p uint ee)))))) + iC ee")
+    apply simp+
+   apply (subst pedge_num_dist_heap[where l=c and iL=iC])
+     apply simp+
+   apply (metis uint_nat)
+  
+  apply (subst pedge_num_dist_heap_ptr_coerce[where l=d and iL=iD])
+     apply fast
+    apply (subst head_heap[where iG=iG], simp+)
   using le_step less_trans 
-         apply blast
-        apply (metis (no_types, hide_lams) head_heap wellformed_iGraph le_step less_trans)
+     apply blast
+    apply (metis (no_types, hide_lams) head_heap wellformed_iGraph le_step less_trans)
   using word_zero_le 
-       apply blast
-      apply (subst pedge_num_dist_heap_ptr_coerce[where l=d and iL=iD])
-         apply fast
-        apply (subst tail_heap[where iG=iG], simp+)
+   apply blast
+  apply (subst pedge_num_dist_heap_ptr_coerce[where l=d and iL=iD])
+     apply fast
+    apply (subst tail_heap[where iG=iG], simp+)
   using le_step less_trans
-         apply blast
-        apply (metis (no_types, hide_lams) tail_heap wellformed_iGraph le_step less_trans)
-       apply simp
-      apply (subst pedge_num_dist_heap[where l=c and iL=iC])
-        apply force
-*)
-(*
-      prefer 4
-      apply (rule_tac i="(uint ee)" in arrlist_nth_valid, simp+)
-      apply (simp add:uint_nat)
-      apply (simp add:word_less_def)
-*)
+     apply blast
+    apply (metis (no_types, hide_lams) tail_heap wellformed_iGraph le_step less_trans)
+   apply simp
+  apply (subst pedge_num_dist_heap[where l=c and iL=iC])
+    apply (simp add: uint_nat)+
+  using le_step less_trans
+   apply blast
+  apply (subst head_heap[where iG=iG], simp+)
+  using le_step less_trans 
+   apply blast
+  apply (subst tail_heap[where iG=iG], simp+)
+  using le_step less_trans 
+   apply blast
+  
   sorry
 
 definition just_inv :: 
@@ -450,8 +466,101 @@ lemma just_spc':
   apply wp
   unfolding is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def just_inv_def
     apply (subst if_bool_eq_conj)+
-    (* apply (simp split: if_split_asm, safe, simp_all add: arrlist_nth) *)
-                                       
+    apply (simp split: if_split_asm, simp_all add: arrlist_nth, safe)
+                                                       apply (metis pedge_num_dist_heap_ptr_coerce uint_nat word_not_le word_zero_le)
+                                                      apply (metis (no_types) head_heap pedge_num_dist_heap_ptr_coerce uint_nat word_zero_le)
+                                                     prefer 52
+                                                     apply wp
+                                                     apply force
+                                                    prefer 51
+                                                    apply force
+                                                   prefer 50
+                                                   apply (rule_tac i="(uint sc)" in arrlist_nth_valid, simp+)
+                                                   apply (simp add: uint_nat word_less_def)
+                                                  prefer 49
+                                                  apply (metis (no_types, hide_lams) diff_diff_add eq_iff_diff_eq_0 measure_unat word_not_le)
+                                                 prefer 48
+                                                 apply argo
+                                                prefer 47
+                                                apply argo
+                                               prefer 46
+                                               apply argo
+                                              prefer 45
+                                              apply argo
+                                             prefer 44
+                                             apply argo
+                                            prefer 43
+                                            apply (metis (mono_tags, hide_lams) le_step not_less)
+                                           prefer 42
+  using le_step 
+                                           apply blast
+                                          prefer 41
+  using le_step 
+                                          apply blast
+                                         prefer 40
+  using le_step
+                                        apply blast
+                                       prefer 39
+  using le_step 
+                                       apply auto[1]
+                                      prefer 38
+                                      apply (rule_tac i="(uint vv)" in arrlist_nth_valid, simp+)
+                                      apply (simp add: uint_nat word_less_def)
+                                     prefer 37
+                                     apply (rule_tac i="(uint vv)" in arrlist_nth_valid, simp+)
+                                     apply (simp add: uint_nat word_less_def)
+                                    prefer 36
+                                    apply (metis (no_types, hide_lams) diff_diff_add eq_iff_diff_eq_0 measure_unat word_not_le)
+                                   prefer 35
+                                   apply argo
+                                  prefer 34
+                                  apply argo
+                                 prefer 33
+                                 apply presburger
+                                prefer 32
+                                apply argo
+                               prefer 31
+                               apply argo
+                              prefer 30
+                              apply presburger
+                             prefer 29
+                             apply (metis (mono_tags, hide_lams) le_step not_less)
+                            prefer 28
+                            prefer 27
+                            prefer 26
+                            prefer 25
+                            prefer 24
+                            apply (rule_tac i="(uint vv)" in arrlist_nth_valid, simp+)
+                            apply (simp add: uint_nat word_less_def)
+                           prefer 23
+                           prefer 22
+                           prefer 21
+                           apply (rule_tac i="(uint vv)" in arrlist_nth_valid, simp+)
+                           apply (simp add: uint_nat word_less_def)
+                          prefer 20
+                          apply (metis (mono_tags, hide_lams) diff_diff_add eq_iff_diff_eq_0 measure_unat word_not_le)
+                         prefer 19
+                         apply argo
+                        prefer 18
+                        apply argo
+                       prefer 17
+                       apply presburger
+                      prefer 16
+                      apply argo
+                      prefer 15
+                      apply argo
+                     prefer 14
+                     apply argo
+                    prefer 13
+                    apply (metis le_step not_less)
+                   prefer 12
+                   prefer 11
+                   apply (metis (no_types) edge_heap pedge_num_dist_heap_ptr_coerce t_C_pte le_step not_less uint_nat word_zero_le)
+                  prefer 10
+                  apply (metis (no_types) pedge_num_dist_heap_ptr_coerce le_step not_less uint_nat word_zero_le)
+                 prefer 9
+  sledgehammer
+                      
   sorry
 
 (* define something that shows the dist and num arrays are actually what it represents
@@ -510,7 +619,7 @@ lemma no_path_spc':
    apply (subgoal_tac "sint (heap_w32 s (ptr_coerce (d +\<^sub>p uint vv))) < 0")
     apply force
    apply (thin_tac "\<not> sint (heap_w32 s (ptr_coerce (d +\<^sub>p uint vv))) < 0")
-  find_theorems "sint _ = uint _"
+
 (*
   apply (subst "sint_eq_uint")
   apply (rule not_msb_from_less)

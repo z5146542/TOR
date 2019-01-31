@@ -1,9 +1,9 @@
-IEdge_C
-	first_C:Word 32
-	second_C:Word 32
+Edge_C
+	s_C:Word 32
+	t_C:Word 32
 
-IGraph_C
-	num_vertices_C:Word 32
-	num_edges_C:Word 32
-	arcs_C:Ptr IEdge_C
+Graph_C
+	m_C:Word 32
+	n_C:Word 32
+	es_C:Ptr Edge_C
 
