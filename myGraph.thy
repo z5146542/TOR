@@ -3,6 +3,7 @@ theory myGraph
   imports 
   "checker-verification/Library/Autocorres_Misc"
   "checker-verification/Witness_Property/Connected_Components"
+  "checker-verification/Witness_Property/ShortestPath"
 begin
 (* Parse the input file. *)
 install_C_file "Graph_copy.c"
@@ -358,93 +359,87 @@ lemma trian_spc':
   unfolding is_graph_def is_dist_def is_cost_def trian_inv_def
     apply (subst if_bool_eq_conj)+
     apply (simp split: if_split_asm, safe, simp_all add: arrlist_nth)
-          prefer 9
-          apply wp
-          apply fast
-         prefer 8
-         apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
-        prefer 3
+          apply (rule_tac x = "ee" in exI)
+          apply (rule conjI, simp+)
+          apply (subst pedge_num_dist_heap_ptr_coerce[where l=d and iL=iD])
+             apply fast
+            apply (subst head_heap[where iG=iG], simp+)
+            apply (metis head_heap wellformed_iGraph, simp+)
+          apply (subst pedge_num_dist_heap_ptr_coerce[where l=d and iL=iD])
+             apply fast
+            apply (subst tail_heap[where iG=iG], simp+)
+            apply (metis tail_heap wellformed_iGraph, simp+)
+          apply (drule wellformed_iGraph[where G=iG])
+           apply simp+
+          apply (subst head_heap[where iG=iG], simp+)
+          apply (subst tail_heap[where iG=iG], simp+)
+          apply (subgoal_tac "heap_w32 s (ptr_coerce (d +\<^sub>p int (unat (second_C (heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p uint ee))))))
+             > heap_w32 s (ptr_coerce (d +\<^sub>p int (unat (first_C (heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p uint ee)))))) + iC ee")
+           apply simp+
+          apply (subst pedge_num_dist_heap[where l=c and iL=iC])
+            apply simp+
+          apply (metis uint_nat)
+         apply (subst pedge_num_dist_heap_ptr_coerce[where l=d and iL=iD])
+            apply fast
+           apply (subst head_heap[where iG=iG], simp+)
+  using le_step less_trans 
+            apply blast
+           apply (metis (no_types, hide_lams) head_heap wellformed_iGraph le_step less_trans)
+  using word_zero_le 
+          apply blast
+         apply (subst pedge_num_dist_heap_ptr_coerce[where l=d and iL=iD])
+            apply fast
+           apply (subst tail_heap[where iG=iG], simp+)
+  using le_step less_trans
+            apply blast
+           apply (metis (no_types, hide_lams) tail_heap wellformed_iGraph le_step less_trans)
+          apply simp
+         apply (subst pedge_num_dist_heap[where l=c and iL=iC])
+           apply (simp add: uint_nat)+
+  using le_step less_trans
+          apply blast
+         apply (subst head_heap[where iG=iG], simp+)
+  using le_step less_trans 
+          apply blast
+         apply (subst tail_heap[where iG=iG], simp+)
+  using le_step less_trans 
+          apply blast
+         apply (subgoal_tac "i < num_edges_C (heap_IGraph_C s g)")
+          apply (subgoal_tac "\<And>w. \<not> w < num_edges_C (heap_IGraph_C s g) \<or> heap_w32 s (c +\<^sub>p uint w) = iC w")
+           apply (subgoal_tac "\<And>w. \<not> w < num_edges_C (heap_IGraph_C s g) \<or> heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p uint w) = to_edge (snd (snd iG) w)")
+            apply (subgoal_tac "\<And>w. \<not> w < fst iG \<or> heap_w32 s (ptr_coerce (d +\<^sub>p uint w)) = iD w")
+             apply (subgoal_tac "\<And>w. \<not> w < num_edges_C (heap_IGraph_C s g) \<or> snd (snd (snd iG) w) < fst iG")
+              apply (subgoal_tac "\<And>w. \<not> w < num_edges_C (heap_IGraph_C s g) \<or> fst (snd (snd iG) w) < fst iG")
+               apply (subgoal_tac "heap_w32 s (ptr_coerce (d +\<^sub>p int (unat (second_C (heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p uint i)))))) \<le> heap_w32 s (ptr_coerce (d +\<^sub>p int (unat (first_C (heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p uint i)))))) + heap_w32 s (c +\<^sub>p int (unat i))")
+                apply metis
+               apply (subgoal_tac "\<forall>w. heap_w32 s (ptr_coerce (d +\<^sub>p int (unat w))) = iD w \<or> \<not> w < fst iG")
+                apply (subgoal_tac "heap_w32 s (ptr_coerce (d +\<^sub>p int (unat (second_C (heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p int (unat i))))))) \<le> heap_w32 s (ptr_coerce (d +\<^sub>p int (unat (first_C (heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p int (unat i))))))) + iC i")
+                 apply (subgoal_tac "heap_w32 s (ptr_coerce (d +\<^sub>p int (unat (second_C (heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p uint i)))))) \<le> heap_w32 s (ptr_coerce (d +\<^sub>p int (unat (first_C (heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p uint i)))))) + heap_w32 s (c +\<^sub>p int (unat i))")
+                  apply (simp add:uint_nat)+
+                apply (metis (no_types, hide_lams) le_step word_not_le)
+               apply (metis uint_nat)
+              apply (simp add: wf_digraph_def)
+             apply (simp add: wf_digraph_def)
+            apply (simp add: pedge_num_dist_heap_ptr_coerce uint_nat)
+           apply (simp add: edge_heap uint_nat)
+          apply (simp add: pedge_num_dist_heap uint_nat)
+  using le_step less_trans 
+         apply blast
   using le_step not_less 
         apply blast
-       prefer 3
        apply (metis (no_types, hide_lams) diff_diff_add eq_iff_diff_eq_0 measure_unat word_not_le)
-      prefer 3
       apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
       apply (metis tail_heap wellformed_iGraph uint_nat word_less_nat_alt)
-     prefer 4
-     apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
-     apply (metis head_heap wellformed_iGraph uint_nat word_less_nat_alt)
-    prefer 3
-    apply (rule_tac i="uint ee" in arrlist_nth_valid, simp+)
-    apply (simp add:uint_nat)
+     apply (rule_tac i="uint ee" in arrlist_nth_valid, simp+)
+     apply (simp add:uint_nat)  
   using word_less_nat_alt
-    apply blast
-   apply (rule_tac x = "ee" in exI)
-   apply (rule conjI, simp+)
-   apply (subst pedge_num_dist_heap_ptr_coerce[where l=d and iL=iD])
-      apply fast
-     apply (subst head_heap[where iG=iG], simp+)
-     apply (metis head_heap wellformed_iGraph, simp+)
-   apply (subst pedge_num_dist_heap_ptr_coerce[where l=d and iL=iD])
-      apply fast
-     apply (subst tail_heap[where iG=iG], simp+)
-     apply (metis tail_heap wellformed_iGraph, simp+)
-   apply (drule wellformed_iGraph[where G=iG])
-    apply simp+
-   apply (subst head_heap[where iG=iG], simp+)
-   apply (subst tail_heap[where iG=iG], simp+)
-   apply clarsimp
-   apply (subgoal_tac "heap_w32 s (ptr_coerce (d +\<^sub>p int (unat (second_C (heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p uint ee))))))
-             > heap_w32 s (ptr_coerce (d +\<^sub>p int (unat (first_C (heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p uint ee)))))) + iC ee")
-    apply simp+
-   apply (subst pedge_num_dist_heap[where l=c and iL=iC])
-     apply simp+
-   apply (metis uint_nat)
-  
-  apply (subst pedge_num_dist_heap_ptr_coerce[where l=d and iL=iD])
-     apply fast
-    apply (subst head_heap[where iG=iG], simp+)
-  using le_step less_trans 
      apply blast
-    apply (metis (no_types, hide_lams) head_heap wellformed_iGraph le_step less_trans)
-  using word_zero_le 
-   apply blast
-  apply (subst pedge_num_dist_heap_ptr_coerce[where l=d and iL=iD])
-     apply fast
-    apply (subst tail_heap[where iG=iG], simp+)
-  using le_step less_trans
-     apply blast
-    apply (metis (no_types, hide_lams) tail_heap wellformed_iGraph le_step less_trans)
-   apply simp
-  apply (subst pedge_num_dist_heap[where l=c and iL=iC])
-    apply (simp add: uint_nat)+
-  using le_step less_trans
-   apply blast
-  apply (subst head_heap[where iG=iG], simp+)
-  using le_step less_trans 
-   apply blast
-  apply (subst tail_heap[where iG=iG], simp+)
-  using le_step less_trans 
-   apply blast
-
-  apply (simp add: uint_nat unat_mono)+
-  apply (frule_tac i="fst (snd (snd iG) i)" in pedge_num_dist_heap_ptr_coerce[where l=d and iL=iD])
-    apply (metis (no_types, hide_lams) wellformed_iGraph le_step less_trans)
-   apply force
-  apply (drule_tac i="snd (snd (snd iG) i)" in pedge_num_dist_heap_ptr_coerce[where l=d and iL=iD])
-    apply (metis (no_types, hide_lams) wellformed_iGraph le_step less_trans)
-   apply force
-  apply (drule_tac i="ee" in pedge_num_dist_heap[where l=c and iL=iC])
-   apply simp
-  apply (frule_tac e="ee" in tail_heap[where iG=iG])
-   apply simp
-  apply (drule_tac e="ee" in wellformed_iGraph[where G=iG])
-   apply simp+
-  apply (drule_tac e="ee" in head_heap[where iG=iG])
-   apply simp+
-  apply (simp add: uint_nat unat_mono)+
-
-  sorry
+    apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+    apply (metis head_heap wellformed_iGraph uint_nat word_less_nat_alt)
+   apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+  apply wp
+  apply fast
+  done
 
 definition just_inv :: 
   "IGraph \<Rightarrow> IDist \<Rightarrow> ICost \<Rightarrow> IVertex \<Rightarrow> INum \<Rightarrow> IPEdge \<Rightarrow> 32 word \<Rightarrow> bool" where
@@ -631,12 +626,21 @@ lemma no_path_spc':
     prefer 3
     apply(rule_tac i="(uint vv)" in arrlist_nth_valid, simp+)
     apply (simp add:uint_nat word_less_def)
-   prefer 2
-   apply (simp add:sint_ucast)
-   apply (subgoal_tac "sint (heap_w32 s (ptr_coerce (d +\<^sub>p uint vv))) < 0")
-    apply force
-   apply (thin_tac "\<not> sint (heap_w32 s (ptr_coerce (d +\<^sub>p uint vv))) < 0")
 
+   prefer 2 
+   apply (simp add: uint_nat sint_ucast)
+  apply (rule classical)
+   apply (erule notE, simp)
+  
+(*
+   apply (subgoal_tac "sint (heap_w32 s (ptr_coerce (d +\<^sub>p int (unat vv)))) < 0")
+    apply force
+   apply (thin_tac "\<not> sint (heap_w32 s (ptr_coerce (d +\<^sub>p int (unat vv)))) < 0")
+   apply (drule_tac i=vv in pedge_num_dist_heap_ptr_coerce[where l=d and iL=iD])
+     apply simp+
+   apply (drule_tac i=vv in pedge_num_dist_heap_ptr_coerce[where l=n and iL=iN])
+     apply simp+
+*)
 (*
   apply (subst "sint_eq_uint")
   apply (rule not_msb_from_less)
