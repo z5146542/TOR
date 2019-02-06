@@ -649,7 +649,7 @@ lemma just_spc':
                   apply (simp add:uint_nat)
                  apply (metis pedge_num_dist_heap_ptr_coerce word_zero_le)
                 apply (metis pedge_num_dist_heap_ptr_coerce word_zero_le)
-               (* prefer 8
+               prefer 8
                apply (subst pedge_num_dist_heap_ptr_coerce[where l=d and iL=iD], simp+)
   using le_step less_trans
                  apply blast
@@ -683,10 +683,8 @@ lemma just_spc':
                   apply blast
                  apply (metis (no_types) pedge_num_dist_heap_ptr_coerce le_step not_less uint_nat word_zero_le)
   using less_trans
-                apply blast
-  *)
-               
-
+                apply (blast, clarsimp)
+  
   sorry
 
 definition no_path_inv :: "IGraph \<Rightarrow> IDist \<Rightarrow> INum \<Rightarrow> 32 word \<Rightarrow> bool" where
@@ -746,7 +744,8 @@ lemma no_path_spc':
    apply (simp add: uint_nat sint_ucast)
    apply (rule classical, erule notE, simp)
   
-   
+  
+  
 (*
    apply (subgoal_tac "sint (heap_w32 s (ptr_coerce (d +\<^sub>p int (unat vv)))) < 0")
     apply force
