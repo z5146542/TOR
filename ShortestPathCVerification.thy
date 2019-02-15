@@ -159,6 +159,7 @@ definition
         arrlist (\<lambda>p. heap_EInt_C h p) (\<lambda>p. is_valid_EInt_C h p) 
         (map to_eint (mk_idist_list iG iD)) p"
 
+
 definition 
   "is_cost h iG iC p \<equiv> arrlist (heap_w32 h) (is_valid_w32 h) (mk_icost_list iG iC) p"
 
@@ -280,8 +281,8 @@ lemma arrlist_heap:
   done
 
 lemma two_comp_arrlist_heap:
-  "\<lbrakk> arrlist h v (map (f1 \<circ> (f2 \<circ> of_nat)) [0..<unat m]) ep;
-  e < m\<rbrakk> \<Longrightarrow> f1 (f2 e) = h (ep +\<^sub>p (int (unat e)))" 
+  "\<lbrakk> arrlist h v (map (f \<circ> (g \<circ> of_nat)) [0..<unat n]) ep;
+  i < n\<rbrakk> \<Longrightarrow> f (g i) = h (ep +\<^sub>p (int (unat i)))" 
   using arrlist_heap 
   by (metis (no_types, hide_lams) comp_apply comp_assoc)
  
@@ -294,6 +295,16 @@ lemma tail_heap:
   "\<lbrakk>arrlist h v (map (to_edge \<circ> (iedges iG \<circ> of_nat)) [0..<unat m]) ep; e < m\<rbrakk> \<Longrightarrow>
   fst ((iedges iG) e) =  first_C (h (ep +\<^sub>p  (uint e)))" 
   using two_comp_arrlist_heap to_edge.simps s_C_pte uint_nat by metis
+
+lemma val_heap:
+  "\<lbrakk>arrlist h v (map (to_eint \<circ> (f \<circ> of_nat)) [0..<unat m]) ep; e < m\<rbrakk> \<Longrightarrow>
+  val f e = val_C (h (ep +\<^sub>p (uint e)))" 
+  using two_comp_arrlist_heap to_eint.simps val_C_pte by (metis uint_nat)
+
+lemma is_inf_heap:
+  "\<lbrakk>arrlist h v (map (to_eint \<circ> (f \<circ> of_nat)) [0..<unat m]) ep; e < m\<rbrakk> \<Longrightarrow>
+  is_inf f e = bool (isInf_C (h (ep +\<^sub>p (uint e))))" 
+  using two_comp_arrlist_heap to_eint.simps isInf_C_pte by (metis uint_nat)
 
 thm "is_wellformed'_def"
 
@@ -349,12 +360,12 @@ lemma is_wellformed_spc':
 
 definition trian_inv :: "IGraph \<Rightarrow> IEInt \<Rightarrow> ICost \<Rightarrow> 32 word \<Rightarrow> bool" where
   "trian_inv G d c m \<equiv> 
-    \<forall>i < m. fst (d (snd (iedges G i))) \<le> fst (d (fst (iedges G i))) + c i"
+    \<forall>i < m. val d (snd (iedges G i)) \<le> val d (fst (iedges G i)) + c i"
 
 lemma trian_inv_step:
   assumes i_less_max: "i < max_word"
   shows "trian_inv G d c (i + 1) \<longleftrightarrow> trian_inv G d c i
-    \<and> fst (d (snd (iedges G i))) \<le> fst (d (fst (iedges G i))) + c i"
+    \<and> val d (snd (iedges G i)) \<le> val d (fst (iedges G i)) + c i"
   unfolding trian_inv_def 
   by (metis (no_types) i_less_max less_irrefl less_x_plus_1)
 
@@ -376,8 +387,100 @@ lemma trian_spc':
                    is_graph s iG g \<and>
                    is_dist s iG iD d \<and>
                    is_cost s iG iC c"])
-  apply (wp)
+
+  apply (simp add: skipE_def)
+  apply wp
+  unfolding is_graph_def is_dist_def is_cost_def trian_inv_def
+    apply (subst if_bool_eq_conj)+
     apply (simp split: if_split_asm, safe, simp_all add: arrlist_nth)
+          apply (rule_tac x = "ee" in exI)
+          apply (rule conjI, simp+)
+       (* thm val_heap
+  apply (subst val_heap, simp+)
+    
+          apply (subst two_comp_arrlist_heap[where f=to_eint and g=iD and ep=d])
+             apply fast*) defer
+            apply (subst head_heap[where iG=iG], simp+)
+            apply (metis head_heap wellformed_iGraph, simp+)
+          apply (subst pedge_num_dist_heap_ptr_coerce[where l=d and iL=iD])
+             apply fast
+            apply (subst tail_heap[where iG=iG], simp+)
+            apply (metis tail_heap wellformed_iGraph, simp+)
+          apply (drule wellformed_iGraph[where G=iG])
+           apply simp+
+          apply (subst head_heap[where iG=iG], simp+)
+          apply (subst tail_heap[where iG=iG], simp+)
+          apply (subgoal_tac "heap_w32 s (ptr_coerce (d +\<^sub>p int (unat (second_C (heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p uint ee))))))
+             > heap_w32 s (ptr_coerce (d +\<^sub>p int (unat (first_C (heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p uint ee)))))) + iC ee")
+           apply simp+
+          apply (subst pedge_num_dist_heap[where l=c and iL=iC])
+            apply simp+
+          apply (metis uint_nat)
+         apply (subst pedge_num_dist_heap_ptr_coerce[where l=d and iL=iD])
+            apply fast
+           apply (subst head_heap[where iG=iG], simp+)
+  using le_step less_trans 
+            apply blast
+           apply (metis (no_types, hide_lams) head_heap wellformed_iGraph le_step less_trans)
+  using word_zero_le 
+          apply blast
+         apply (subst pedge_num_dist_heap_ptr_coerce[where l=d and iL=iD])
+            apply fast
+           apply (subst tail_heap[where iG=iG], simp+)
+  using le_step less_trans
+            apply blast
+           apply (metis (no_types, hide_lams) tail_heap wellformed_iGraph le_step less_trans)
+          apply simp
+         apply (subst pedge_num_dist_heap[where l=c and iL=iC])
+           apply (simp add: uint_nat)+
+  using le_step less_trans
+          apply blast
+         apply (subst head_heap[where iG=iG], simp+)
+  using le_step less_trans 
+          apply blast
+         apply (subst tail_heap[where iG=iG], simp+)
+  using le_step less_trans 
+          apply blast
+         apply (subgoal_tac "i < num_edges_C (heap_IGraph_C s g)")
+          apply (subgoal_tac "\<And>w. \<not> w < num_edges_C (heap_IGraph_C s g) \<or> heap_w32 s (c +\<^sub>p uint w) = iC w")
+           apply (subgoal_tac "\<And>w. \<not> w < num_edges_C (heap_IGraph_C s g) \<or> heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p uint w) = to_edge (snd (snd iG) w)")
+            apply (subgoal_tac "\<And>w. \<not> w < fst iG \<or> heap_w32 s (ptr_coerce (d +\<^sub>p uint w)) = iD w")
+             apply (subgoal_tac "\<And>w. \<not> w < num_edges_C (heap_IGraph_C s g) \<or> snd (snd (snd iG) w) < fst iG")
+              apply (subgoal_tac "\<And>w. \<not> w < num_edges_C (heap_IGraph_C s g) \<or> fst (snd (snd iG) w) < fst iG")
+               apply (subgoal_tac "heap_w32 s (ptr_coerce (d +\<^sub>p int (unat (second_C (heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p uint i)))))) \<le> heap_w32 s (ptr_coerce (d +\<^sub>p int (unat (first_C (heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p uint i)))))) + heap_w32 s (c +\<^sub>p int (unat i))")
+                apply metis
+               apply (subgoal_tac "\<forall>w. heap_w32 s (ptr_coerce (d +\<^sub>p int (unat w))) = iD w \<or> \<not> w < fst iG")
+                apply (subgoal_tac "heap_w32 s (ptr_coerce (d +\<^sub>p int (unat (second_C (heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p int (unat i))))))) \<le> heap_w32 s (ptr_coerce (d +\<^sub>p int (unat (first_C (heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p int (unat i))))))) + iC i")
+                 apply (subgoal_tac "heap_w32 s (ptr_coerce (d +\<^sub>p int (unat (second_C (heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p uint i)))))) \<le> heap_w32 s (ptr_coerce (d +\<^sub>p int (unat (first_C (heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p uint i)))))) + heap_w32 s (c +\<^sub>p int (unat i))")
+                  apply (simp add:uint_nat)+
+                apply (metis (no_types, hide_lams) le_step word_not_le)
+               apply (metis uint_nat)
+              apply (simp add: wf_digraph_def)
+             apply (simp add: wf_digraph_def)
+            apply (simp add: pedge_num_dist_heap_ptr_coerce uint_nat)
+           apply (simp add: edge_heap uint_nat)
+          apply (simp add: pedge_num_dist_heap uint_nat)
+  using le_step less_trans 
+         apply blast
+  using le_step not_less 
+        apply blast
+       apply (metis (no_types, hide_lams) diff_diff_add eq_iff_diff_eq_0 measure_unat word_not_le)
+      apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+      apply (metis tail_heap wellformed_iGraph uint_nat word_less_nat_alt)
+     apply (rule_tac i="uint ee" in arrlist_nth_valid, simp+)
+     apply (simp add:uint_nat)  
+  using word_less_nat_alt
+     apply blast
+    apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+    apply (metis head_heap wellformed_iGraph uint_nat word_less_nat_alt)
+   apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+  apply wp
+  apply fast
+  done
+ 
+  
+  (*apply (wp)
+    apply (simp split: if_split_asm, safe, simp_all add: arrlist_nth)*)
 
 
 (*
