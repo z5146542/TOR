@@ -410,26 +410,57 @@ lemma trian_spc':
           apply (subst arrlist_heap[where l=c and iL=iC])
             apply blast
            apply blast
-          apply (subst val_heap, blast, metis shortest_path_checker.wellformed_iGraph)+
+          apply (subst val_heap, blast, metis wellformed_iGraph)+
           apply (subst head_heap, blast, blast)+
           apply (subst tail_heap, blast, blast)+
           apply (simp add: uint_nat)
-          defer
-  using le_step not_less
+         apply (subst arrlist_heap[where l=c and iL=iC])
+           apply simp
+  using le_step less_trans 
           apply blast
-         apply (metis (no_types, hide_lams) diff_diff_add eq_iff_diff_eq_0 measure_unat word_not_le)
-        apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
-        apply (metis (full_types) tail_heap wellformed_iGraph uint_nat word_less_nat_alt)
-       apply (rule_tac i="uint ee" in arrlist_nth_valid, simp+)
-       apply (simp add:uint_nat)  
+         apply (subst val_heap, blast, metis (mono_tags, hide_lams) IGraph_C.exhaust le_step less_trans num_edges_C.num_edges_C_def wellformed_iGraph)+
+         apply (subst head_heap, blast)+
+  using le_step less_trans 
+          apply blast
+         apply (subst tail_heap, blast)+
+  using le_step less_trans 
+          apply blast
+         apply (subgoal_tac "i < num_edges_C (heap_IGraph_C s g)")
+          apply (subgoal_tac "\<And>w. \<not> w < num_edges_C (heap_IGraph_C s g) \<or> heap_w32 s (c +\<^sub>p uint w) = iC w")
+           apply (subgoal_tac "\<And>w. \<not> w < num_edges_C (heap_IGraph_C s g) \<or> heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p uint w) = to_edge (snd (snd iG) w)")
+            apply (subgoal_tac "\<And>w. \<not> w < fst iG \<or> val_C (heap_EInt_C s (d +\<^sub>p uint w)) = fst (iD w)")
+             apply (subgoal_tac "\<And>w. \<not> w < num_edges_C (heap_IGraph_C s g) \<or> snd (snd (snd iG) w) < fst iG")
+              apply (subgoal_tac "\<And>w. \<not> w < num_edges_C (heap_IGraph_C s g) \<or> fst (snd (snd iG) w) < fst iG")
+               apply (subgoal_tac "val_C (heap_EInt_C s (d +\<^sub>p int (unat (second_C (heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p uint i)))))) \<le> val_C (heap_EInt_C s (d +\<^sub>p int (unat (first_C (heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p uint i)))))) + heap_w32 s (c +\<^sub>p int (unat i))")
+                apply (simp add: uint_nat)
+               apply (subgoal_tac "\<forall>w. val_C (heap_EInt_C s (d +\<^sub>p int (unat w))) = fst (iD w) \<or> \<not> w < fst iG")
+                apply (subgoal_tac "val_C (heap_EInt_C s (d +\<^sub>p int (unat (second_C (heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p int (unat i))))))) \<le> val_C (heap_EInt_C s (d +\<^sub>p int (unat (first_C (heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p int (unat i))))))) + iC i")
+                 apply (subgoal_tac "val_C (heap_EInt_C s (d +\<^sub>p int (unat (second_C (heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p uint i)))))) \<le> val_C (heap_EInt_C s (d +\<^sub>p int (unat (first_C (heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p uint i)))))) + heap_w32 s (c +\<^sub>p int (unat i))")
+                  apply (simp add:uint_nat)+
+                apply (metis (no_types, hide_lams) le_step word_not_le)
+               apply (metis uint_nat)
+              apply (simp add: wf_digraph_def)
+             apply (simp add: wf_digraph_def)
+            apply (simp add: val_heap)
+           apply (simp add: two_comp_to_edge_arrlist_heap uint_nat)
+          apply (metis arrlist_heap uint_nat)
+  using le_step less_trans 
+         apply blast
+  using le_step not_less
+        apply blast
+        apply (metis (no_types, hide_lams) diff_diff_add eq_iff_diff_eq_0 measure_unat word_not_le)
+       apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+       apply (metis (full_types) tail_heap wellformed_iGraph uint_nat word_less_nat_alt)
+      apply (rule_tac i="uint ee" in arrlist_nth_valid, simp+)
+      apply (simp add:uint_nat)  
   using word_less_nat_alt
-       apply blast
-      apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
-      apply (metis head_heap wellformed_iGraph uint_nat word_less_nat_alt)
+      apply blast
      apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
-    apply wp
-    apply fast
-  sorry
+     apply (metis head_heap wellformed_iGraph uint_nat word_less_nat_alt)
+    apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+   apply wp
+   apply fast
+  done
 
 
 definition just_inv :: 
