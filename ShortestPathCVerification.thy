@@ -291,6 +291,12 @@ lemma two_comp_to_eint_arrlist_heap:
   i < n\<rbrakk> \<Longrightarrow> to_eint (iL i) = h (l +\<^sub>p (int (unat i)))" 
   using arrlist_heap 
   by (metis (no_types, hide_lams) comp_apply comp_assoc)
+
+lemma two_comp_to_edge_arrlist_heap:
+  "\<lbrakk> arrlist h v (map (to_edge \<circ> (iL \<circ> of_nat)) [0..<unat n]) l;
+  i < n\<rbrakk> \<Longrightarrow> to_edge (iL i) = h (l +\<^sub>p (int (unat i)))" 
+  using arrlist_heap 
+  by (metis (no_types, hide_lams) comp_apply comp_assoc)
  
 lemma head_heap:
   "\<lbrakk>arrlist h v (map (to_edge \<circ> (iedges iG \<circ> of_nat)) [0..<unat m]) ep; e < m\<rbrakk> \<Longrightarrow>
@@ -507,77 +513,49 @@ lemma just_spc':
     apply (subst if_bool_eq_conj)+
     apply (simp split: if_split_asm, simp_all add: arrlist_nth) 
     apply (safe)
-  sledgehammer[provers="cvc4 z3 spass e"]
                       defer
-  sledgehammer[provers="cvc4 z3 spass e"]
                       defer
-  sledgehammer[provers="cvc4 z3 spass e"]
-  defer
-  sledgehammer[provers="cvc4 z3 spass e"]
-  defer
-  sledgehammer[provers="cvc4 z3 spass e"]
-  defer
-  sledgehammer[provers="cvc4 z3 spass e"]
-  defer
-  sledgehammer[provers="cvc4 z3 spass e"]
-  defer
-  sledgehammer[provers="cvc4 z3 spass e"]
-  defer
-  sledgehammer[provers="cvc4 z3 spass e"]
-  defer
-  sledgehammer[provers="cvc4 z3 spass e"]
-  defer
-  sledgehammer[provers="cvc4 z3 spass e"]
-  defer
-  sledgehammer[provers="cvc4 z3 spass e"]
-  defer
-  sledgehammer[provers="cvc4 z3 spass e"]
-  defer
-  sledgehammer[provers="cvc4 z3 spass e"]
-  defer
-  sledgehammer[provers="cvc4 z3 spass e"]
-  defer
-  sledgehammer[provers="cvc4 z3 spass e"]
-  defer
-  sledgehammer[provers="cvc4 z3 spass e"]
-  defer
-  sledgehammer[provers="cvc4 z3 spass e"]
-  defer
-  sledgehammer[provers="cvc4 z3 spass e"]
-  defer
-  sledgehammer[provers="cvc4 z3 spass e"]
-  defer
-  sledgehammer[provers="cvc4 z3 spass e"]
-  defer
-  sledgehammer[provers="cvc4 z3 spass e"]
-  defer
-  sledgehammer[provers="cvc4 z3 spass e"]
-  defer
-  sledgehammer[provers="cvc4 z3 spass e"]
-  defer
-  sledgehammer[provers="cvc4 z3 spass e"]
-  defer
-  sledgehammer[provers="cvc4 z3 spass e"]
-  defer
-  sledgehammer[provers="cvc4 z3 spass e"]
-  defer
-  sledgehammer[provers="cvc4 z3 spass e"]
-  defer
-  sledgehammer[provers="cvc4 z3 spass e"]
-  defer
-  sledgehammer[provers="cvc4 z3 spass e"]
-  defer
-  sledgehammer[provers="cvc4 z3 spass e"]
-  defer
-  sledgehammer[provers="cvc4 z3 spass e"]
-  defer
-  sledgehammer[provers="cvc4 z3 spass e"]
-  defer
-  sledgehammer[provers="cvc4 z3 spass e"]
-  defer
-  apply wp
-  apply fast
-
+                      defer
+                      defer
+                      apply (metis (no_types, hide_lams) le_step bool.simps is_inf_heap)
+                      apply (metis (no_types, hide_lams) le_step bool.simps is_inf_heap)
+                      apply (metis (no_types, hide_lams) le_step bool.simps is_inf_heap)
+                      apply (metis le_step isInf_C_pte two_comp_to_eint_arrlist_heap uint_nat)
+  using le_step not_le
+                      apply blast
+                      defer
+                      defer
+                      defer
+                      defer
+                      defer
+                      defer
+                      defer
+                      defer
+                      defer
+                      defer
+                      defer
+                      defer
+                      defer
+  using inc_le
+                      apply blast
+                      defer
+                      defer
+                      defer
+  using le_step
+                      apply blast
+  using le_step
+                      apply blast
+  using le_step
+                      apply blast
+  using le_step
+                      apply blast
+  using inc_le
+                      apply blast
+                      defer
+                      defer
+                      apply simp
+                      apply wp
+                      apply fast
   sorry
 
 definition no_path_inv :: "IGraph \<Rightarrow> IEInt \<Rightarrow> IEInt \<Rightarrow> 32 word \<Rightarrow> bool" where
