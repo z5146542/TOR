@@ -410,7 +410,10 @@ lemma trian_spc':
           apply (subst arrlist_heap[where l=c and iL=iC])
             apply blast
            apply blast
-          defer
+          apply (subst val_heap, blast, metis shortest_path_checker.wellformed_iGraph)+
+          apply (subst head_heap, blast, blast)+
+          apply (subst tail_heap, blast, blast)+
+          apply (simp add: uint_nat)
           defer
   using le_step not_less
           apply blast
