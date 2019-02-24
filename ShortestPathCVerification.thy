@@ -558,13 +558,15 @@ lemma just_spc':
   using le_step not_le
                       apply blast
                       defer
-                      defer
-                      defer
-                      defer
-                      defer
-                      defer
-                      defer
-                      defer
+                      apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+                      apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+                      apply (metis (no_types, hide_lams) not_le s_C_pte wellformed_iGraph two_comp_to_edge_arrlist_heap word_less_nat_alt)
+                      apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+                      apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+                      apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+                      apply (metis (no_types, hide_lams) not_le s_C_pte wellformed_iGraph two_comp_to_edge_arrlist_heap word_less_nat_alt)
+                      apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+                      apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
                       defer
                       defer
                       defer
@@ -573,23 +575,23 @@ lemma just_spc':
   using inc_le
                       apply blast
                       defer
+                      apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
                       defer
-                      defer
   using le_step
                       apply blast
   using le_step
-                      apply blast
+                     apply blast
   using le_step
-                      apply blast
+                    apply blast
   using le_step
-                      apply blast
+                   apply blast
   using inc_le
-                      apply blast
-                      defer
-                      defer
-                      apply simp
-                      apply wp
-                      apply fast
+                  apply blast
+                 defer
+                 defer
+                 apply simp
+                apply wp
+                apply fast
   sorry
 
 definition no_path_inv :: "IGraph \<Rightarrow> IEInt \<Rightarrow> IEInt \<Rightarrow> 32 word \<Rightarrow> bool" where
