@@ -467,7 +467,7 @@ definition just_inv ::
   "IGraph \<Rightarrow> IEInt \<Rightarrow> ICost \<Rightarrow> IVertex \<Rightarrow> IEInt \<Rightarrow> IPEdge \<Rightarrow> 32 word \<Rightarrow> bool" where
   "just_inv G d c s n p k \<equiv>
     \<forall>v < k. v \<noteq> s \<and> \<not> is_inf n v \<longrightarrow>
-      (\<exists> e. e = p v (*\<and> p v \<ge> 0*) \<and> e < iedge_cnt G \<and>
+      (\<exists> e. e = p v \<and> e < iedge_cnt G \<and>
         v = snd (iedges G e) \<and>
         val d v = val d (fst (iedges G e)) + c e \<and>
         val n v = val n (fst (iedges G e)) + 1)"
@@ -475,8 +475,8 @@ definition just_inv ::
 lemma just_inv_step:
   assumes v_less_max: "v < max_word"
   shows "just_inv G d c s n p (v + 1) \<longleftrightarrow> just_inv G d c s n p v
-    \<and> (v \<noteq> s \<and>  \<not> is_inf n v \<longrightarrow> 
-      (\<exists> e. e =  (p v) \<and> e < iedge_cnt G \<and> 
+    \<and> (v \<noteq> s \<and>  \<not> is_inf n v \<longrightarrow>
+      (\<exists> e. e = p v \<and> e < iedge_cnt G \<and> 
         v = snd (iedges G e) \<and>
         val d v = val d (fst (iedges G e)) +  c e \<and>
         val n v = val n (fst (iedges G e)) +  1))"
@@ -547,7 +547,12 @@ lemma just_spc':
     apply (subst if_bool_eq_conj)+
     apply (simp split: if_split_asm, simp_all add: arrlist_nth) 
     apply (safe)
-                      defer
+                      apply (rule_tac x="vv" in exI)
+                      apply (rule conjI, metis (full_types, hide_lams) isInf_C_pte two_comp_to_eint_arrlist_heap uint_nat, simp)
+                      apply (subgoal_tac "snd (iN vv) = isInf_C (heap_EInt_C s (n +\<^sub>p uint vv))")
+                      (* there is certainly a contradiction to the claim regarding the pedge bounds *) defer
+                      apply (metis isInf_C_def to_eint.simps two_comp_to_eint_arrlist_heap uint_nat)
+
                       defer
                       defer
                       defer
