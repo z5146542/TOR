@@ -5,6 +5,7 @@ theory ShortestPathCVerification
   "checker-verification/Witness_Property/Connected_Components"
   "checker-verification/Witness_Property/ShortestPath"
 begin
+
 (* Parse the input file. *)
 install_C_file "shortest_path_checker.c"
 
@@ -31,8 +32,8 @@ thm "check_sp'_def"
 type_synonym IVertex = "32 word"
 type_synonym IEdge_Id = "32 word"
 type_synonym IEdge = "IVertex \<times> IVertex"
-type_synonym IPEdge = "IVertex \<Rightarrow> 32 word"
 type_synonym IEInt = "IVertex \<Rightarrow> (32 word \<times> 32 word)"
+type_synonym IOInt = "IVertex \<Rightarrow> (32 word \<times> 32 word)"
 type_synonym ICost = "IVertex \<Rightarrow> 32 word"
 type_synonym IGraph = "32 word \<times> 32 word \<times> (IEdge_Id \<Rightarrow> IEdge)"
 
@@ -56,6 +57,11 @@ abbreviation
 where 
   "val f v \<equiv> fst (f v)"
 
+abbreviation 
+  oval :: "IOInt \<Rightarrow> IVertex \<Rightarrow> 32 word"
+where 
+  "oval f v \<equiv> fst (f v)"
+
 fun 
   bool::"32 word \<Rightarrow> bool" 
 where 
@@ -65,6 +71,11 @@ abbreviation
   is_inf ::  "IEInt \<Rightarrow> IVertex \<Rightarrow> bool"
 where 
   "is_inf f v \<equiv> bool (snd (f v))"
+
+abbreviation 
+  none ::  "IOInt \<Rightarrow> IVertex \<Rightarrow> bool"
+where 
+  "none f v \<equiv> bool (snd (f v))"
 
 (* Make List - makes a list containing the result of a function *)
 
@@ -91,7 +102,7 @@ where
   "mk_inum_list G num = mk_list' (unat (ivertex_cnt G)) num"
   
 fun 
-  mk_ipedge_list :: "IGraph \<Rightarrow> IPEdge \<Rightarrow> 32 word list"
+  mk_ipedge_list :: "IGraph \<Rightarrow> IOInt \<Rightarrow> (32 word \<times> 32 word) list"
 where
   "mk_ipedge_list G pedge = mk_list' (unat (ivertex_cnt G)) pedge"
 
@@ -129,12 +140,25 @@ fun
 where
   "to_eint p = EInt_C (fst p) (snd p)"
 
+fun
+  to_oint :: "(32 word \<times> 32 word) \<Rightarrow> OInt_C"
+where
+  "to_oint p = OInt_C (fst p) (snd p)"
+
 lemma val_C_pte[simp]:
-  "val_C (to_eint p) = fst p"
+  "EInt_C.val_C (to_eint p) = fst p"
   by (case_tac "p") auto
 
 lemma isInf_C_pte[simp]:
   "isInf_C (to_eint p) = snd p"
+  by (cases p) auto
+
+lemma oval_C_pte[simp]:
+  "OInt_C.val_C (to_oint p) = fst p"
+  by (case_tac "p") auto
+
+lemma none_C_pte[simp]:
+  "none_C (to_oint p) = snd p"
   by (cases p) auto
 
 definition is_graph where
@@ -151,8 +175,9 @@ definition
         (map to_eint (mk_inum_list iG iN)) p"
 
 definition
-  "is_pedge h iG iP p \<equiv> arrlist (\<lambda>p. heap_w32 h (ptr_coerce p))
-        (\<lambda>p. is_valid_w32 h (ptr_coerce p)) (mk_ipedge_list iG iP) p"
+  "is_pedge h iG iP p \<equiv> 
+        arrlist (\<lambda>p. heap_OInt_C h p) (\<lambda>p. is_valid_OInt_C h p) 
+        (map to_oint (mk_inum_list iG iP)) p"
 
 definition
   "is_dist h iG iD p \<equiv> 
@@ -286,6 +311,7 @@ lemma two_comp_arrlist_heap:
   using arrlist_heap 
   by (metis (no_types, hide_lams) comp_apply comp_assoc)
 
+(*
 lemma two_comp_to_eint_arrlist_heap:
   "\<lbrakk> arrlist h v (map (to_eint \<circ> (iL \<circ> of_nat)) [0..<unat n]) l;
   i < n\<rbrakk> \<Longrightarrow> to_eint (iL i) = h (l +\<^sub>p (int (unat i)))" 
@@ -297,7 +323,7 @@ lemma two_comp_to_edge_arrlist_heap:
   i < n\<rbrakk> \<Longrightarrow> to_edge (iL i) = h (l +\<^sub>p (int (unat i)))" 
   using arrlist_heap 
   by (metis (no_types, hide_lams) comp_apply comp_assoc)
- 
+ *)
 lemma head_heap:
   "\<lbrakk>arrlist h v (map (to_edge \<circ> (iedges iG \<circ> of_nat)) [0..<unat m]) ep; e < m\<rbrakk> \<Longrightarrow>
   snd ((iedges iG) e) = second_C (h (ep +\<^sub>p (uint e)))" 
@@ -310,13 +336,23 @@ lemma tail_heap:
 
 lemma val_heap:
   "\<lbrakk>arrlist h v (map (to_eint \<circ> (f \<circ> of_nat)) [0..<unat m]) ep; e < m\<rbrakk> \<Longrightarrow>
-  val f e = val_C (h (ep +\<^sub>p (uint e)))" 
+  val f e = EInt_C.val_C (h (ep +\<^sub>p (uint e)))" 
   using two_comp_arrlist_heap to_eint.simps val_C_pte by (metis uint_nat)
 
 lemma is_inf_heap:
   "\<lbrakk>arrlist h v (map (to_eint \<circ> (f \<circ> of_nat)) [0..<unat m]) ep; e < m\<rbrakk> \<Longrightarrow>
   is_inf f e = bool (isInf_C (h (ep +\<^sub>p (uint e))))" 
   using two_comp_arrlist_heap to_eint.simps isInf_C_pte by (metis uint_nat)
+
+lemma oval_heap:
+  "\<lbrakk>arrlist h v (map (to_oint \<circ> (f \<circ> of_nat)) [0..<unat m]) ep; e < m\<rbrakk> \<Longrightarrow>
+  oval f e = OInt_C.val_C (h (ep +\<^sub>p (uint e)))" 
+  using two_comp_arrlist_heap to_oint.simps oval_C_pte by (metis uint_nat)
+
+lemma none_heap:
+  "\<lbrakk>arrlist h v (map (to_oint \<circ> (f \<circ> of_nat)) [0..<unat m]) ep; e < m\<rbrakk> \<Longrightarrow>
+  none f e = bool (none_C (h (ep +\<^sub>p (uint e))))" 
+  using two_comp_arrlist_heap to_oint.simps none_C_pte by (metis uint_nat)
 
 thm "is_wellformed'_def"
 
@@ -423,26 +459,26 @@ lemma trian_spc':
   using le_step less_trans 
           apply blast
          apply (subst tail_heap, blast)+
-  using le_step less_trans 
+          using le_step less_trans 
           apply blast
          apply (subgoal_tac "i < num_edges_C (heap_IGraph_C s g)")
           apply (subgoal_tac "\<And>w. \<not> w < num_edges_C (heap_IGraph_C s g) \<or> heap_w32 s (c +\<^sub>p uint w) = iC w")
            apply (subgoal_tac "\<And>w. \<not> w < num_edges_C (heap_IGraph_C s g) \<or> heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p uint w) = to_edge (snd (snd iG) w)")
-            apply (subgoal_tac "\<And>w. \<not> w < fst iG \<or> val_C (heap_EInt_C s (d +\<^sub>p uint w)) = fst (iD w)")
+            apply (subgoal_tac "\<And>w. \<not> w < fst iG \<or> EInt_C.val_C (heap_EInt_C s (d +\<^sub>p uint w)) = fst (iD w)")
              apply (subgoal_tac "\<And>w. \<not> w < num_edges_C (heap_IGraph_C s g) \<or> snd (snd (snd iG) w) < fst iG")
               apply (subgoal_tac "\<And>w. \<not> w < num_edges_C (heap_IGraph_C s g) \<or> fst (snd (snd iG) w) < fst iG")
-               apply (subgoal_tac "val_C (heap_EInt_C s (d +\<^sub>p int (unat (second_C (heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p uint i)))))) \<le> val_C (heap_EInt_C s (d +\<^sub>p int (unat (first_C (heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p uint i)))))) + heap_w32 s (c +\<^sub>p int (unat i))")
+               apply (subgoal_tac "EInt_C.val_C (heap_EInt_C s (d +\<^sub>p int (unat (second_C (heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p uint i)))))) \<le> EInt_C.val_C (heap_EInt_C s (d +\<^sub>p int (unat (first_C (heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p uint i)))))) + heap_w32 s (c +\<^sub>p int (unat i))")
                 apply (simp add: uint_nat)
-               apply (subgoal_tac "\<forall>w. val_C (heap_EInt_C s (d +\<^sub>p int (unat w))) = fst (iD w) \<or> \<not> w < fst iG")
-                apply (subgoal_tac "val_C (heap_EInt_C s (d +\<^sub>p int (unat (second_C (heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p int (unat i))))))) \<le> val_C (heap_EInt_C s (d +\<^sub>p int (unat (first_C (heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p int (unat i))))))) + iC i")
-                 apply (subgoal_tac "val_C (heap_EInt_C s (d +\<^sub>p int (unat (second_C (heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p uint i)))))) \<le> val_C (heap_EInt_C s (d +\<^sub>p int (unat (first_C (heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p uint i)))))) + heap_w32 s (c +\<^sub>p int (unat i))")
+               apply (subgoal_tac "\<forall>w. EInt_C.val_C (heap_EInt_C s (d +\<^sub>p int (unat w))) = fst (iD w) \<or> \<not> w < fst iG")
+                apply (subgoal_tac "EInt_C.val_C (heap_EInt_C s (d +\<^sub>p int (unat (second_C (heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p int (unat i))))))) \<le> EInt_C.val_C (heap_EInt_C s (d +\<^sub>p int (unat (first_C (heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p int (unat i))))))) + iC i")
+                 apply (subgoal_tac "EInt_C.val_C (heap_EInt_C s (d +\<^sub>p int (unat (second_C (heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p uint i)))))) \<le> EInt_C.val_C (heap_EInt_C s (d +\<^sub>p int (unat (first_C (heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p uint i)))))) + heap_w32 s (c +\<^sub>p int (unat i))")
                   apply (simp add:uint_nat)+
                 apply (metis (no_types, hide_lams) le_step word_not_le)
                apply (metis uint_nat)
               apply (simp add: wf_digraph_def)
              apply (simp add: wf_digraph_def)
             apply (simp add: val_heap)
-           apply (simp add: two_comp_to_edge_arrlist_heap uint_nat)
+           apply (simp add: two_comp_arrlist_heap[where f=to_edge] uint_nat)
           apply (metis arrlist_heap uint_nat)
   using le_step less_trans 
          apply blast
@@ -464,10 +500,10 @@ lemma trian_spc':
 
 
 definition just_inv :: 
-  "IGraph \<Rightarrow> IEInt \<Rightarrow> ICost \<Rightarrow> IVertex \<Rightarrow> IEInt \<Rightarrow> IPEdge \<Rightarrow> 32 word \<Rightarrow> bool" where
+  "IGraph \<Rightarrow> IEInt \<Rightarrow> ICost \<Rightarrow> IVertex \<Rightarrow> IEInt \<Rightarrow> IOInt \<Rightarrow> 32 word \<Rightarrow> bool" where
   "just_inv G d c s n p k \<equiv>
     \<forall>v < k. v \<noteq> s \<and> \<not> is_inf n v \<longrightarrow>
-      (\<exists> e. e = p v (*\<and> p v \<ge> 0*) \<and> e < iedge_cnt G \<and>
+      (\<exists> e. e = oval p v \<and> ~ none p v \<and> e < iedge_cnt G \<and>
         v = snd (iedges G e) \<and>
         val d v = val d (fst (iedges G e)) + c e \<and>
         val n v = val n (fst (iedges G e)) + 1)"
@@ -476,7 +512,7 @@ lemma just_inv_step:
   assumes v_less_max: "v < max_word"
   shows "just_inv G d c s n p (v + 1) \<longleftrightarrow> just_inv G d c s n p v
     \<and> (v \<noteq> s \<and>  \<not> is_inf n v \<longrightarrow> 
-      (\<exists> e. e =  (p v) \<and> e < iedge_cnt G \<and> 
+      (\<exists> e. e = oval p v \<and> ~ none p v \<and> e < iedge_cnt G \<and> 
         v = snd (iedges G e) \<and>
         val d v = val d (fst (iedges G e)) +  c e \<and>
         val n v = val n (fst (iedges G e)) +  1))"
@@ -495,18 +531,18 @@ lemma not_just_verts:
   assumes v_less_max: "v < max_word"
   assumes "v < ivertex_cnt G"
   assumes "v \<noteq> s \<and> \<not> is_inf n v \<and>
-        (iedge_cnt G \<le> p v \<or>
-        snd (iedges G (p v)) \<noteq> v \<or> 
+        (iedge_cnt G \<le> oval p v \<or>
+        snd (iedges G (oval p v)) \<noteq> v \<or> 
         val d v \<noteq> 
-          val d (fst (iedges G (p v))) + c (p v) \<or> 
-        val n v \<noteq> val n (fst (iedges G (p v))) + 1)"
+          val d (fst (iedges G (oval p v))) + c (oval p v) \<or> 
+        val n v \<noteq> val n (fst (iedges G (oval p v))) + 1)"
   shows "\<not> just_inv G d c s n p (ivertex_cnt G)"
 proof (rule notI)
   assume jv: "just_inv G d c s n p (ivertex_cnt G)"
   have "just_inv G d c s n p (v + 1)"
     by (metis le_step order.asym word_not_le just_inv_le[OF _ jv] assms(2))
   then have "(v \<noteq> s \<and> \<not> is_inf n v \<longrightarrow> 
-      (\<exists> e. e = p v \<and> e < iedge_cnt G \<and> 
+      (\<exists> e. e = oval p v \<and> e < iedge_cnt G \<and> 
         v = snd (iedges G e) \<and>
         val d v = val d (fst (iedges G e)) + c e \<and>
         val n v = val n (fst (iedges G e)) + 1))"
@@ -543,30 +579,37 @@ lemma just_spc':
                    is_pedge s iG iP p"])
   apply (simp add: skipE_def)
   apply wp
-  unfolding is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def just_inv_def
+  unfolding is_graph_def   is_numm_def  just_inv_def
     apply (subst if_bool_eq_conj)+
     apply (simp split: if_split_asm, simp_all add: arrlist_nth) 
     apply (safe)
+  apply (rule exI) 
+  using just_inv_step unfolding just_inv_def
+                      apply (clarsimp)
                       defer
+  
                       defer
                       defer
                       defer
                       apply (metis (no_types, hide_lams) le_step bool.simps is_inf_heap)
                       apply (metis (no_types, hide_lams) le_step bool.simps is_inf_heap)
                       apply (metis (no_types, hide_lams) le_step bool.simps is_inf_heap)
-                      apply (metis le_step isInf_C_pte two_comp_to_eint_arrlist_heap uint_nat)
+                      apply (metis le_step isInf_C_pte two_comp_arrlist_heap[where f=to_eint] uint_nat)
   using le_step not_le
-                      apply blast
-                      defer
+  defer
+                      (*apply blast*)
+(*
+                      defer defer defer defer defer defer defer defer defer  
+                      defer defer defer defer defer defer defer defer 
                       apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
                       apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
-                      apply (metis (no_types, hide_lams) not_le s_C_pte wellformed_iGraph two_comp_to_edge_arrlist_heap word_less_nat_alt)
+                      apply (metis (no_types, hide_lams) not_le s_C_pte wellformed_iGraph two_comp_arrlist_heap[where f=to_edge] word_less_nat_alt)
                       apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+                      apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
                       apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+                      apply (metis (no_types, hide_lams) not_le s_C_pte wellformed_iGraph two_comp_arrlist_heap[where f=to_edge] word_less_nat_alt)
                       apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
-                      apply (metis (no_types, hide_lams) not_le s_C_pte wellformed_iGraph two_comp_to_edge_arrlist_heap word_less_nat_alt)
-                      apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
-                      apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+                      apply (rule arrlist_nth, (simp add: uint_nat unat_mono is_cost_def)+)
                       defer
                       defer
                       defer
@@ -591,7 +634,7 @@ lemma just_spc':
                  defer
                  apply simp
                 apply wp
-                apply fast
+                apply fast*)
   sorry
 
 definition no_path_inv :: "IGraph \<Rightarrow> IEInt \<Rightarrow> IEInt \<Rightarrow> 32 word \<Rightarrow> bool" where
