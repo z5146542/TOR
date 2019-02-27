@@ -16,15 +16,8 @@ typedef struct IGraph {
 
 typedef struct EInt {
 	unsigned int val;
-	unsigned int isInf; 
-// isInf is meant to be a boolean value. For enu and dist it flags if they are unreachable
+	unsigned int isInf;
 } EInt;
-
-typedef struct OInt {
-	unsigned int val;
-	unsigned int none; 
-// For pred none used to denote that the parent edge does not exist (i.e. unreachable or source vertex)
-} OInt;
 // Abbreviations
 
 #define ivertex_cnt(g) g->num_vertices
@@ -52,22 +45,19 @@ int trian(IGraph *g, EInt *dist, unsigned int *c) {
 	return 1;
 }
 
-int just(IGraph *g, EInt *dist, unsigned int *c, unsigned int s, EInt *enu, OInt *pred) {
+int just(IGraph *g, EInt *dist, unsigned int *c, unsigned int s, EInt *enu, int *pred) {
 	unsigned int edge_id;
 	for(unsigned int v = 0; v < ivertex_cnt(g); v++) {
-		edge_id = pred[v].val;
+		edge_id = pred[v];
 		if(v != s) {
-		 if (pred[v].none !=0)
-		 {
 			//if(enu[v] >= 0) {
-      if(enu[v].isInf != 0) {
+     if(enu[v].isInf != 0) {
 				if(edge_id >= iedge_cnt(g)) return 0;
 				if(iarcs(g, edge_id).second != v) return 0;
 				if(dist[v].val != dist[iarcs(g, edge_id).first].val + c[edge_id]) return 0;
 				if(enu[v].val != enu[iarcs(g, edge_id).first].val + 1) return 0; // onum
 			}
 		}
-	 }
 	}
 	return 1;
 }
@@ -91,7 +81,7 @@ int no_path(IGraph *g, EInt *dist, EInt *enu) {
 	// return 1;
 // }
 
-int check_basic_just_sp(IGraph *g, EInt *dist, unsigned int *c, unsigned int s, EInt *enu, OInt *pred) {
+int check_basic_just_sp(IGraph *g, EInt *dist, unsigned int *c, unsigned int s, EInt *enu, int *pred) {
 	if(!is_wellformed(g)) return 0;
 	if(dist[s].val != 0)
    { if (dist[s].isInf == 0) return 0; }
@@ -100,7 +90,7 @@ int check_basic_just_sp(IGraph *g, EInt *dist, unsigned int *c, unsigned int s, 
 	return 1;
 }
 
-int check_sp(IGraph *g, EInt *dist, unsigned int *c, unsigned int s, EInt *enu, OInt *pred) {
+int check_sp(IGraph *g, EInt *dist, unsigned int *c, unsigned int s, EInt *enu, int *pred) {
 	if(!check_basic_just_sp(g, dist, c, s, enu, pred)) return 0;
 	if(s >= ivertex_cnt(g)) return 0;
 	if(dist[s].val != 0) return 0;
