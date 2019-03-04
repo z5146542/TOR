@@ -185,7 +185,7 @@ lemma verts_absI[simp]: "verts (abs_IGraph G) = {0..<ivertex_cnt G}"
 definition 
   abs_pedge :: "(32 word \<Rightarrow> 32 word) \<Rightarrow> 32 word \<Rightarrow> 32 word option" 
 where
-  "abs_pedge p \<equiv> (\<lambda>v. if sint (p v) < 0 then None else Some (p v))"
+  "abs_pedge p v \<equiv> if sint (p v) < 0 then None else Some (p v)"
 
 lemma None_abs_pedgeI[simp]: 
   "((abs_pedge p) v = None) = (sint (p v) < 0)"
@@ -466,7 +466,7 @@ lemma trian_spc':
 definition just_inv :: 
   "IGraph \<Rightarrow> IEInt \<Rightarrow> ICost \<Rightarrow> IVertex \<Rightarrow> IEInt \<Rightarrow> IPEdge \<Rightarrow> 32 word \<Rightarrow> bool" where
   "just_inv G d c s n p k \<equiv>
-    \<forall>v < k. v \<noteq> s \<and> \<not> is_inf n v \<longrightarrow>
+    \<forall>v < k. v \<noteq> s \<and> \<not> is_inf n v \<longrightarrow> 0 \<le> sint (p v) \<and>
       (\<exists> e. e = p v \<and> e < iedge_cnt G \<and>
         v = snd (iedges G e) \<and>
         val d v = val d (fst (iedges G e)) + c e \<and>
@@ -475,7 +475,7 @@ definition just_inv ::
 lemma just_inv_step:
   assumes v_less_max: "v < max_word"
   shows "just_inv G d c s n p (v + 1) \<longleftrightarrow> just_inv G d c s n p v
-    \<and> (v \<noteq> s \<and>  \<not> is_inf n v \<longrightarrow>
+    \<and> (v \<noteq> s \<and>  \<not> is_inf n v \<longrightarrow> 0 \<le> sint (p v) \<and>
       (\<exists> e. e = p v \<and> e < iedge_cnt G \<and> 
         v = snd (iedges G e) \<and>
         val d v = val d (fst (iedges G e)) +  c e \<and>
@@ -494,7 +494,7 @@ lemma not_just_verts:
   fixes G R c d n p s v
   assumes v_less_max: "v < max_word"
   assumes "v < ivertex_cnt G"
-  assumes "v \<noteq> s \<and> \<not> is_inf n v \<and>
+  assumes "v \<noteq> s \<and> \<not> is_inf n v \<and> 0 \<le> sint (p v) \<and>
         (iedge_cnt G \<le> p v \<or>
         snd (iedges G (p v)) \<noteq> v \<or> 
         val d v \<noteq> 
@@ -547,15 +547,19 @@ lemma just_spc':
     apply (subst if_bool_eq_conj)+
     apply (simp split: if_split_asm, simp_all add: arrlist_nth) 
     apply (safe)
-                      apply (rule_tac x="vv" in exI)
-                      apply (rule conjI, metis (full_types, hide_lams) isInf_C_pte two_comp_to_eint_arrlist_heap uint_nat, simp)
-                      apply (subgoal_tac "snd (iN vv) = isInf_C (heap_EInt_C s (n +\<^sub>p uint vv))")
-                      (* there is certainly a contradiction to the claim regarding the pedge bounds *) defer
-                      apply (metis isInf_C_def to_eint.simps two_comp_to_eint_arrlist_heap uint_nat)
-
+                      apply (rule_tac x=vv in exI)
+                      apply (rule conjI, metis (no_types, hide_lams) bool.elims(1) is_inf_heap, simp)
                       defer
+                      apply (rule_tac x=vv in exI)
+                      apply (rule conjI, metis (no_types, hide_lams) bool.elims(1) is_inf_heap, simp)
                       defer
+                      apply (rule_tac x=vv in exI)
+                      apply (rule conjI, metis (no_types, hide_lams) bool.elims(1) is_inf_heap, simp)
                       defer
+                      apply (rule_tac x=vv in exI)
+                      apply (rule conjI, metis (no_types, hide_lams) bool.elims(1) is_inf_heap, simp)
+                      defer
+                      apply (metis (no_types, hide_lams) le_step bool.elims(1) is_inf_heap)
                       apply (metis (no_types, hide_lams) le_step bool.simps is_inf_heap)
                       apply (metis (no_types, hide_lams) le_step bool.simps is_inf_heap)
                       apply (metis (no_types, hide_lams) le_step bool.simps is_inf_heap)
@@ -572,29 +576,40 @@ lemma just_spc':
                       apply (metis (no_types, hide_lams) not_le s_C_pte wellformed_iGraph two_comp_to_edge_arrlist_heap word_less_nat_alt)
                       apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
                       apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+                      apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
                       defer
+                      apply (subst heap_ptr_coerce[where l=p and iL=iP])
+                      apply fast
+                      apply (metis le_step wellformed_iGraph)
+                      apply fastforce
                       defer
+                      apply (subst heap_ptr_coerce[where l=p and iL=iP])
+                      apply fast
+                      apply (metis le_step wellformed_iGraph)
+                      apply fastforce
                       defer
                       defer
                       defer
   using inc_le
                       apply blast
                       defer
-                      apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
-                      defer
-  using le_step
-                      apply blast
+                      apply (rule_tac i=" (uint vv)" in arrlist_nth_valid, simp+)
+                      apply (metis uint_nat word_less_def)
+                      apply (rule_tac i=" (uint vv)" in arrlist_nth_valid, simp+)
+                      apply (metis uint_nat word_less_def)
+                      apply (metis (no_types, hide_lams) le_step)
   using le_step
                      apply blast
   using le_step
                     apply blast
   using le_step
                    apply blast
-  using inc_le
+  using le_step
                   apply blast
                  defer
-                 defer
-                 apply simp
+                 defer 
+                 defer 
+                 apply simp          
                 apply wp
                 apply fast
   sorry
