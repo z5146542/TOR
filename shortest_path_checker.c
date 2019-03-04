@@ -48,10 +48,11 @@ int trian(IGraph *g, EInt *dist, unsigned int *c) {
 int just(IGraph *g, EInt *dist, unsigned int *c, unsigned int s, EInt *enu, int *pred) {
 	unsigned int edge_id;
 	for(unsigned int v = 0; v < ivertex_cnt(g); v++) {
-		edge_id = pred[v];
+        // if(pred[v] < 0) return 0;
+	    edge_id = (unsigned int) pred[v];
 		if(v != s) {
-			//if(enu[v] >= 0) {
-     if(enu[v].isInf != 0) {
+            if(enu[v].isInf != 0) {
+                if(pred[v] < 0) return 0;
 				if(edge_id >= iedge_cnt(g)) return 0;
 				if(iarcs(g, edge_id).second != v) return 0;
 				if(dist[v].val != dist[iarcs(g, edge_id).first].val + c[edge_id]) return 0;

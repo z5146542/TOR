@@ -548,6 +548,9 @@ lemma just_spc':
     apply (simp split: if_split_asm, simp_all add: arrlist_nth) 
     apply (safe)
                       apply (rule_tac x=vv in exI)
+                      apply (rule conjI, metis (no_types, lifting) not_le arrlist_heap sint_ucast uint_nat, simp)
+                      defer
+                      apply (rule_tac x=vv in exI)
                       apply (rule conjI, metis (no_types, hide_lams) bool.elims(1) is_inf_heap, simp)
                       defer
                       apply (rule_tac x=vv in exI)
@@ -593,25 +596,24 @@ lemma just_spc':
   using inc_le
                       apply blast
                       defer
-                      apply (rule_tac i=" (uint vv)" in arrlist_nth_valid, simp+)
+                      apply (rule_tac i="(uint vv)" in arrlist_nth_valid, simp+)
                       apply (metis uint_nat word_less_def)
-                      apply (rule_tac i=" (uint vv)" in arrlist_nth_valid, simp+)
+                      apply (rule_tac i="(uint vv)" in arrlist_nth_valid, simp+)
                       apply (metis uint_nat word_less_def)
+                      defer
+                      defer
                       apply (metis (no_types, hide_lams) le_step)
   using le_step
+                      apply blast
+  using le_step
                      apply blast
-  using le_step
+  using inc_le
                     apply blast
-  using le_step
-                   apply blast
-  using le_step
-                  apply blast
-                 defer
-                 defer 
-                 defer 
-                 apply simp          
-                apply wp
-                apply fast
+                   defer
+                   defer 
+                   apply simp        
+                  apply wp
+                  apply fast
   sorry
 
 definition no_path_inv :: "IGraph \<Rightarrow> IEInt \<Rightarrow> IEInt \<Rightarrow> 32 word \<Rightarrow> bool" where
