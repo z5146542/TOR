@@ -7,7 +7,3 @@ IGraph_C
 	num_vertices_C:Word 32
 	arcs_C:Ptr IEdge_C
 
-EInt_C
-	val_C:Word 32
-	isInf_C:Word 32
-

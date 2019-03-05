@@ -51,7 +51,7 @@ int just(IGraph *g, EInt *dist, unsigned int *c, unsigned int s, EInt *enu, int 
         // if(pred[v] < 0) return 0;
 	    edge_id = (unsigned int) pred[v];
 		if(v != s) {
-            if(enu[v].isInf != 0) {
+            if(enu[v].isInf == 0) {
                 if(pred[v] < 0) return 0;
 				if(edge_id >= iedge_cnt(g)) return 0;
 				if(iarcs(g, edge_id).second != v) return 0;
@@ -85,7 +85,7 @@ int no_path(IGraph *g, EInt *dist, EInt *enu) {
 int check_basic_just_sp(IGraph *g, EInt *dist, unsigned int *c, unsigned int s, EInt *enu, int *pred) {
 	if(!is_wellformed(g)) return 0;
 	if(dist[s].val != 0)
-   { if (dist[s].isInf == 0) return 0; }
+        if (dist[s].isInf == 0) return 0;
 	if(!trian(g, dist, c)) return 0;
 	if(!just(g, dist, c, s, enu, pred)) return 0;
 	return 1;
