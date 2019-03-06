@@ -545,7 +545,7 @@ lemma just_spc':
   apply wp
   unfolding is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def just_inv_def
     apply (subst if_bool_eq_conj)+
-    apply (simp split: if_split_asm, simp_all add: arrlist_nth) 
+    apply (simp split: if_split_asm, simp_all add: arrlist_nth)
     apply (safe)
                                         apply (rule_tac x=vv in exI)
                                         apply (rule conjI, metis (no_types, lifting) not_le arrlist_heap sint_ucast uint_nat, simp)
@@ -557,9 +557,11 @@ lemma just_spc':
                                       apply (rule conjI, metis (no_types) head_heap heap_ptr_coerce uint_nat word_zero_le, simp)
                                       apply (metis isInf_C_pte two_comp_to_eint_arrlist_heap uint_nat)
                                      apply (rule_tac x=vv in exI)
-                                     defer
+                                     apply (rule conjI, simp)
+                                      defer
+                                      apply (metis isInf_C_pte two_comp_to_eint_arrlist_heap uint_nat)
                                      apply (rule_tac x=vv in exI)
-                                     apply (rule conjI, metis (no_types) heap_ptr_coerce shortest_path_checker.tail_heap shortest_path_checker.val_heap shortest_path_checker.wellformed_iGraph uint_nat word_zero_le, simp)
+                                     apply (rule conjI, metis (no_types) heap_ptr_coerce tail_heap val_heap wellformed_iGraph uint_nat word_zero_le, simp)
                                      apply (metis isInf_C_pte two_comp_to_eint_arrlist_heap uint_nat)
                                     apply (subgoal_tac "0 \<le> sint (UCAST(32 \<rightarrow> 32 signed) (heap_w32 s (ptr_coerce (p +\<^sub>p int (unat vv))))::32 signed word)")
                                      apply (subgoal_tac "0 \<le> sint (iP v)")
@@ -569,21 +571,32 @@ lemma just_spc':
                                     apply (simp add: uint_nat)
                                    apply (metis (no_types) heap_ptr_coerce le_step not_le uint_nat word_zero_le)
                                   apply (metis (no_types) head_heap heap_ptr_coerce le_step not_le uint_nat word_zero_le)
-                                  defer
-                                  apply (subgoal_tac "\<forall>w. heap_w32 s (ptr_coerce (p +\<^sub>p int (unat w))) = iP w \<or> \<not> w < fst iG")
-                                   apply (subgoal_tac "fst (iN v) = fst (iN (fst (snd (snd iG) (iP v)))) + 1")
-                                    apply blast
-                                   apply (metis (no_types, hide_lams) le_step not_le tail_heap val_heap wellformed_iGraph uint_nat)
-                                  apply (metis heap_ptr_coerce word_zero_le)
-  using inc_le
-                                 apply blast
+                                 apply (subst heap_ptr_coerce[where l=p and iL=iP])
+                                    apply fast
+                                   apply (metis le_step wellformed_iGraph)
+                                  apply fastforce
+                                 apply (subst heap_ptr_coerce[where l=p and iL=iP])
+                                    apply fast
+                                   apply (metis le_step wellformed_iGraph)
+                                  apply fastforce 
+                                 apply (subst arrlist_heap[where l=c and iL=iC])
+                                   apply simp
+                                  apply (metis (no_types) le_step not_le heap_ptr_coerce wellformed_iGraph uint_nat word_zero_le)
                                  defer
-                                 apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
-                                apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
-                               apply (metis (no_types, hide_lams) not_le s_C_pte wellformed_iGraph two_comp_to_edge_arrlist_heap word_less_nat_alt)
+                                 apply (subgoal_tac "\<forall>w. heap_w32 s (ptr_coerce (p +\<^sub>p int (unat w))) = iP w \<or> \<not> w < fst iG")
+                                  apply (subgoal_tac "fst (iN v) = fst (iN (fst (snd (snd iG) (iP v)))) + 1")
+                                   apply blast
+                                  apply (metis (no_types, hide_lams) le_step not_le tail_heap val_heap wellformed_iGraph uint_nat)
+                                 apply (metis heap_ptr_coerce word_zero_le)
+  using inc_le
+                                apply blast
+                               defer
+                               apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
                               apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+                              apply (metis (no_types, hide_lams) not_le s_C_pte wellformed_iGraph two_comp_to_edge_arrlist_heap word_less_nat_alt)
                              apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
                             apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+                           apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
                            apply (metis (no_types, hide_lams) not_le s_C_pte wellformed_iGraph two_comp_to_edge_arrlist_heap word_less_nat_alt)
                           apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
                          apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
@@ -600,12 +613,12 @@ lemma just_spc':
   using is_inf_heap
                       apply blast
                      apply (subst heap_ptr_coerce[where l=p and iL=iP])
-                      apply fast
-                      apply (metis le_step wellformed_iGraph)
+                        apply fast
+                       apply (metis le_step wellformed_iGraph)
                       apply fastforce
                      apply (subgoal_tac "\<not> bool (isInf_C (heap_EInt_C s (n +\<^sub>p uint vv))) \<or> bool (snd (iN vv))")
                       apply (subgoal_tac "v = snd (snd (snd iG) (heap_w32 s (ptr_coerce (p +\<^sub>p int (unat v)))))")
-                      apply metis
+                       apply metis
                       apply (metis (no_types) le_step bool.elims(2) bool.elims(3) heap_ptr_coerce wellformed_iGraph word_zero_le)
   using is_inf_heap 
                      apply blast
@@ -633,6 +646,7 @@ lemma just_spc':
          apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
        apply wp
        apply fast
+
   sorry
 
 definition no_path_inv :: "IGraph \<Rightarrow> IEInt \<Rightarrow> IEInt \<Rightarrow> 32 word \<Rightarrow> bool" where
