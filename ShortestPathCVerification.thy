@@ -31,7 +31,7 @@ thm "check_sp'_def"
 type_synonym IVertex = "32 word"
 type_synonym IEdge_Id = "32 word"
 type_synonym IEdge = "IVertex \<times> IVertex"
-type_synonym IPEdge = "IVertex \<Rightarrow> 32 word"
+type_synonym IPEdge = "IVertex \<Rightarrow> 32 word" 
 type_synonym IEInt = "IVertex \<Rightarrow> (32 word \<times> 32 word)"
 type_synonym ICost = "IVertex \<Rightarrow> 32 word"
 type_synonym IGraph = "32 word \<times> 32 word \<times> (IEdge_Id \<Rightarrow> IEdge)"
@@ -151,7 +151,7 @@ definition
         (map to_eint (mk_inum_list iG iN)) p"
 
 definition
-  "is_pedge h iG iP p \<equiv> arrlist (\<lambda>p. heap_w32 h (ptr_coerce p))
+  "is_pedge h iG iP  (p:: 32 signed word ptr) \<equiv> arrlist (\<lambda>p. heap_w32 h (ptr_coerce p))
         (\<lambda>p. is_valid_w32 h (ptr_coerce p)) (mk_ipedge_list iG iP) p"
 
 definition
@@ -361,7 +361,7 @@ lemma is_wellformed_spc':
         apply blast
        apply (metis two_comp_arrlist_heap s_C_pte le_cases le_step uint_nat word_le_less_eq)
       apply (metis head_heap le_step not_less)
-     apply (simp add: le_step word_not_le)
+     apply (simp add: le_step word_not_le) (* slow *)
   using le_step not_less 
      apply blast
     apply (metis (mono_tags, hide_lams) diff_diff_add diff_self_eq_0 eq_iff_diff_eq_0 measure_unat not_less0 word_less_nat_alt zero_less_diff)
@@ -588,7 +588,7 @@ lemma just_spc':
                                    apply blast
                                   apply (metis (no_types, hide_lams) le_step not_le tail_heap val_heap wellformed_iGraph uint_nat)
                                  apply (metis heap_ptr_coerce word_zero_le)
-  using inc_le
+                                using inc_le
                                 apply blast
                                defer
                                apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
@@ -610,7 +610,7 @@ lemma just_spc':
                        apply (subgoal_tac "heap_w32 s (ptr_coerce (p +\<^sub>p int (unat v))) < num_edges_C (heap_IGraph_C s g)")
                         apply blast
                        apply (metis (no_types) le_step bool.elims(2) bool.elims(3) heap_ptr_coerce wellformed_iGraph word_zero_le)
-  using is_inf_heap
+                      using is_inf_heap
                       apply blast
                      apply (subst heap_ptr_coerce[where l=p and iL=iP])
                         apply fast
@@ -646,6 +646,18 @@ lemma just_spc':
          apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
        apply wp
        apply fast
+      apply (subgoal_tac "fst (iD vv) \<noteq> fst (iD (fst (snd (snd iG) (iP vv)))) + iC (iP vv)")
+       apply blast
+      apply clarsimp
+      apply (erule notE[where R=False and P="val_C _ = val_C _ + _"])
+      apply (frule_tac e=vv in val_heap[where f=iD], simp) (*seperate lemma and C and isabelle dist, and reuse*)
+      defer defer defer
+      apply simp
+ apply (subst unat_mono)
+       apply (case_tac "num_vertices_C (heap_IGraph_C s g) = 0", simp_all)
+apply (case_tac "num_vertices_C (heap_IGraph_C s g) = 1", simp_all)
+  (* if so vv=s [contradiction], else should be fine (prove seperate lemma)*)
+
 
   sorry
 
