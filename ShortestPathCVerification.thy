@@ -562,6 +562,8 @@ proof -
     using a10 a9 a8 a7 a6 a5 a4 a3 a2 by (metis le_step not_le shortest_path_checker.tail_heap shortest_path_checker.wellformed_iGraph uint_nat)
 qed
 
+lemma  word32_minus_comm: "(x:: 32 word) - y - z = x - z - y" by simp
+
 lemma just_spc':
   "\<lbrace> P and 
      (\<lambda>s. wf_digraph (abs_IGraph iG) \<and>
@@ -608,7 +610,10 @@ lemma just_spc':
                                       apply clarsimp
                                       apply (erule notE[where R=False and P="val_C _ = val_C _ + _"])
                                       apply (frule_tac e=vv in val_heap[where f=iD], simp)
-                                      apply (subgoal_tac "iC (iP vv) = heap_w32 s (c +\<^sub>p uint (heap_w32 s (ptr_coerce (p +\<^sub>p uint vv))))", simp add: parent_dist_eq)
+                                      apply (subgoal_tac "iC (iP vv) =
+                                                          heap_w32 s 
+                                                  (c +\<^sub>p uint (heap_w32 s (ptr_coerce (p +\<^sub>p uint vv))))") 
+                                      apply (simp add: parent_dist_eq)
                                       apply (subgoal_tac "iP vv = (heap_w32 s (ptr_coerce (p +\<^sub>p uint vv)))")
                                        apply (subgoal_tac "\<And>w. \<not> w < num_edges_C (heap_IGraph_C s g) \<or> heap_w32 s (c +\<^sub>p uint w) = iC w")
                                         apply (subgoal_tac "\<And>w. \<not> w < num_edges_C (heap_IGraph_C s g) \<or> heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p uint w) = to_edge (snd (snd iG) w)")
@@ -693,17 +698,18 @@ lemma just_spc':
         apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
       apply wp
       apply fast
-     apply (subst heap_ptr_coerce[where l=p and iL=iP])
+     apply (case_tac "v = vv")  
+      apply (subst heap_ptr_coerce[where l=p and iL=iP])
         apply fast
-       apply (metis le_step wellformed_iGraph)
+       apply metis
       apply fastforce
      apply (subst heap_ptr_coerce[where l=p and iL=iP])
         apply fast
-       apply (metis le_step wellformed_iGraph)
+       apply metis
       apply fastforce 
      apply (subst arrlist_heap[where l=c and iL=iC])
        apply simp
-      apply (metis (no_types) le_step not_le heap_ptr_coerce wellformed_iGraph uint_nat word_zero_le)
+      apply (metis (no_types) not_le uint_nat)
      apply clarsimp
      apply (subst tail_heap, blast)+
       apply (simp add: pedge_size)
@@ -713,7 +719,9 @@ lemma just_spc':
      apply (subst val_heap, blast)+
       apply (simp add: first_edge_val)
      apply (simp add: uint_nat)
-     defer
+     apply (subgoal_tac "v < vv")  
+      apply (frule_tac x=v in spec, clarsimp)
+     using le_step apply blast 
      apply simp
      apply (subst unat_mono)
       apply (case_tac "vv = sc", simp_all)
@@ -726,11 +734,23 @@ lemma just_spc':
       apply (metis (mono_tags, hide_lams) add.left_neutral not_le plus_one_helper word_gt_a_gt_0 word_le_less_eq)
      defer
      apply (case_tac "num_vertices_C (heap_IGraph_C s g) > 1") prefer 2
-      apply (metis (mono_tags, hide_lams) add.left_neutral cancel_comm_monoid_add_class.diff_cancel diff_zero not_le plus_one_helper word_gt_a_gt_0 word_le_less_eq word_less_nat_alt)
-    (* if so vv=s [contradiction], else should be fine (prove seperate lemma)*)
-
-
-  sorry
+        apply (metis (mono_tags, hide_lams) add.left_neutral cancel_comm_monoid_add_class.diff_cancel 
+                     diff_zero not_le plus_one_helper word_gt_a_gt_0 word_le_less_eq word_less_nat_alt)
+       apply (rule unat_mono) 
+       apply (subgoal_tac "num_vertices_C (heap_IGraph_C s g) -  sc - 1 < 
+                      num_vertices_C (heap_IGraph_C s g) - sc") 
+        apply (simp add: diff_diff_add)
+       apply (metis add_0_left diff_add_cancel less_irrefl word_overflow)
+apply (subgoal_tac "num_vertices_C (heap_IGraph_C s g) -  vv - 1 < 
+                      num_vertices_C (heap_IGraph_C s g) - vv") 
+        apply (simp add: diff_diff_add)
+      apply (metis add_0_left diff_add_cancel less_irrefl word_overflow)
+      apply (subgoal_tac "num_vertices_C (heap_IGraph_C s g) -  vv - 1 < 
+                      num_vertices_C (heap_IGraph_C s g) - vv") 
+        apply (simp add: diff_diff_add)
+       apply (metis add_0_left diff_add_cancel less_irrefl word_overflow)
+     using diff_diff_add word32_minus_comm  
+     done
 
 definition no_path_inv :: "IGraph \<Rightarrow> IEInt \<Rightarrow> IEInt \<Rightarrow> 32 word \<Rightarrow> bool" where
   "no_path_inv G d n k \<equiv>  \<forall>v < k. (is_inf d v \<longleftrightarrow> is_inf n v)"
