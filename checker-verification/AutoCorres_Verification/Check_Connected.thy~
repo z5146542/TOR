@@ -475,15 +475,15 @@ lemma check_parent_num_spc':
   apply wp
     unfolding is_graph_def is_numm_def is_pedge_def parent_num_assms_inv_def
       apply (subst if_bool_eq_conj)+
-      apply (simp split: if_split_asm, safe, simp_all add: arrlist_nth)  
+      apply (simp split: if_split_asm, safe, simp_all add: arrlist_nth)
                               apply (rule_tac i=" (uint vv)" in arrlist_nth_valid, simp+)
                               apply (metis uint_nat word_less_def)
-                             apply (rule_tac x="unat vv" in exI) 
-                             apply (subgoal_tac "n_C (heap_Graph_C s g) \<le> iN vv") 
-                              apply (metis (hide_lams) word_less_nat_alt 
+                             apply (rule_tac x="unat vv" in exI)
+                             apply (subgoal_tac "n_C (heap_Graph_C s g) \<le> iN vv")
+                              apply (metis (hide_lams) word_less_nat_alt
                               word_not_le word_unat.Rep_inverse)
                              apply (subst pedge_num_heap[where l=n and iL=iN])
-                               apply simp 
+                               apply simp
                               apply simp
                              apply (metis uint_nat)
                             apply (rule_tac i=" (uint vv)" in arrlist_nth_valid)

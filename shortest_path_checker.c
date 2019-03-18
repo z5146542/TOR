@@ -84,8 +84,8 @@ int no_path(IGraph *g, EInt *dist, EInt *enu) {
 
 int check_basic_just_sp(IGraph *g, EInt *dist, unsigned int *c, unsigned int s, EInt *enu, int *pred) {
 	if(!is_wellformed(g)) return 0;
-	if(dist[s].val != 0)
-        if (dist[s].isInf == 0) return 0;
+    if(dist[s].isInf == 0) return 0;
+    if(dist[s].val > 0) return 0;
 	if(!trian(g, dist, c)) return 0;
 	if(!just(g, dist, c, s, enu, pred)) return 0;
 	return 1;

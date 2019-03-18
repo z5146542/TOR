@@ -182,6 +182,16 @@ lemma verts_absI[simp]: "verts (abs_IGraph G) = {0..<ivertex_cnt G}"
   and target_absI[simp]: "head (abs_IGraph G) e = snd (iedges G e)"
   by (auto simp: abs_IGraph_def)
 
+definition
+  abs_dist :: "(32 word \<Rightarrow> (32 word \<times> 32 word)) \<Rightarrow> 32 word \<Rightarrow> ereal"
+where
+  "abs_dist d v \<equiv> if snd (d v) \<noteq> 0 then \<infinity> else ereal (real (unat (fst (d v))))"
+
+definition
+  abs_num :: "(32 word \<Rightarrow> (32 word \<times> 32 word)) \<Rightarrow> 32 word \<Rightarrow> enat"
+where
+  "abs_num n v \<equiv> if snd (n v) \<noteq> 0 then \<infinity> else enat (unat (fst (n v)))"
+
 definition 
   abs_pedge :: "(32 word \<Rightarrow> 32 word) \<Rightarrow> 32 word \<Rightarrow> 32 word option" 
 where
@@ -520,7 +530,7 @@ proof -
   have "\<forall>w. heap_w32 s (ptr_coerce (p +\<^sub>p int (unat w))) = iP w \<or> \<not> w < fst iG"
     using a4 a2 by (metis (no_types) heap_ptr_coerce word_zero_le)
   then show "fst (iD (fst (snd (snd iG) (iP vv)))) = val_C (heap_EInt_C s (d +\<^sub>p uint (first_C (heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p uint (heap_w32 s (ptr_coerce (p +\<^sub>p uint vv))))))))"
-    using a8 a7 a6 a5 a3 a2 a1 by (metis not_le shortest_path_checker.tail_heap shortest_path_checker.val_heap shortest_path_checker.wellformed_iGraph uint_nat)
+    using a8 a7 a6 a5 a3 a2 a1 by (metis not_le tail_heap val_heap wellformed_iGraph uint_nat)
 qed
 
 lemma pedge_size:
@@ -778,7 +788,7 @@ lemma no_path_spc':
             apply blast
            apply (metis (no_types, hide_lams) diff_diff_add eq_iff_diff_eq_0 measure_unat word_not_le)
           apply (rule_tac i="(uint vv)" in arrlist_nth_valid, simp+)
-          apply (simp add:uint_nat word_less_def)
+          apply (simp add: uint_nat word_less_def)
          apply (metis (no_types, hide_lams) bool.simps is_inf_heap)
         apply (metis (no_types, hide_lams) le_step bool.simps is_inf_heap)
        apply (metis (no_types, hide_lams) le_step bool.simps is_inf_heap)
@@ -786,12 +796,42 @@ lemma no_path_spc':
       apply blast
      apply (metis (no_types, hide_lams) diff_diff_add eq_iff_diff_eq_0 measure_unat word_not_le)
     apply (rule_tac i="(uint vv)" in arrlist_nth_valid, simp+)
-    apply (simp add:uint_nat word_less_def)
+    apply (simp add: uint_nat word_less_def)
    apply (rule_tac i="(uint vv)" in arrlist_nth_valid, simp+)
-   apply (simp add:uint_nat word_less_def)
+   apply (simp add: uint_nat word_less_def)
   apply wp
   apply fast
   done
+
+lemma check_basic_just_sp_pred_eq_invariants':
+"\<And>G d c so n p. 
+  basic_just_sp_pred (abs_IGraph iG) (abs_dist iD) (real \<circ> (unat \<circ> iC)) sc (abs_num iN) (abs_pedge iP) = 
+    (wf_digraph (abs_IGraph G) \<and>
+    snd (d so) \<noteq> 0 \<and>
+    fst (d so) = 0 \<and>
+    trian_inv G d c (ivertex_cnt G) \<and>
+    just_inv G d c so n p (ivertex_cnt G))"
+  
+  sorry
+
+lemma check_basic_just_sp_spc:
+  "\<lbrace> P and 
+     (\<lambda>s. wf_digraph (abs_IGraph iG) \<and>
+          is_graph s iG g \<and>
+          is_dist s iG iD d \<and>
+          is_cost s iG iC c \<and>
+          sc < ivertex_cnt iG \<and>
+          is_numm s iG iN n \<and>
+          is_pedge s iG iP p)\<rbrace>
+   check_basic_just_sp' g d c sc n p
+   \<lbrace> (\<lambda>_ s. P s) And 
+     (\<lambda>rr s. rr \<noteq> 0 \<longleftrightarrow> 
+       basic_just_sp_pred (abs_IGraph iG) (abs_dist iD) (real \<circ> (unat \<circ> iC)) sc (abs_num iN) (abs_pedge iP))\<rbrace>!"
+  apply (clarsimp simp: check_basic_just_sp'_def)
+  apply (clarsimp simp: check_basic_just_sp_pred_eq_invariants')
+  apply wp
+  sorry
+
 
 end
 

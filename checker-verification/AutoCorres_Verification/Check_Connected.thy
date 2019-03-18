@@ -754,8 +754,8 @@ lemma check_connected_spc:
   \<lbrace> (\<lambda>_ s. P s) And 
     (\<lambda>rr s. rr \<noteq> 0 \<longleftrightarrow> 
       connected_components_locale (abs_IGraph iG) (unat \<circ>  iN) (abs_pedge iP) r) \<rbrace>!"
-  apply (clarsimp simp: check_connected'_def 
-  connected_components_locale_eq_invariants')
+  apply (clarsimp simp: check_connected'_def)
+  apply (clarsimp simp: connected_components_locale_eq_invariants')
   apply wp
   apply (rule_tac P1=" P and 
     (\<lambda>s. wf_digraph (abs_IGraph iG) \<and> 
