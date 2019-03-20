@@ -2,7 +2,6 @@
 theory ShortestPathCVerification
   imports 
   "checker-verification/Library/Autocorres_Misc"
-  "checker-verification/Witness_Property/Connected_Components"
   "checker-verification/Witness_Property/ShortestPath"
 begin
 (* Parse the input file. *)
@@ -183,28 +182,34 @@ lemma verts_absI[simp]: "verts (abs_IGraph G) = {0..<ivertex_cnt G}"
   by (auto simp: abs_IGraph_def)
 
 definition
-  abs_dist :: "(32 word \<Rightarrow> (32 word \<times> 32 word)) \<Rightarrow> 32 word \<Rightarrow> ereal"
+  abs_ICost :: "(IEdge_Id \<Rightarrow> 32 word) \<Rightarrow> IEdge_Id \<Rightarrow> real"
 where
-  "abs_dist d v \<equiv> if snd (d v) \<noteq> 0 then \<infinity> else ereal (real (unat (fst (d v))))"
+  "abs_ICost c e \<equiv> real (unat (c e))"
 
 definition
-  abs_num :: "(32 word \<Rightarrow> (32 word \<times> 32 word)) \<Rightarrow> 32 word \<Rightarrow> enat"
+  abs_IDist :: "(32 word \<Rightarrow> (32 word \<times> 32 word)) \<Rightarrow> 32 word \<Rightarrow> ereal"
 where
-  "abs_num n v \<equiv> if snd (n v) \<noteq> 0 then \<infinity> else enat (unat (fst (n v)))"
+  "abs_IDist d v \<equiv> if snd (d v) \<noteq> 0 then \<infinity> else 
+         ereal (real (unat (fst (d v))))"
+
+definition
+  abs_INum :: "(32 word \<Rightarrow> (32 word \<times> 32 word)) \<Rightarrow> 32 word \<Rightarrow> enat"
+where
+  "abs_INum n v \<equiv> if snd (n v) \<noteq> 0 then \<infinity> else enat (unat (fst (n v)))"
 
 definition 
-  abs_pedge :: "(32 word \<Rightarrow> 32 word) \<Rightarrow> 32 word \<Rightarrow> 32 word option" 
+  abs_IPedge :: "(32 word \<Rightarrow> 32 word) \<Rightarrow> 32 word \<Rightarrow> 32 word option" 
 where
-  "abs_pedge p v \<equiv> if sint (p v) < 0 then None else Some (p v)"
+  "abs_IPedge p v \<equiv> if sint (p v) < 0 then None else Some (p v)"
 
 lemma None_abs_pedgeI[simp]: 
-  "((abs_pedge p) v = None) = (sint (p v) < 0)"
-  using abs_pedge_def by auto
+  "((abs_IPedge p) v = None) = (sint (p v) < 0)"
+  using abs_IPedge_def by auto
 
 lemma Some_abs_pedgeI[simp]: 
-  "(\<exists>e. (abs_pedge p) v = Some e) = (sint (p v) \<ge> 0)"
+  "(\<exists>e. (abs_IPedge p) v = Some e) = (sint (p v) \<ge> 0)"
   using None_not_eq None_abs_pedgeI 
-  by (metis abs_pedge_def linorder_not_le option.simps(3))
+  by (metis abs_IPedge_def linorder_not_le option.simps(3))
     
 (*Helper Lemmas*)
 
@@ -803,15 +808,43 @@ lemma no_path_spc':
   apply fast
   done
 
+print_locale shortest_path_pos_cost_pred
+
+lemma wf_inv_is_wf_digraph:
+  "wf_digraph (abs_IGraph G) = is_wellformed_inv G (ivertex_cnt G)"
+  apply (rule iffI)
+  unfolding is_wellformed_inv_def
+   apply clarsimp
+
+  apply (frule_tac  wellformed_iGraph)
+  oops
+
+lemma shortest_path_pos_cost_pred_locale_eq_invariants:
+"\<And>G dist c s num pred. 
+  (shortest_path_pos_cost_pred (abs_IGraph G) (abs_IDist dist) (abs_ICost c) s (abs_INum num) (abs_IPedge pred)) = 
+    (wf_digraph (abs_IGraph G) \<and> 
+    trian_inv G dist c (ivertex_cnt G) \<and> 
+    just_inv G dist c s num pred (ivertex_cnt G) \<and> 
+    no_path_inv G dist num (ivertex_cnt G))" 
+  oops
+(*
+ basic_just_sp_pred +
+  assumes s_in_G: "s \<in> verts G"
+  assumes tail_val: "dist s = 0"
+  assumes no_path: "\<And>v. v \<in> verts G \<Longrightarrow> dist v = \<infinity> \<longleftrightarrow> num v = \<infinity>"
+  assumes pos_cost: "\<And>e. e \<in> arcs G \<Longrightarrow> 0 \<le> c e"
+*)
+
 lemma check_basic_just_sp_pred_eq_invariants':
 "\<And>G d c so n p. 
-  basic_just_sp_pred (abs_IGraph iG) (abs_dist iD) (real \<circ> (unat \<circ> iC)) sc (abs_num iN) (abs_pedge iP) = 
+  basic_just_sp_pred (abs_IGraph iG) (abs_IDist iD) (real \<circ> (unat \<circ> iC)) sc (abs_INum iN) (abs_IPedge iP) = 
     (wf_digraph (abs_IGraph G) \<and>
     snd (d so) \<noteq> 0 \<and>
     fst (d so) = 0 \<and>
     trian_inv G d c (ivertex_cnt G) \<and>
     just_inv G d c so n p (ivertex_cnt G))"
-  
+   apply (clarsimp simp: check_basic_just_sp'_def basic_just_sp_pred_def basic_just_sp_pred_axioms_def)
+ 
   sorry
 
 lemma check_basic_just_sp_spc:
@@ -826,8 +859,8 @@ lemma check_basic_just_sp_spc:
    check_basic_just_sp' g d c sc n p
    \<lbrace> (\<lambda>_ s. P s) And 
      (\<lambda>rr s. rr \<noteq> 0 \<longleftrightarrow> 
-       basic_just_sp_pred (abs_IGraph iG) (abs_dist iD) (real \<circ> (unat \<circ> iC)) sc (abs_num iN) (abs_pedge iP))\<rbrace>!"
-  apply (clarsimp simp: check_basic_just_sp'_def)
+       basic_just_sp_pred (abs_IGraph iG) (abs_IDist iD) (abs_ICost iC) sc (abs_INum iN) (abs_IPedge iP))\<rbrace>!"
+  apply (clarsimp simp: check_basic_just_sp'_def basic_just_sp_pred_def basic_just_sp_pred_axioms_def)
   apply (clarsimp simp: check_basic_just_sp_pred_eq_invariants')
   apply wp
   sorry
