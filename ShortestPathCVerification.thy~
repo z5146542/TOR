@@ -2,7 +2,6 @@
 theory ShortestPathCVerification
   imports 
   "checker-verification/Library/Autocorres_Misc"
-  "checker-verification/Witness_Property/Connected_Components"
   "checker-verification/Witness_Property/ShortestPath"
 begin
 (* Parse the input file. *)
@@ -182,19 +181,35 @@ lemma verts_absI[simp]: "verts (abs_IGraph G) = {0..<ivertex_cnt G}"
   and target_absI[simp]: "head (abs_IGraph G) e = snd (iedges G e)"
   by (auto simp: abs_IGraph_def)
 
-definition 
-  abs_pedge :: "(32 word \<Rightarrow> 32 word) \<Rightarrow> 32 word \<Rightarrow> 32 word option" 
+definition
+  abs_ICost :: "(IEdge_Id \<Rightarrow> 32 word) \<Rightarrow> IEdge_Id \<Rightarrow> real"
 where
-  "abs_pedge p v \<equiv> if sint (p v) < 0 then None else Some (p v)"
+  "abs_ICost c e \<equiv> real (unat (c e))"
+
+definition
+  abs_IDist :: "(32 word \<Rightarrow> (32 word \<times> 32 word)) \<Rightarrow> 32 word \<Rightarrow> ereal"
+where
+  "abs_IDist d v \<equiv> if snd (d v) \<noteq> 0 then \<infinity> else 
+         ereal (real (unat (fst (d v))))"
+
+definition
+  abs_INum :: "(32 word \<Rightarrow> (32 word \<times> 32 word)) \<Rightarrow> 32 word \<Rightarrow> enat"
+where
+  "abs_INum n v \<equiv> if snd (n v) \<noteq> 0 then \<infinity> else enat (unat (fst (n v)))"
+
+definition 
+  abs_IPedge :: "(32 word \<Rightarrow> 32 word) \<Rightarrow> 32 word \<Rightarrow> 32 word option" 
+where
+  "abs_IPedge p v \<equiv> if sint (p v) < 0 then None else Some (p v)"
 
 lemma None_abs_pedgeI[simp]: 
-  "((abs_pedge p) v = None) = (sint (p v) < 0)"
-  using abs_pedge_def by auto
+  "((abs_IPedge p) v = None) = (sint (p v) < 0)"
+  using abs_IPedge_def by auto
 
 lemma Some_abs_pedgeI[simp]: 
-  "(\<exists>e. (abs_pedge p) v = Some e) = (sint (p v) \<ge> 0)"
+  "(\<exists>e. (abs_IPedge p) v = Some e) = (sint (p v) \<ge> 0)"
   using None_not_eq None_abs_pedgeI 
-  by (metis abs_pedge_def linorder_not_le option.simps(3))
+  by (metis abs_IPedge_def linorder_not_le option.simps(3))
     
 (*Helper Lemmas*)
 
@@ -322,7 +337,7 @@ thm "is_wellformed'_def"
 
 definition is_wellformed_inv :: "IGraph \<Rightarrow> 32 word \<Rightarrow> bool" where
   "is_wellformed_inv G i \<equiv> \<forall>k < i. ivertex_cnt G > fst (iedges G k)
-        \<and> ivertex_cnt G > snd (iedges G k)"
+                                 \<and> ivertex_cnt G > snd (iedges G k)"
 
 lemma is_wellformed_spc':
   "\<lbrace> P and 
@@ -520,7 +535,7 @@ proof -
   have "\<forall>w. heap_w32 s (ptr_coerce (p +\<^sub>p int (unat w))) = iP w \<or> \<not> w < fst iG"
     using a4 a2 by (metis (no_types) heap_ptr_coerce word_zero_le)
   then show "fst (iD (fst (snd (snd iG) (iP vv)))) = val_C (heap_EInt_C s (d +\<^sub>p uint (first_C (heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p uint (heap_w32 s (ptr_coerce (p +\<^sub>p uint vv))))))))"
-    using a8 a7 a6 a5 a3 a2 a1 by (metis not_le shortest_path_checker.tail_heap shortest_path_checker.val_heap shortest_path_checker.wellformed_iGraph uint_nat)
+    using a8 a7 a6 a5 a3 a2 a1 by (metis not_le tail_heap val_heap wellformed_iGraph uint_nat)
 qed
 
 lemma pedge_size:
@@ -778,7 +793,7 @@ lemma no_path_spc':
             apply blast
            apply (metis (no_types, hide_lams) diff_diff_add eq_iff_diff_eq_0 measure_unat word_not_le)
           apply (rule_tac i="(uint vv)" in arrlist_nth_valid, simp+)
-          apply (simp add:uint_nat word_less_def)
+          apply (simp add: uint_nat word_less_def)
          apply (metis (no_types, hide_lams) bool.simps is_inf_heap)
         apply (metis (no_types, hide_lams) le_step bool.simps is_inf_heap)
        apply (metis (no_types, hide_lams) le_step bool.simps is_inf_heap)
@@ -786,12 +801,70 @@ lemma no_path_spc':
       apply blast
      apply (metis (no_types, hide_lams) diff_diff_add eq_iff_diff_eq_0 measure_unat word_not_le)
     apply (rule_tac i="(uint vv)" in arrlist_nth_valid, simp+)
-    apply (simp add:uint_nat word_less_def)
+    apply (simp add: uint_nat word_less_def)
    apply (rule_tac i="(uint vv)" in arrlist_nth_valid, simp+)
-   apply (simp add:uint_nat word_less_def)
+   apply (simp add: uint_nat word_less_def)
   apply wp
   apply fast
   done
+
+lemma wf_inv_is_wf_digraph:
+  "wf_digraph (abs_IGraph G) = is_wellformed_inv G (ivertex_cnt G)"
+  apply (rule iffI)
+  unfolding is_wellformed_inv_def
+   apply clarsimp
+   apply (frule wellformed_iGraph)
+    
+  oops
+
+lemma shortest_path_pos_cost_pred_eq_invariants':
+"\<And>G d c sc n p. 
+  (shortest_path_pos_cost_pred (abs_IGraph G) (abs_IDist d) (abs_ICost c) sc (abs_INum n) (abs_IPedge p)) = 
+    (wf_digraph (abs_IGraph G) \<and> 
+    trian_inv G d c (ivertex_cnt G) \<and> 
+    just_inv G d c sc n p (ivertex_cnt G) \<and> 
+    no_path_inv G d n (ivertex_cnt G))"
+  sorry
+
+lemma check_shortest_path_pos_cost_pred_spc:
+  "\<lbrace> P and 
+     (\<lambda>s. wf_digraph (abs_IGraph iG) \<and>
+          is_graph s iG g \<and>
+          is_dist s iG iD d \<and>
+          is_cost s iG iC c \<and>
+          sc < ivertex_cnt iG \<and>
+          is_numm s iG iN n \<and>
+          is_pedge s iG iP p)\<rbrace>
+   check_basic_just_sp' g d c sc n p
+   \<lbrace> (\<lambda>_ s. P s) And 
+     (\<lambda>rr s. rr \<noteq> 0 \<longleftrightarrow> 
+       shortest_path_pos_cost_pred (abs_IGraph iG) (abs_IDist iD) (abs_ICost iC) sc (abs_INum iN) (abs_IPedge iP))\<rbrace>!"
+  apply (clarsimp simp: check_basic_just_sp'_def)
+  apply (clarsimp simp: shortest_path_pos_cost_pred_eq_invariants')
+  apply wp
+  apply (rule_tac P1=" P and 
+    (\<lambda>s. wf_digraph (abs_IGraph iG) \<and> 
+         is_graph s iG g \<and>
+         is_dist s iG iD d \<and>
+         is_cost s iG iC c \<and>
+         sc < ivertex_cnt iG \<and> 
+         is_numm s iG iN n \<and> 
+         is_pedge s iG iP p)" 
+     in validNF_post_imp[OF _ just_spc'])
+     apply clarsimp
+     defer
+     apply (rule_tac P1=" P and 
+    (\<lambda>s. wf_digraph (abs_IGraph iG) \<and> 
+         is_graph s iG g \<and>
+         is_dist s iG iD d \<and>
+         is_cost s iG iC c)" 
+     in validNF_post_imp[OF _ trian_spc'])
+     apply clarsimp
+     defer
+     apply wp
+    apply clarsimp
+  sorry
+
 
 end
 
