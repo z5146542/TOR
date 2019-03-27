@@ -189,7 +189,7 @@ where
 definition
   abs_IDist :: "(32 word \<Rightarrow> (32 word \<times> 32 word)) \<Rightarrow> 32 word \<Rightarrow> ereal"
 where
-  "abs_IDist d v \<equiv> if snd (d v) \<noteq> 0 then \<infinity> else 
+  "abs_IDist d v \<equiv> if snd (d v) \<noteq> 0 then PInfty else 
          ereal (real (unat (fst (d v))))"
 
 definition
@@ -808,17 +808,80 @@ lemma no_path_spc':
   apply fast
   done
 
-lemma wf_inv_is_wf_digraph:
-  "wf_digraph (abs_IGraph G) = is_wellformed_inv G (iedge_cnt G)"
-  apply (rule iffI)
-  unfolding is_wellformed_inv_def
-   apply clarsimp
-   apply (rule conjI)
-  using wellformed_iGraph
-    apply blast+
-  unfolding wf_digraph_def
-  apply force
-  done
+lemma wf_inv_is_fin_digraph: 
+   "fin_digraph (abs_IGraph G) \<longleftrightarrow> is_wellformed_inv G (iedge_cnt G)"
+    unfolding is_wellformed_inv_def fin_digraph_def fin_digraph_axioms_def
+      wf_digraph_def no_loops_def 
+      by auto
+
+
+
+lemma of_nat_unat_word32:
+(* Quickcheck found a counter example x=1, y=1,z=1 *)
+ "\<And> x y z :: word32.
+      x \<le> y + z \<Longrightarrow>
+     of_nat (unat x) \<le> of_nat (unat y)+ of_nat (unat z)"
+  oops
+  
+
+lemma real_unat_word32: 
+
+ "\<And> x y z :: word32.
+      x \<le> y + z \<Longrightarrow>
+     real (unat x) \<le> real (unat y)+ real (unat z)"
+  oops
+
+lemma basic_just_sp_eq_invariants:
+"\<And>G dist c s enum pred. 
+  basic_just_sp_pred 
+      (abs_IGraph G) (abs_IDist dist) 
+      (abs_ICost c) s (abs_INum enum) (abs_IPedge pred) \<longleftrightarrow> 
+    (is_wellformed_inv G (iedge_cnt G) \<and> 
+    (abs_IDist dist) s \<le> 0 \<and> 
+    trian_inv G dist c (iedge_cnt G) \<and> 
+    just_inv G dist c s enum pred (ivertex_cnt G))"
+proof -
+  fix G d c s n p 
+  let ?aG = "abs_IGraph G"
+  let ?ad = "abs_IDist d"
+  let ?ac = "abs_ICost c"
+  let ?an = "abs_INum n"  
+  let ?ap = "abs_IPedge p"
+  have "fin_digraph (abs_IGraph G) \<longleftrightarrow> is_wellformed_inv G (iedge_cnt G)"
+    unfolding is_wellformed_inv_def fin_digraph_def fin_digraph_axioms_def
+      wf_digraph_def no_loops_def 
+      by auto
+    moreover
+  have "trian_inv G d c (iedge_cnt G) = 
+    (\<forall>e. e \<in> arcs (abs_IGraph G) \<longrightarrow> 
+   (?ad (head ?aG e) \<le> ?ad (tail ?aG e) + ereal (?ac e)))"
+    apply (simp add: trian_inv_def abs_IDist_def abs_ICost_def) 
+    apply (rule iffI; clarsimp)
+     apply (case_tac "snd (d (fst (snd (snd G) e))) = 0", simp_all)
+     apply (case_tac "snd (d (snd (snd (snd G) e))) = 0", clarsimp)
+      apply (erule_tac x=e in allE, clarsimp) 
+    thm word_unat.Rep_inverse
+    find_theorems "of_nat (unat _)"
+     
+    sorry
+moreover
+  have "just_inv  G d c s n p (ivertex_cnt G) =
+    (\<forall>v. v \<in> verts ?aG \<longrightarrow>
+      v \<noteq> s \<longrightarrow> n v \<noteq> \<infinity> \<longrightarrow> 
+      (\<exists>e\<in>arcs ?aG. e = the (p v) \<and>
+      v = head ?aG e \<and> 
+      d v = d (tail ?aG e) + ereal (c e) \<and> 
+     n v = n (tail ?aG e) + enat 1))"
+      unfolding just_inv_def by fastforce
+ultimately
+   show "?thesis G d c s n p"
+   unfolding 
+    basic_just_sp_pred_def 
+    basic_just_sp_pred_axioms_def 
+    basic_sp_def basic_sp_axioms_def
+   by presburger
+qed
+
 
 lemma shortest_path_pos_cost_pred_num_eq_invariants':
 "\<And>G d c sc n p. 
@@ -838,6 +901,8 @@ proof -
   let ?is_src = "sc \<in> verts ?aG \<and> ?ap sc = None \<and> ?an sc = 0"
   let ?wf = "wf_digraph ?aG"
   oops
+
+
 
 lemma shortest_path_pos_cost_pred_eq_invariants':
 "\<And>G d c sc n p. 

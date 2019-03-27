@@ -86,26 +86,6 @@ int just(IGraph *g, EInt *dist, int *c, unsigned int s, EInt *onum, int *pred) {
 	return 1; 
 }
 
-int no_path(IGraph *g, EInt *dist, EInt *onum) {
-	for(unsigned int v = 0; v < vertex_cnt(g); v++) {
-		if(dist[v].isInf > 0) {
-			if(onum[v].isInf == 0) return 0;
-		}
-		else {
-			if(onum[v].isInf != 0) return 0;
-		}
-	}
-	return 1;
-}
-
-//int pos_cost(IGraph *g, int *c) {
-//	Edge_Id edge_id;
-//	for(edge_id = 0; edge_id < edge_cnt(g); edge_id++) {
-//		if(c[edge_id] < 0) return 0;
-//	}
-//	return 1;
-//}
-
 int check_basic_just_sp(IGraph *g, EInt *dist, int *c, unsigned int s, EInt *onum, int *pred) {
 	if(!is_wellformed(g)) return 0;
 	if(dist[s].isInf > 0) return 0;
@@ -114,16 +94,6 @@ int check_basic_just_sp(IGraph *g, EInt *dist, int *c, unsigned int s, EInt *onu
 	if(!just(g, dist, c, s, onum, pred)) return 0;
 	return 1;
 }
-
-//int check_sp(Graph *g, Dist *dist, Cost *c, Vertex s, Num *onum, PEdge *pred) {
-//	if(!check_basic_just_sp(g, dist, c, s, onum, pred)) return 0;
-//	if(s >= vertex_cnt(g)) return 0;
-//	if(dist[s].isInf != 0) return 0;
-//	if(dist[s].val != 0) return 0;
-//	if(!no_path(g, dist, onum)) return 0;
-//	//if(!pos_cost(g, c)) return 0;
-//	return 1;
-//}
 
 // the folloiwng are for the general-weight edge shrotest path
 
