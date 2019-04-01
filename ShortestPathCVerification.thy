@@ -838,7 +838,7 @@ lemma wf_inv_is_fin_digraph:
   find_theorems "unat _ \<le> unat _"
 
 lemma unat_simp: "unat x + unat y = unat (x + y)" (*should oops instead of sorry*)
-  oops
+  sorry
 
 lemma unat_trian:
   fixes e :: "32 word"
@@ -935,7 +935,15 @@ proof -
       apply blast
      apply (erule_tac x=e in allE; clarsimp)
      defer
-     apply (erule_tac x=i in allE; clarsimp)
+     apply (case_tac "snd (d (fst (snd (snd G) i))) = 0")
+      apply (case_tac "snd (d (snd (snd (snd G) i))) = 0")
+       apply (erule_tac x=i in allE; clarsimp)
+      (* warning *)
+       apply (metis (no_types, hide_lams) of_nat_add of_nat_le_iff shortest_path_checker.unat_simp word_le_nat_alt)
+      apply (erule_tac x=i in allE; clarsimp)
+
+    
+
     sorry
 moreover
   have "just_inv  G d c s n p (ivertex_cnt G) =
