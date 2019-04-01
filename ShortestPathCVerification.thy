@@ -162,6 +162,27 @@ definition
 definition 
   "is_cost h iG iC p \<equiv> arrlist (heap_w32 h) (is_valid_w32 h) (mk_icost_list iG iC) p"
 
+(* Lemmas for unat and of_nat *)
+lemma eq_of_nat_conv:
+  assumes "unat w1 = n"
+  shows "w2 = of_nat n \<longleftrightarrow> w2 = w1"
+  using assms by auto
+
+(* More Lemmas for unat and of_nat *)
+lemma less_unat_plus1: 
+  assumes "a < unat (b + 1)"
+  shows "a < unat b \<or> a = unat b"
+  apply (subgoal_tac  "b + 1 \<noteq> 0 ")
+  using assms unat_minus_one add_diff_cancel 
+  by fastforce+
+
+lemma unat_minus_plus1_less:
+  fixes a b
+  assumes "a < b"
+  shows "unat (b - (a + 1)) < unat (b - a)"
+  by (metis (no_types) ab_semigroup_add_class.add_ac(1) right_minus_eq measure_unat
+      add_diff_cancel2 assms is_num_normalize(1) zadd_diff_inverse linorder_neq_iff)
+
 (* Abstract Graph *)
 
 definition 
@@ -812,24 +833,74 @@ lemma wf_inv_is_fin_digraph:
    "fin_digraph (abs_IGraph G) \<longleftrightarrow> is_wellformed_inv G (iedge_cnt G)"
     unfolding is_wellformed_inv_def fin_digraph_def fin_digraph_axioms_def
       wf_digraph_def no_loops_def 
-      by auto
+    by auto
 
+  find_theorems "unat _ \<le> unat _"
 
-
-lemma of_nat_unat_word32:
-(* Quickcheck found a counter example x=1, y=1,z=1 *)
- "\<And> x y z :: word32.
-      x \<le> y + z \<Longrightarrow>
-     of_nat (unat x) \<le> of_nat (unat y)+ of_nat (unat z)"
+lemma unat_simp: "unat x + unat y = unat (x + y)" (*should oops instead of sorry*)
   oops
-  
 
-lemma real_unat_word32: 
+lemma unat_trian:
+  fixes e :: "32 word"
+  assumes a1: "fst (d (snd (snd (snd G) e))) \<le> fst (d (fst (snd (snd G) e))) + c e"
+  shows "unat (fst (d (snd (snd (snd G) e)))) \<le> unat (fst (d (fst (snd (snd G) e)))) + unat (c e)"
+proof -
+  have f2: "\<forall>n na nb. (nb::nat) \<le> na + n \<or> \<not> nb \<le> na"
+    using add_increasing2 by blast
+  have f3: "unat (fst (d (snd (snd (snd G) e)))) \<le> unat (fst (d (fst (snd (snd G) e))) + c e)"
+    using a1 by (meson word_le_nat_alt)
+  have "\<forall>w wa. unat (wa::32 word) + unat w = unat (wa + w) \<or> \<not> unat wa \<le> unat (wa + w)"
+    by (metis unat_plus_simple word_le_nat_alt)
+  then show "unat (fst (d (snd (snd (snd G) e)))) \<le> unat (fst (d (fst (snd (snd G) e)))) + unat (c e)"
+    using f3 f2
+  proof -
+    have f1: "unat (c e) = (if unat (fst (d (fst (snd (snd G) e)))) \<le> unat (fst (d (fst (snd (snd G) e))) + c e) then unat (fst (d (fst (snd (snd G) e))) + c e) - unat (fst (d (fst (snd (snd G) e)))) else unat (fst (d (fst (snd (snd G) e))) + c e) + 2 ^ size (fst (d (fst (snd (snd G) e))) + c e) - unat (fst (d (fst (snd (snd G) e)))))"
+      by (metis (no_types) add_diff_cancel_left' unat_sub_if_size)
+    obtain nn :: "nat \<Rightarrow> nat \<Rightarrow> nat" where
+      f2: "\<forall>x0 x1. (\<exists>v2. x0 = x1 + v2) = (x0 = x1 + nn x0 x1)"
+      by moura
+    { assume "\<not> unat (fst (d (snd (snd (snd G) e)))) \<le> unat (fst (d (fst (snd (snd G) e)))) + unat (c e)"
+      then have "unat (fst (d (snd (snd (snd G) e)))) + nn (unat (fst (d (fst (snd (snd G) e))) + c e)) (unat (fst (d (snd (snd (snd G) e))))) \<noteq> unat (fst (d (fst (snd (snd G) e)))) + nn (unat (fst (d (snd (snd (snd G) e)))) + nn (unat (fst (d (fst (snd (snd G) e))) + c e)) (unat (fst (d (snd (snd (snd G) e)))))) (unat (fst (d (fst (snd (snd G) e))))) \<or> \<not> unat (fst (d (fst (snd (snd G) e)))) \<le> unat (fst (d (fst (snd (snd G) e)))) + unat (c e) + nn (unat (fst (d (snd (snd (snd G) e))))) (unat (fst (d (fst (snd (snd G) e)))) + unat (c e)) \<or> unat (fst (d (snd (snd (snd G) e)))) \<noteq> unat (fst (d (fst (snd (snd G) e)))) + unat (c e) + nn (unat (fst (d (snd (snd (snd G) e))))) (unat (fst (d (fst (snd (snd G) e)))) + unat (c e))"
+        using f1 f3 by force
+      then have ?thesis
+        using f2 by (meson add_leE le_Suc_ex le_cases) }
+    then show ?thesis
+      by blast
+  qed
+qed
 
- "\<And> x y z :: word32.
-      x \<le> y + z \<Longrightarrow>
-     real (unat x) \<le> real (unat y)+ real (unat z)"
-  oops
+lemma real_trian:
+  fixes e :: "32 word"
+  assumes a1: "fst (d (snd (snd (snd G) e))) \<le> fst (d (fst (snd (snd G) e))) + c e"
+  shows "real (unat (fst (d (snd (snd (snd G) e))))) \<le> real (unat (fst (d (fst (snd (snd G) e))))) + real (unat (c e))"
+  using assms unat_trian by fastforce
+
+lemma real_to_unat_trian:
+  fixes e :: "32 word"
+  assumes a1: "real (unat (fst (d (snd (snd (snd G) e))))) \<le> real (unat (fst (d (fst (snd (snd G) e))))) + real (unat (c e))"
+  shows "unat (fst (d (snd (snd (snd G) e)))) \<le> unat (fst (d (fst (snd (snd G) e)))) + unat (c e)"
+  using assms by linarith
+
+lemma unat_to_orig_trian_alt:
+  fixes e :: "32 word"
+  assumes a1: "unat (fst (d (snd (snd (snd G) e)))) \<le> unat (fst (d (fst (snd (snd G) e))) + c e)"
+  shows "fst (d (snd (snd (snd G) e))) \<le> fst (d (fst (snd (snd G) e))) + c e"
+  by (simp add: assms word_le_nat_alt)
+
+lemma unat_to_orig_trian:
+  fixes e :: "32 word"
+  assumes a1: "unat (fst (d (snd (snd (snd G) e)))) \<le> unat (fst (d (fst (snd (snd G) e)))) + unat (c e)"
+  shows "fst (d (snd (snd (snd G) e))) \<le> fst (d (fst (snd (snd G) e))) + c e"
+  (* warning *)
+  by (metis assms unat_simp word_le_nat_alt)
+
+lemma real_to_orig_trian:
+  fixes e :: "32 word"
+  assumes a1: "real (unat (fst (d (snd (snd (snd G) e))))) \<le> real (unat (fst (d (fst (snd (snd G) e))))) + real (unat (c e))"
+  shows "fst (d (snd (snd (snd G) e))) \<le> fst (d (fst (snd (snd G) e))) + c e"
+  (* warning *)
+  by (metis (no_types, hide_lams) assms of_nat_add of_nat_le_iff unat_simp word_le_nat_alt)
+
 
 lemma basic_just_sp_eq_invariants:
 "\<And>G dist c s enum pred. 
@@ -853,26 +924,30 @@ proof -
       by auto
     moreover
   have "trian_inv G d c (iedge_cnt G) = 
-    (\<forall>e. e \<in> arcs (abs_IGraph G) \<longrightarrow> 
+    (\<forall>e. e \<in> arcs ?aG \<longrightarrow> 
    (?ad (head ?aG e) \<le> ?ad (tail ?aG e) + ereal (?ac e)))"
     apply (simp add: trian_inv_def abs_IDist_def abs_ICost_def) 
     apply (rule iffI; clarsimp)
      apply (case_tac "snd (d (fst (snd (snd G) e))) = 0", simp_all)
      apply (case_tac "snd (d (snd (snd (snd G) e))) = 0", clarsimp)
-      apply (erule_tac x=e in allE, clarsimp) 
-    thm word_unat.Rep_inverse
-    find_theorems "of_nat (unat _)"
-     
+      apply (erule_tac x=e in allE, clarsimp)
+    using real_trian
+      apply blast
+     apply (erule_tac x=e in allE; clarsimp)
+     defer
+     apply (erule_tac x=i in allE; clarsimp)
     sorry
 moreover
   have "just_inv  G d c s n p (ivertex_cnt G) =
     (\<forall>v. v \<in> verts ?aG \<longrightarrow>
-      v \<noteq> s \<longrightarrow> n v \<noteq> \<infinity> \<longrightarrow> 
-      (\<exists>e\<in>arcs ?aG. e = the (p v) \<and>
+      v \<noteq> s \<longrightarrow> ?an v \<noteq> \<infinity> \<longrightarrow> 
+      (\<exists>e \<in> arcs ?aG. e = the (?ap v) \<and>
       v = head ?aG e \<and> 
-      d v = d (tail ?aG e) + ereal (c e) \<and> 
-     n v = n (tail ?aG e) + enat 1))"
-      unfolding just_inv_def by fastforce
+      ?ad v = ?ad (tail ?aG e) + ereal (?ac e) \<and> 
+     ?an v = ?an (tail ?aG e) + enat 1))"
+    apply clarsimp
+    apply (simp add: just_inv_def abs_IDist_def abs_ICost_def abs_INum_def abs_IPedge_def)
+      unfolding just_inv_def sorry
 ultimately
    show "?thesis G d c s n p"
    unfolding 
