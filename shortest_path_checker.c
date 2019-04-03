@@ -40,6 +40,8 @@ int is_wellformed(IGraph *g) {
 
 int trian(IGraph *g, EInt *dist, unsigned int *c) {
 	for(unsigned int edge_id = 0; edge_id < iedge_cnt(g); edge_id++) {
+   
+    if (dist[iarcs(g, edge_id).first].val + c[edge_id] > 4294967295) return 0;  // check there is no overflow
 		if (dist[iarcs(g, edge_id).second].val > dist[iarcs(g, edge_id).first].val + c[edge_id]) return 0;
 	}
 	return 1;
