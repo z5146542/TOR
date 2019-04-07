@@ -444,7 +444,7 @@ lemma trian_spc':
           apply (simp add: uint_nat)
          apply (subst arrlist_heap[where l=c and iL=iC], simp)
   using le_step less_trans 
-            apply blast sorry
+                apply blast sorry
 (*
          apply (subst val_heap, blast, metis (mono_tags, hide_lams) IGraph_C.exhaust le_step less_trans num_edges_C.num_edges_C_def wellformed_iGraph)+
          apply (subst head_heap, blast)+
@@ -838,10 +838,23 @@ lemma wf_inv_is_fin_digraph:
       wf_digraph_def no_loops_def 
     by auto
 
+lemma unat_simp: 
+  fixes x y :: "32 word"
+  assumes a1: "x + y \<le> max_word"
+  shows "unat x + unat y = unat (x + y)"
+  apply (induct_tac x)
+   apply simp
+  apply (case_tac "n=0")
+   apply clarsimp
+   apply (subgoal_tac "y + 1 \<le> max_word")
+  apply simp
+  defer
+  apply simp
 
-lemma unat_simp: "unat (x:: 1 word) + unat y = unat (x + y)" (* False *)
-  oops
+  
+  sorry
 
+ 
 lemma unat_leq_plus:
   fixes x y z :: "32 word"
   assumes a1: "x \<le> y + z"
@@ -854,11 +867,19 @@ lemma real_unat_leq_plus:
   shows "real (unat x) \<le> real (unat y) + real (unat z)" 
   using assms unat_leq_plus by fastforce
 
-lemma real:
+lemma real_nat:
   fixes x y  :: "nat"
   assumes a1: "real x \<le> real y + real z"
   shows "x \<le> y + z"
   using assms by linarith
+
+(*
+lemma unat_leq_plus_unat:
+  fixes x y z :: "32 word"
+  assumes a1: "unat x \<le> unat y + unat z"
+  shows "x \<le> y + z"
+  by (metis add.commute diff_add_cancel max_word_max unat_simp unat_plus_simple)
+*)
 
 lemma unat_leq_plus_unats:
   fixes x y z :: "32 word"
@@ -910,28 +931,16 @@ proof -
     apply (simp add: abs_IDist_def abs_ICost_def)
     apply (rule iffI; clarsimp)
      apply (rule conjI)
-    using shortest_path_checker.real_unat_leq_plus 
-    
-    apply (erule_tac x=e in allE, clarsimp)
-    
-  (* 
-
-  
-      using real_unat_leq_plus
-      apply blast
+    using real_unat_leq_plus 
+      apply (erule_tac x=e in allE, clarsimp)
+      defer
+    using real_unat_leq_plus apply blast
      apply (erule_tac x=e in allE; clarsimp)
-       defer
-      apply (erule_tac x=i in allE; clarsimp)
-      apply safe
-     apply (case_tac "snd (d (fst (snd (snd G) i))) = 0")
-      apply (case_tac "snd (d (snd (snd (snd G) i))) = 0")
-       apply (erule_tac x=i in allE; clarsimp)
-      (* warning *)
-       apply (metis (no_types, hide_lams) of_nat_add of_nat_le_iff shortest_path_checker.unat_simp word_le_nat_alt)
-      apply (erule_tac x=i in allE; clarsimp)
-
+     apply (case_tac "snd (d (fst (snd (snd G) e))) = 0")
+      apply (case_tac "snd (d (snd (snd (snd G) e))) = 0")
+       apply clarsimp
     
-*)
+       defer
     sorry
 moreover
   have "just_inv  G d c s n p (ivertex_cnt G) =
