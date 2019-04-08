@@ -400,13 +400,13 @@ lemma is_wellformed_spc':
 
 definition trian_inv :: "IGraph \<Rightarrow> IEInt \<Rightarrow> ICost \<Rightarrow> 32 word \<Rightarrow> bool" where
   "trian_inv G d c m \<equiv> 
-    \<forall>i < m. (val d (fst (iedges G i)) + c i) < max_word \<and>
+    \<forall>i < m. unat (val d (fst (iedges G i))) + unat (c i) \<le> unat (max_word::32 word) \<and>
     val d (snd (iedges G i)) \<le> val d (fst (iedges G i)) + c i"
 
 lemma trian_inv_step:
-  assumes i_less_max: "i < max_word"
+  assumes i_less_max: "i < (max_word::32 word)"
   shows "trian_inv G d c (i + 1) \<longleftrightarrow> trian_inv G d c i
-    \<and> (val d (fst (iedges G i)) + c i) < max_word \<and>
+    \<and> unat (val d (fst (iedges G i))) + unat (c i) \<le> unat (max_word::32 word) \<and>
   val d (snd (iedges G i)) \<le> val d (fst (iedges G i)) + c i"
   unfolding trian_inv_def 
   by (metis (no_types) i_less_max less_irrefl less_x_plus_1)
@@ -838,22 +838,11 @@ lemma wf_inv_is_fin_digraph:
       wf_digraph_def no_loops_def 
     by auto
 
+
 lemma unat_simp: 
-  fixes x y :: "32 word"
-  assumes a1: "x + y \<le> max_word"
-  shows "unat x + unat y = unat (x + y)"
-  apply (induct_tac x)
-   apply simp
-  apply (case_tac "n=0")
-   apply clarsimp
-   apply (subgoal_tac "y + 1 \<le> max_word")
-  apply simp
-  defer
-  apply simp
-
-  
-  sorry
-
+  "\<And>x y:: 32 word. unat x + unat y \<le> unat (max_word:: 32 word) \<longrightarrow> 
+      unat (x + y) = unat x + unat y"
+  by (meson not_le order_trans unat_add_lem unat_lt2p)
  
 lemma unat_leq_plus:
   fixes x y z :: "32 word"
@@ -887,6 +876,29 @@ lemma unat_leq_plus_unats:
   shows "x \<le> y + z"
   by (simp add: assms word_le_nat_alt)
 
+lemma unat_plus_leq_unats:
+  fixes y z :: "32 word"
+  assumes a1: "unat y + unat z \<le> unat (max_word :: 32 word)"
+  shows "unat y + unat z \<le> unat (y + z)"
+  using a1 
+  by unat_arith
+
+
+lemma unat_leq_plus_unat:
+  fixes x y z :: "32 word"
+  assumes a: "unat y + unat z \<le> unat (max_word ::32 word)" 
+  assumes a1: "unat x \<le> unat y + unat z"
+  shows "x \<le> y + z"
+  using unat_leq_plus_unats unat_simp 
+  by (simp add: a a1)
+
+lemma real_unat_leq_plus_real_unat:
+  fixes x y z :: "32 word"
+  assumes a: "real (unat y) + real (unat z) \<le> real (unat (max_word ::32 word))" 
+  assumes a1: "real (unat x) \<le> real (unat y) + real (unat z)"
+  shows "x \<le> y + z"
+  using assms
+  by (simp add: unat_leq_plus_unat)
 
 lemma trian_inv_le:
   assumes leq: "j \<le> i" 
@@ -894,6 +906,7 @@ lemma trian_inv_le:
   shows "trian_inv G d c j"
   using assms 
   by (induct j) (auto simp add: trian_inv_def)
+
 
 lemma basic_just_sp_eq_invariants:
 "\<And>G dist c s enum pred. 
@@ -918,14 +931,14 @@ proof -
     moreover
   have trian1: "trian_inv G d c (iedge_cnt G) = 
     (\<forall>e. e \<in> arcs ?aG \<longrightarrow> 
-    val d (tail ?aG e) + (c e) < max_word \<and>
+    unat (val d (tail ?aG e)) + unat (c e) \<le> unat (max_word::32 word) \<and>
    (val d (head ?aG e) \<le> val d (tail ?aG e) + (c e)))"
     by (simp add: trian_inv_def)
-  have  "trian_inv G d c (iedge_cnt G) = 
+  have  "trian_inv G d c (iedge_cnt G) =
     (\<forall>e. e \<in> arcs ?aG \<longrightarrow> 
-    ?ad (head ?aG e) \<noteq> PInfty \<longrightarrow> 
-    ?ad (tail ?aG e) \<noteq> PInfty \<longrightarrow> 
-   (?ad (tail ?aG e) +  (?ac e)) < (unat max_word) \<and>
+  (*  ?ad (head ?aG e) \<noteq> PInfty \<longrightarrow> 
+    ?ad (tail ?aG e) \<noteq> PInfty \<longrightarrow> *)
+   ?ad (tail ?aG e) +  (?ac e) \<le> real (unat (max_word :: 32 word)) \<and>
    (?ad (head ?aG e) \<le> ?ad (tail ?aG e) + ereal (?ac e)))"
     apply (subst trian1, clarsimp)
     apply (simp add: abs_IDist_def abs_ICost_def)
@@ -933,14 +946,25 @@ proof -
      apply (rule conjI)
     using real_unat_leq_plus 
       apply (erule_tac x=e in allE, clarsimp)
-      defer
+(*
     using real_unat_leq_plus apply blast
      apply (erule_tac x=e in allE; clarsimp)
      apply (case_tac "snd (d (fst (snd (snd G) e))) = 0")
-      apply (case_tac "snd (d (snd (snd (snd G) e))) = 0")
-       apply clarsimp
+     apply (case_tac "snd (d (snd (snd (snd G) e))) = 0")
+    apply (safe, simp_all) 
+    using real_unat_leq_plus_real_unat apply blast
+
+       apply (rule conjI)
+        defer
+    apply (rule real_unat_leq_plus_real_unat)
+
+apply clarsimp
+    
+       
+    
     
        defer
+*)
     sorry
 moreover
   have "just_inv  G d c s n p (ivertex_cnt G) =
