@@ -857,18 +857,17 @@ lemma real_unat_leq_plus:
   using assms unat_leq_plus by fastforce
 
 lemma real_nat:
-  fixes x y  :: "nat"
+  fixes x y z :: "nat"
   assumes a1: "real x \<le> real y + real z"
   shows "x \<le> y + z"
   using assms by linarith
 
-(*
-lemma unat_leq_plus_unat:
+lemma unat_leq_trian_plus:
   fixes x y z :: "32 word"
   assumes a1: "unat x \<le> unat y + unat z"
+  assumes a2: "unat y + unat z \<le> unat (max_word :: 32 word)"
   shows "x \<le> y + z"
-  by (metis add.commute diff_add_cancel max_word_max unat_simp unat_plus_simple)
-*)
+  by (simp add: a1 a2 shortest_path_checker.unat_simp word_le_nat_alt)
 
 lemma unat_leq_plus_unats:
   fixes x y z :: "32 word"
@@ -883,10 +882,9 @@ lemma unat_plus_leq_unats:
   using a1 
   by unat_arith
 
-
 lemma unat_leq_plus_unat:
   fixes x y z :: "32 word"
-  assumes a: "unat y + unat z \<le> unat (max_word ::32 word)" 
+  assumes a: "unat y + unat z \<le> unat (max_word :: 32 word)" 
   assumes a1: "unat x \<le> unat y + unat z"
   shows "x \<le> y + z"
   using unat_leq_plus_unats unat_simp 
@@ -894,7 +892,7 @@ lemma unat_leq_plus_unat:
 
 lemma real_unat_leq_plus_real_unat:
   fixes x y z :: "32 word"
-  assumes a: "real (unat y) + real (unat z) \<le> real (unat (max_word ::32 word))" 
+  assumes a: "real (unat y) + real (unat z) \<le> real (unat (max_word :: 32 word))" 
   assumes a1: "real (unat x) \<le> real (unat y) + real (unat z)"
   shows "x \<le> y + z"
   using assms
@@ -907,6 +905,11 @@ lemma trian_inv_le:
   using assms 
   by (induct j) (auto simp add: trian_inv_def)
 
+lemma trian_imp_valid:
+  fixes x y z :: "32 word"
+  assumes a1: "real (unat y) + real (unat z) \<le> real (unat (max_word :: 32 word)) \<and> real(unat x) \<le> real (unat y) + real (unat z)"
+  shows "unat y + unat z \<le> unat (max_word::32 word)"
+  using a1 by linarith
 
 lemma basic_just_sp_eq_invariants:
 "\<And>G dist c s enum pred. 
@@ -930,15 +933,15 @@ proof -
       by auto
     moreover
   have trian1: "trian_inv G d c (iedge_cnt G) = 
-    (\<forall>e. e \<in> arcs ?aG \<longrightarrow> 
+   (\<forall>e. e \<in> arcs ?aG \<longrightarrow> 
     unat (val d (tail ?aG e)) + unat (c e) \<le> unat (max_word::32 word) \<and>
    (val d (head ?aG e) \<le> val d (tail ?aG e) + (c e)))"
     by (simp add: trian_inv_def)
   have  "trian_inv G d c (iedge_cnt G) =
-    (\<forall>e. e \<in> arcs ?aG \<longrightarrow> 
-  (*  ?ad (head ?aG e) \<noteq> PInfty \<longrightarrow> 
-    ?ad (tail ?aG e) \<noteq> PInfty \<longrightarrow> *)
-   ?ad (tail ?aG e) +  (?ac e) \<le> real (unat (max_word :: 32 word)) \<and>
+   (\<forall>e. e \<in> arcs ?aG \<longrightarrow> 
+    ?ad (head ?aG e) \<noteq> PInfty \<and> 
+    ?ad (tail ?aG e) \<noteq> PInfty \<and>
+    ?ad (tail ?aG e) +  (?ac e) \<le> real (unat (max_word :: 32 word)) \<and>
    (?ad (head ?aG e) \<le> ?ad (tail ?aG e) + ereal (?ac e)))"
     apply (subst trian1, clarsimp)
     apply (simp add: abs_IDist_def abs_ICost_def)
@@ -947,24 +950,33 @@ proof -
     using real_unat_leq_plus 
       apply (erule_tac x=e in allE, clarsimp)
 (*
-    using real_unat_leq_plus apply blast
-     apply (erule_tac x=e in allE; clarsimp)
+    using real_unat_leq_plus
+     apply blast
+    apply (rule conjI)
      apply (case_tac "snd (d (fst (snd (snd G) e))) = 0")
-     apply (case_tac "snd (d (snd (snd (snd G) e))) = 0")
-    apply (safe, simp_all) 
-    using real_unat_leq_plus_real_unat apply blast
-
-       apply (rule conjI)
-        defer
-    apply (rule real_unat_leq_plus_real_unat)
-
-apply clarsimp
-    
-       
-    
-    
-       defer
+      apply (case_tac "snd (d (snd (snd (snd G) e))) = 0")
+    using trian_imp_valid
+       apply blast
+      defer
+      defer
+      apply (case_tac "snd (d (fst (snd (snd G) e))) = 0")
+       apply (case_tac "snd (d (snd (snd (snd G) e))) = 0")
+    using unat_leq_plus_unat
+        apply auto[1]
 *)
+    defer
+      apply clarsimp
+      apply (rule conjI)
+       apply clarsimp
+    apply (erule notE)
+       defer
+    using unat_leq_plus
+       apply fastforce
+    apply (rule conjI)
+    apply fastforce
+    using real_unat_leq_plus_real_unat 
+      apply blast
+     apply (erule notE)
     sorry
 moreover
   have "just_inv  G d c s n p (ivertex_cnt G) =
@@ -975,15 +987,21 @@ moreover
       ?ad v = ?ad (tail ?aG e) + ereal (?ac e) \<and> 
      ?an v = ?an (tail ?aG e) + enat 1))"
     apply clarsimp
-    apply (simp add: just_inv_def abs_IDist_def abs_ICost_def abs_INum_def abs_IPedge_def)
-      unfolding just_inv_def sorry
+    apply safe
+        apply (simp add: just_inv_def abs_IDist_def abs_ICost_def abs_INum_def abs_IPedge_def)
+        apply (meson enat.distinct(2) not_le)
+       apply (simp add: just_inv_def abs_INum_def abs_IPedge_def)
+       apply (meson enat.distinct(2) not_le)
+      apply (simp add: just_inv_def abs_INum_def abs_IPedge_def abs_ICost_def abs_IDist_def)
+      apply (meson enat.distinct(2) not_le)
+    sorry
 ultimately
    show "?thesis G d c s n p"
    unfolding 
     basic_just_sp_pred_def 
     basic_just_sp_pred_axioms_def 
     basic_sp_def basic_sp_axioms_def
-   by presburger
+   sorry
 qed
 
 
