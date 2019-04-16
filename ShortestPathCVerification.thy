@@ -111,9 +111,9 @@ lemma sint_ucast:
   by (clarsimp simp: sint_uint uint_up_ucast is_up)
 
 fun
-  to_edge :: "IEdge \<Rightarrow> IEdge_C"
+  to_edge :: "IEdge \<Rightarrow> Edge_C"
 where
-  "to_edge (u,v) = IEdge_C u v"
+  "to_edge (u,v) = Edge_C u v"
 
 lemma s_C_pte[simp]:
   "first_C (to_edge e) = fst e"
@@ -138,11 +138,11 @@ lemma isInf_C_pte[simp]:
 
 definition is_graph where
   "is_graph h iG p \<equiv>
-    is_valid_IGraph_C h p \<and> 
-    ivertex_cnt iG = num_vertices_C (heap_IGraph_C h p) \<and> 
-    iedge_cnt iG = num_edges_C (heap_IGraph_C h p) \<and>
-    arrlist (heap_IEdge_C h) (is_valid_IEdge_C h)
-      (map to_edge (mk_iedge_list iG)) (arcs_C (heap_IGraph_C h p))"
+    is_valid_Graph_C h p \<and> 
+    ivertex_cnt iG = num_vertices_C (heap_Graph_C h p) \<and> 
+    iedge_cnt iG = num_edges_C (heap_Graph_C h p) \<and>
+    arrlist (heap_Edge_C h) (is_valid_Edge_C h)
+      (map to_edge (mk_iedge_list iG)) (arcs_C (heap_Graph_C h p))"
 
 definition 
   "is_numm h iG iN p \<equiv> 
@@ -380,12 +380,12 @@ lemma is_wellformed_spc':
     apply (subst if_bool_eq_conj)+
     apply (simp split: if_split_asm, safe, simp_all add: arrlist_nth)
          apply (rule_tac x = "ee" in exI)
-         apply (subgoal_tac "num_vertices_C (heap_IGraph_C s g) \<le> fst (snd (snd iG) ee)", force)
-         apply (subgoal_tac "first_C (heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p uint ee)) = fst (snd (snd iG) ee)", simp)
+         apply (subgoal_tac "num_vertices_C (heap_Graph_C s g) \<le> fst (snd (snd iG) ee)", force)
+         apply (subgoal_tac "first_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p uint ee)) = fst (snd (snd iG) ee)", simp)
          apply (subst tail_heap[where iG=iG], simp, blast+)
         apply(rule_tac x = "ee" in exI)
-        apply (subgoal_tac "num_vertices_C (heap_IGraph_C s g) \<le> snd (snd (snd iG) ee)", force)
-        apply (subgoal_tac "second_C (heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p uint ee)) = snd (snd (snd iG) ee)", simp)
+        apply (subgoal_tac "num_vertices_C (heap_Graph_C s g) \<le> snd (snd (snd iG) ee)", force)
+        apply (subgoal_tac "second_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p uint ee)) = snd (snd (snd iG) ee)", simp)
         apply (subst head_heap[where iG=iG], simp, blast+)
        apply (metis two_comp_arrlist_heap s_C_pte le_cases le_step uint_nat word_le_less_eq)
       apply (metis head_heap le_step not_less)
@@ -652,8 +652,8 @@ lemma just_spc':
                                       apply (subgoal_tac "iC (iP vv) = heap_w32 s (c +\<^sub>p uint (heap_w32 s (ptr_coerce (p +\<^sub>p uint vv))))") 
                                        apply (simp add: parent_dist_eq)
                                       apply (subgoal_tac "iP vv = (heap_w32 s (ptr_coerce (p +\<^sub>p uint vv)))")
-                                       apply (subgoal_tac "\<And>w. \<not> w < num_edges_C (heap_IGraph_C s g) \<or> heap_w32 s (c +\<^sub>p uint w) = iC w")
-                                        apply (subgoal_tac "\<And>w. \<not> w < num_edges_C (heap_IGraph_C s g) \<or> heap_IEdge_C s (arcs_C (heap_IGraph_C s g) +\<^sub>p uint w) = to_edge (snd (snd iG) w)")
+                                       apply (subgoal_tac "\<And>w. \<not> w < num_edges_C (heap_Graph_C s g) \<or> heap_w32 s (c +\<^sub>p uint w) = iC w")
+                                        apply (subgoal_tac "\<And>w. \<not> w < num_edges_C (heap_Graph_C s g) \<or> heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p uint w) = to_edge (snd (snd iG) w)")
                                          apply force
                                         apply (simp add: two_comp_to_edge_arrlist_heap uint_nat)
                                        apply (simp add: uint_nat)
@@ -705,8 +705,8 @@ lemma just_spc':
                               apply blast
                              apply (subst unat_mono)
                               apply (case_tac "vv = sc", simp_all)
-                            apply (case_tac "num_vertices_C (heap_IGraph_C s g) > 1") 
-                             apply (subgoal_tac "num_vertices_C (heap_IGraph_C s g) -  vv - 1 < num_vertices_C (heap_IGraph_C s g) - vv") 
+                            apply (case_tac "num_vertices_C (heap_Graph_C s g) > 1") 
+                             apply (subgoal_tac "num_vertices_C (heap_Graph_C s g) -  vv - 1 < num_vertices_C (heap_Graph_C s g) - vv") 
                               apply (simp add: diff_diff_add)
                              apply (metis add_0_left diff_add_cancel less_irrefl word_overflow)
                             apply (metis (mono_tags, hide_lams) add.left_neutral not_le plus_one_helper word_gt_a_gt_0 word_le_less_eq)
@@ -726,7 +726,7 @@ lemma just_spc':
                     apply (metis le_step wellformed_iGraph)
                    apply fastforce
                   apply (subgoal_tac "\<not> bool (isInf_C (heap_EInt_C s (n +\<^sub>p uint vv))) \<or> bool (snd (iN vv))")
-                   apply (subgoal_tac "heap_w32 s (ptr_coerce (p +\<^sub>p int (unat v))) < num_edges_C (heap_IGraph_C s g)")
+                   apply (subgoal_tac "heap_w32 s (ptr_coerce (p +\<^sub>p int (unat v))) < num_edges_C (heap_Graph_C s g)")
                     apply blast
                    apply (metis (no_types) le_step bool.elims(2) bool.elims(3) heap_ptr_coerce wellformed_iGraph word_zero_le)
   using is_inf_heap
@@ -747,7 +747,7 @@ lemma just_spc':
               apply blast
              apply (subst unat_mono)
               apply (case_tac "vv = sc", simp_all)
-             apply (subgoal_tac "num_vertices_C (heap_IGraph_C s g) -  vv - 1 < num_vertices_C (heap_IGraph_C s g) - vv") 
+             apply (subgoal_tac "num_vertices_C (heap_Graph_C s g) -  vv - 1 < num_vertices_C (heap_Graph_C s g) - vv") 
               apply (simp add: diff_diff_add)
              apply (metis add_0_left diff_add_cancel less_irrefl word_overflow) 
             apply (rule_tac i="(uint vv)" in arrlist_nth_valid, simp+)
@@ -765,9 +765,9 @@ lemma just_spc':
       apply blast
   using inc_le
      apply blast
-    apply (case_tac "num_vertices_C (heap_IGraph_C s g) > 1")
+    apply (case_tac "num_vertices_C (heap_Graph_C s g) > 1")
      apply (rule unat_mono) 
-     apply (subgoal_tac "num_vertices_C (heap_IGraph_C s g) -  sc - 1 < num_vertices_C (heap_IGraph_C s g) - sc") 
+     apply (subgoal_tac "num_vertices_C (heap_Graph_C s g) -  sc - 1 < num_vertices_C (heap_Graph_C s g) - sc") 
       apply (simp add: diff_diff_add)
      apply (metis add_0_left diff_add_cancel less_irrefl word_overflow)
     apply (metis (mono_tags, hide_lams) add.left_neutral cancel_comm_monoid_add_class.diff_cancel diff_zero not_le plus_one_helper word_gt_a_gt_0 word_le_less_eq word_less_nat_alt)
@@ -937,11 +937,11 @@ proof -
     unat (val d (tail ?aG e)) + unat (c e) \<le> unat (max_word::32 word) \<and>
    (val d (head ?aG e) \<le> val d (tail ?aG e) + (c e)))"
     by (simp add: trian_inv_def)
-  have  "trian_inv G d c (iedge_cnt G) =
+  have "trian_inv G d c (iedge_cnt G) =
    (\<forall>e. e \<in> arcs ?aG \<longrightarrow> 
-    ?ad (head ?aG e) \<noteq> PInfty \<and> 
-    ?ad (tail ?aG e) \<noteq> PInfty \<and>
-    ?ad (tail ?aG e) +  (?ac e) \<le> real (unat (max_word :: 32 word)) \<and>
+    ?ad (tail ?aG e) \<noteq> PInfty \<longrightarrow>
+    ?ad (head ?aG e) \<noteq> PInfty \<and>
+    ?ad (tail ?aG e) +  ereal (?ac e) \<le> real (unat (max_word :: 32 word)) \<and>
    (?ad (head ?aG e) \<le> ?ad (tail ?aG e) + ereal (?ac e)))"
     apply (subst trian1, clarsimp)
     apply (simp add: abs_IDist_def abs_ICost_def)
@@ -950,6 +950,7 @@ proof -
     using real_unat_leq_plus 
       apply (erule_tac x=e in allE, clarsimp)
 (*
+    this is the case for \<longrightarrow> \<longrightarrow>
     using real_unat_leq_plus
      apply blast
     apply (rule conjI)
@@ -964,21 +965,44 @@ proof -
     using unat_leq_plus_unat
         apply auto[1]
 *)
-    defer
+(*
+   this is the case for \<and> \<and>
+      defer
       apply clarsimp
       apply (rule conjI)
        apply clarsimp
-    apply (erule notE)
+       apply (erule notE)
        defer
     using unat_leq_plus
        apply fastforce
-    apply (rule conjI)
-    apply fastforce
+      apply (rule conjI)
+       apply fastforce
     using real_unat_leq_plus_real_unat 
       apply blast
      apply (erule notE)
+*)
+(* this is the case for \<longrightarrow> \<and> *)
+      apply (erule notE)
+      defer
+      apply clarsimp
+      apply (rule conjI)
+       apply fastforce
+    using real_unat_leq_plus 
+      apply blast
+     apply (erule_tac x=e in allE)
+     apply clarsimp
+     apply (case_tac "snd (d (fst (snd (snd G) e))) \<noteq> 0")
+      apply simp 
+      defer
+      apply clarsimp
+      apply (case_tac "snd (d (snd (snd (snd G) e))) = 0")
+       apply simp
+    using real_unat_leq_plus_real_unat 
+       apply blast
+      apply meson
+
     sorry
-moreover
+  moreover
   have "just_inv  G d c s n p (ivertex_cnt G) =
     (\<forall>v. v \<in> verts ?aG \<longrightarrow>
       v \<noteq> s \<longrightarrow> ?an v \<noteq> \<infinity> \<longrightarrow> 
@@ -993,7 +1017,13 @@ moreover
        apply (simp add: just_inv_def abs_INum_def abs_IPedge_def)
        apply (meson enat.distinct(2) not_le)
       apply (simp add: just_inv_def abs_INum_def abs_IPedge_def abs_ICost_def abs_IDist_def)
-      apply (meson enat.distinct(2) not_le)
+      apply (rule conjI, clarsimp)
+       apply (meson enat.distinct(2) not_le)
+    defer
+    apply (simp add: just_inv_def abs_INum_def abs_IPedge_def)
+      defer
+      apply (simp add: just_inv_def abs_INum_def abs_IPedge_def abs_IDist_def)
+      apply clarsimp
     sorry
 ultimately
    show "?thesis G d c s n p"
