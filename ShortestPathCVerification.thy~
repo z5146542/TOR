@@ -444,9 +444,7 @@ lemma trian_spc':
           apply (simp add: uint_nat)
          apply (subst arrlist_heap[where l=c and iL=iC], simp)
   using le_step less_trans 
-                        apply blast 
-                       apply clarsimp
-  sorry
+                apply blast sorry
 (*
          apply (subst val_heap, blast, metis (mono_tags, hide_lams) IGraph_C.exhaust le_step less_trans num_edges_C.num_edges_C_def wellformed_iGraph)+
          apply (subst head_heap, blast)+
@@ -948,9 +946,9 @@ proof -
     apply (subst trian1, clarsimp)
     apply (simp add: abs_IDist_def abs_ICost_def)
     apply (rule iffI; clarsimp)
-     apply (rule conjI) 
+     apply (rule conjI)
     using real_unat_leq_plus 
-    apply (erule_tac x=e in allE, clarsimp)
+      apply (erule_tac x=e in allE, clarsimp)
 (*
     this is the case for \<longrightarrow> \<longrightarrow>
     using real_unat_leq_plus
@@ -983,7 +981,7 @@ proof -
       apply blast
      apply (erule notE)
 *)
-      (* this is the case for \<longrightarrow> \<and> *)
+(* this is the case for \<longrightarrow> \<and> *)
       apply (erule notE)
       defer
       apply clarsimp
@@ -1002,6 +1000,7 @@ proof -
     using real_unat_leq_plus_real_unat 
        apply blast
       apply meson
+
     sorry
   moreover
   have "just_inv  G d c s n p (ivertex_cnt G) =
