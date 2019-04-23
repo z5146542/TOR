@@ -400,16 +400,109 @@ lemma is_wellformed_spc':
 
 definition trian_inv :: "IGraph \<Rightarrow> IEInt \<Rightarrow> ICost \<Rightarrow> 32 word \<Rightarrow> bool" where
   "trian_inv G d c m \<equiv> 
-    \<forall>i < m. unat (val d (fst (iedges G i))) + unat (c i) \<le> unat (max_word::32 word) \<and>
+    \<forall>i < m. \<not>is_inf d (fst (iedges G i)) \<longrightarrow> \<not>is_inf d (snd (iedges G i)) \<and> unat (val d (fst (iedges G i))) + unat (c i) \<le> unat (max_word::32 word) \<and>
     val d (snd (iedges G i)) \<le> val d (fst (iedges G i)) + c i"
 
 lemma trian_inv_step:
   assumes i_less_max: "i < (max_word::32 word)"
-  shows "trian_inv G d c (i + 1) \<longleftrightarrow> trian_inv G d c i
-    \<and> unat (val d (fst (iedges G i))) + unat (c i) \<le> unat (max_word::32 word) \<and>
-  val d (snd (iedges G i)) \<le> val d (fst (iedges G i)) + c i"
-  unfolding trian_inv_def 
+  shows "trian_inv G d c (i + 1) \<longleftrightarrow> trian_inv G d c i \<and>
+  (\<not>is_inf d (fst (iedges G i)) \<longrightarrow> \<not>is_inf d (snd (iedges G i)) \<and>
+  unat (val d (fst (iedges G i))) + unat (c i) \<le> unat (max_word::32 word) \<and>
+  val d (snd (iedges G i)) \<le> val d (fst (iedges G i)) + c i)"
+  unfolding trian_inv_def
   by (metis (no_types) i_less_max less_irrefl less_x_plus_1)
+
+lemma inval_trian_ineq:
+  fixes ee :: "32 word" and s :: lifted_globals
+  assumes a1: "wf_digraph (abs_IGraph iG)"
+  assumes a2: "fst iG = num_vertices_C (heap_Graph_C s g)"
+  assumes a3: "ee < num_edges_C (heap_Graph_C s g)"
+  assumes a4: "fst (snd iG) = num_edges_C (heap_Graph_C s g)"
+  assumes a5: "arrlist (heap_w32 s) (is_valid_w32 s) (map (iC \<circ> of_nat) [0..<unat (num_edges_C (heap_Graph_C s g))]) c"
+  assumes a6: "isInf_C (heap_EInt_C s (d +\<^sub>p uint (first_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p uint ee))))) = 0"
+  assumes a7: "arrlist (heap_EInt_C s) (is_valid_EInt_C s) (map (to_eint \<circ> (iD \<circ> of_nat)) [0..<unat (num_vertices_C (heap_Graph_C s g))]) d"
+  assumes a8: "arrlist (heap_Edge_C s) (is_valid_Edge_C s) (map (to_edge \<circ> (snd (snd iG) \<circ> of_nat)) [0..<unat (num_edges_C (heap_Graph_C s g))]) (arcs_C (heap_Graph_C s g))"
+  assumes a9: "val_C (heap_EInt_C s (d +\<^sub>p uint (first_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p uint ee))))) + heap_w32 s (c +\<^sub>p uint ee) < val_C (heap_EInt_C s (d +\<^sub>p uint (second_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p uint ee)))))"
+  shows "(snd (iD (snd (snd (snd iG) ee))) = 0 \<longrightarrow>
+         (snd (iD (fst (snd (snd iG) ee))) = 0 \<longrightarrow> 
+          ee < num_edges_C (heap_Graph_C s g) \<and>
+         (unat (fst (iD (fst (snd (snd iG) ee)))) + unat (iC ee) \<le> unat (max_word::32 word) \<longrightarrow> 
+          \<not> fst (iD (snd (snd (snd iG) ee))) \<le> fst (iD (fst (snd (snd iG) ee))) + iC ee)) \<and> 
+          snd (iD (fst (snd (snd iG) ee))) = 0) \<and> 
+         (snd (iD (snd (snd (snd iG) ee))) \<noteq> 0 \<longrightarrow> 
+         (snd (iD (fst (snd (snd iG) ee))) = 0 \<longrightarrow> 
+          ee < num_edges_C (heap_Graph_C s g)) \<and> 
+          snd (iD (fst (snd (snd iG) ee))) = 0)"
+proof -
+  have f10: "\<And>w. \<not> w < fst iG \<or> heap_EInt_C s (d +\<^sub>p uint w) = to_eint (iD w)"
+    using a7 a2 by (metis two_comp_to_eint_arrlist_heap uint_nat)
+  have f11: "heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p uint ee) = to_edge (snd (snd iG) ee)"
+    using a8 a3 by (simp add: two_comp_to_edge_arrlist_heap uint_nat)
+  have "heap_w32 s (c +\<^sub>p uint ee) = iC ee"
+    using a5 a3 by (metis (no_types) arrlist_heap uint_nat)
+  then show "(snd (iD (snd (snd (snd iG) ee))) = 0 \<longrightarrow> 
+             (snd (iD (fst (snd (snd iG) ee))) = 0 \<longrightarrow> 
+              ee < num_edges_C (heap_Graph_C s g) \<and> 
+             (unat (fst (iD (fst (snd (snd iG) ee)))) + unat (iC ee) \<le> unat (max_word::32 word) \<longrightarrow> 
+              \<not> fst (iD (snd (snd (snd iG) ee))) \<le> fst (iD (fst (snd (snd iG) ee))) + iC ee)) \<and> 
+              snd (iD (fst (snd (snd iG) ee))) = 0) \<and> 
+             (snd (iD (snd (snd (snd iG) ee))) \<noteq> 0 \<longrightarrow> 
+             (snd (iD (fst (snd (snd iG) ee))) = 0 \<longrightarrow> 
+              ee < num_edges_C (heap_Graph_C s g)) \<and> 
+              snd (iD (fst (snd (snd iG) ee))) = 0)"
+    using f11 f10 a9 a6 a4 a3 a1 by (simp add: not_le wellformed_iGraph)
+qed
+
+lemma val_trian_ineq:
+  fixes ee :: "32 word" and s :: "lifted_globals" and i :: "32 word"
+  assumes a1: "wf_digraph (abs_IGraph iG)"
+  assumes a2: "i < ee + 1"
+  assumes a3: "fst iG = num_vertices_C (heap_Graph_C s g)"
+  assumes a4: "ee < num_edges_C (heap_Graph_C s g)"
+  assumes a5: "fst (snd iG) = num_edges_C (heap_Graph_C s g)"
+  assumes a6: "snd (iD (fst (snd (snd iG) i))) = 0"
+  assumes a7: "arrlist (heap_w32 s) (is_valid_w32 s) (map (iC \<circ> of_nat) [0..<unat (num_edges_C (heap_Graph_C s g))]) c"
+  assumes a8: "arrlist (heap_EInt_C s) (is_valid_EInt_C s) (map (to_eint \<circ> (iD \<circ> of_nat)) [0..<unat (num_vertices_C (heap_Graph_C s g))]) d"
+  assumes a9: "arrlist (heap_Edge_C s) (is_valid_Edge_C s) (map (to_edge \<circ> (snd (snd iG) \<circ> of_nat)) [0..<unat (num_edges_C (heap_Graph_C s g))]) (arcs_C (heap_Graph_C s g))"
+  assumes a10: "\<forall>i. (snd (iD (fst (snd (snd iG) i))) = 0 \<longrightarrow> i < ee \<longrightarrow> snd (iD (snd (snd (snd iG) i))) = 0 \<longrightarrow> unat (fst (iD (fst (snd (snd iG) i)))) + unat (iC i) \<le> unat (max_word::32 word) \<and> fst (iD (snd (snd (snd iG) i))) \<le> fst (iD (fst (snd (snd iG) i))) + iC i) \<and> (i < ee \<longrightarrow> snd (iD (snd (snd (snd iG) i))) = 0 \<or> snd (iD (fst (snd (snd iG) i))) \<noteq> 0)"
+  assumes a11: "\<not> val_C (heap_EInt_C s (d +\<^sub>p uint (first_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p uint ee))))) + heap_w32 s (c +\<^sub>p uint ee) < val_C (heap_EInt_C s (d +\<^sub>p uint (second_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p uint ee)))))"
+  shows "fst (iD (snd (snd (snd iG) i))) \<le> fst (iD (fst (snd (snd iG) i))) + iC i"
+proof -
+  have f12: "\<And>f p pa pb. \<not> arrlist f p (map (to_edge \<circ> (snd (snd (pa::32 word \<times> 32 word \<times> (32 word \<Rightarrow> 32 word \<times> 32 word))) \<circ> of_nat)) [0..<unat (num_edges_C (heap_Graph_C s g))]) (pb::Edge_C ptr) \<or> fst (snd (snd pa) ee) = first_C (f (pb +\<^sub>p uint ee))"
+    using a4 by (meson tail_heap)
+  have f13: "\<And>f p pa pb. \<not> arrlist f p (map (to_edge \<circ> (snd (snd (pa::32 word \<times> 32 word \<times> (32 word \<Rightarrow> 32 word \<times> 32 word))) \<circ> of_nat)) [0..<unat (num_edges_C (heap_Graph_C s g))]) (pb::Edge_C ptr) \<or> snd (snd (snd pa) ee) = second_C (f (pb +\<^sub>p uint ee))"
+    using a4 by (meson head_heap)
+  have f14: "\<And>w. \<not> w < fst iG \<or> heap_EInt_C s (d +\<^sub>p uint w) = to_eint (iD w)"
+    using a8 a3 by (metis two_comp_to_eint_arrlist_heap uint_nat)
+  have f15: "\<And>w. \<not> w < num_edges_C (heap_Graph_C s g) \<or> heap_w32 s (c +\<^sub>p uint w) = iC w"
+    using a7 by (metis (no_types) arrlist_heap uint_nat)
+  { assume "i < num_edges_C (heap_Graph_C s g)"
+    { assume "i < num_edges_C (heap_Graph_C s g) \<and> fst (snd (snd iG) i) < fst iG"
+      then have "snd (snd (snd iG) i) < fst iG \<and> fst (snd (snd iG) i) < fst iG \<and> \<not> fst (iD (snd (snd (snd iG) i))) \<le> fst (iD (fst (snd (snd iG) i))) + iC i \<or> fst (iD (snd (snd (snd iG) i))) \<le> fst (iD (fst (snd (snd iG) i))) + iC i"
+        using a5 a1 wellformed_iGraph by presburger
+      then have "ee = i \<and> i < num_edges_C (heap_Graph_C s g) \<longrightarrow> fst (iD (snd (snd (snd iG) i))) \<le> fst (iD (fst (snd (snd iG) i))) + iC i"
+        using f15 f14 f13 f12 a11 a9 by force }
+    then have "ee = i \<and> i < num_edges_C (heap_Graph_C s g) \<longrightarrow> fst (iD (snd (snd (snd iG) i))) \<le> fst (iD (fst (snd (snd iG) i))) + iC i"
+      using a5 a1 wellformed_iGraph by presburger }
+  then show "fst (iD (snd (snd (snd iG) i))) \<le> fst (iD (fst (snd (snd iG) i))) + iC i"
+    using a10 a6 a4 a2 le_step by blast
+qed
+
+lemma edge_vertex_val:
+  fixes ee :: "32 word" and s :: lifted_globals and i :: "32 word"
+  assumes a1: "arrlist (heap_Edge_C s) (is_valid_Edge_C s) (map (to_edge \<circ> (snd (snd iG) \<circ> of_nat)) [0..<unat (num_edges_C (heap_Graph_C s g))]) (arcs_C (heap_Graph_C s g))"
+  assumes a2: "fst (snd iG) = num_edges_C (heap_Graph_C s g)"
+  assumes a3: "i < ee + 1"
+  assumes a4: "fst iG = num_vertices_C (heap_Graph_C s g)"
+  assumes a5: "wf_digraph (abs_IGraph iG)"
+  assumes "ee < num_edges_C (heap_Graph_C s g)"
+  shows "first_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p uint i)) < num_vertices_C (heap_Graph_C s g)"
+proof -
+  have "i < fst (snd iG)"
+    using a3 a2 assms(6) plus_one_helper by fastforce 
+  then show "first_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p uint i)) < num_vertices_C (heap_Graph_C s g)"
+    using a5 a4 a2 a1 by (metis (no_types) tail_heap wellformed_iGraph)
+qed
 
 lemma trian_spc':
   "\<lbrace> P and 
@@ -429,12 +522,65 @@ lemma trian_spc':
                    is_graph s iG g \<and>
                    is_dist s iG iD d \<and>
                    is_cost s iG iC c"])
-
+  
   apply (simp add: skipE_def)
   apply wp
   unfolding is_graph_def is_dist_def is_cost_def trian_inv_def
     apply (subst if_bool_eq_conj)+
     apply (simp split: if_split_asm, safe, simp_all add: arrlist_nth)
+                         apply (rule_tac x=ee in exI)
+                         apply (rule conjI,
+                                metis (no_types, hide_lams) bool.simps is_inf_heap t_C_pte two_comp_to_edge_arrlist_heap wellformed_iGraph uint_nat,
+                                metis (no_types, hide_lams) bool.simps is_inf_heap s_C_pte two_comp_to_edge_arrlist_heap wellformed_iGraph uint_nat)
+                        apply (rule_tac x=ee in exI)
+                        apply clarsimp
+                        defer
+                        apply (rule_tac x=ee in exI)
+  using inval_trian_ineq
+                        apply blast
+                       apply (subst val_heap, blast)
+                        apply (subst tail_heap, blast)
+                         apply (metis less_trans plus_one_helper word_le_less_eq)
+  using edge_vertex_val
+                        apply blast
+                       apply (subst tail_heap, blast)
+                        apply (metis less_trans plus_one_helper word_le_less_eq)
+                       apply (subst arrlist_heap[where l=c and iL=iC], simp)
+                        apply (metis less_trans plus_one_helper word_le_less_eq)
+                       defer 
+  using val_trian_ineq
+                       apply blast
+                      apply (metis (no_types, hide_lams) le_step head_heap isInf_C_pte two_comp_to_eint_arrlist_heap wellformed_iGraph uint_nat)
+  using inc_le
+                     apply blast
+  using unat_minus_plus1_less
+                    apply blast
+                   apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+                  apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+                  apply (metis tail_heap wellformed_iGraph uint_nat word_less_nat_alt)
+                 apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+                 apply (metis head_heap wellformed_iGraph uint_nat word_less_nat_alt)
+                apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+               apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+               apply (metis tail_heap wellformed_iGraph uint_nat word_less_nat_alt)
+              apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+             apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+            apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+            apply (metis head_heap wellformed_iGraph uint_nat word_less_nat_alt)
+           apply (metis (no_types, hide_lams) le_step bool.simps is_inf_heap tail_heap wellformed_iGraph)
+          apply (metis (no_types, hide_lams) le_step isInf_C_pte tail_heap two_comp_to_eint_arrlist_heap wellformed_iGraph uint_nat)
+         apply (metis (no_types, hide_lams) le_step isInf_C_pte tail_heap two_comp_to_eint_arrlist_heap wellformed_iGraph uint_nat)
+  using inc_le
+        apply blast
+  using unat_minus_plus1_less
+       apply blast
+      apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+      apply (metis tail_heap wellformed_iGraph uint_nat word_less_nat_alt)
+     apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+    apply wp
+    apply fast
+
+  sorry (*
           apply (rule_tac x="ee " in exI)
           apply (rule conjI, simp+)
           apply (subst arrlist_heap[where l=c and iL=iC], blast+)
@@ -446,8 +592,7 @@ lemma trian_spc':
   using le_step less_trans 
                         apply blast 
                        apply clarsimp
-  sorry
-(*
+
          apply (subst val_heap, blast, metis (mono_tags, hide_lams) IGraph_C.exhaust le_step less_trans num_edges_C.num_edges_C_def wellformed_iGraph)+
          apply (subst head_heap, blast)+
   using le_step less_trans 
@@ -936,6 +1081,8 @@ proof -
     moreover
   have trian1: "trian_inv G d c (iedge_cnt G) = 
    (\<forall>e. e \<in> arcs ?aG \<longrightarrow> 
+    \<not> is_inf d (tail ?aG e) \<longrightarrow>
+    \<not> is_inf d (head ?aG e) \<and>
     unat (val d (tail ?aG e)) + unat (c e) \<le> unat (max_word::32 word) \<and>
    (val d (head ?aG e) \<le> val d (tail ?aG e) + (c e)))"
     by (simp add: trian_inv_def)
@@ -948,10 +1095,10 @@ proof -
     apply (subst trian1, clarsimp)
     apply (simp add: abs_IDist_def abs_ICost_def)
     apply (rule iffI; clarsimp)
-     apply (rule conjI) 
+     apply (rule conjI)
     using real_unat_leq_plus 
-    apply (erule_tac x=e in allE, clarsimp)
-(*
+      apply (erule_tac x=e in allE, clarsimp)
+      (*
     this is the case for \<longrightarrow> \<longrightarrow>
     using real_unat_leq_plus
      apply blast
@@ -967,7 +1114,7 @@ proof -
     using unat_leq_plus_unat
         apply auto[1]
 *)
-(*
+      (*
    this is the case for \<and> \<and>
       defer
       apply clarsimp
@@ -983,7 +1130,7 @@ proof -
       apply blast
      apply (erule notE)
 *)
-      (* this is the case for \<longrightarrow> \<and> *)
+      (* this is the case for \<longrightarrow> \<and>
       apply (erule notE)
       defer
       apply clarsimp
@@ -1002,7 +1149,14 @@ proof -
     using real_unat_leq_plus_real_unat 
        apply blast
       apply meson
-    sorry
+*)
+     apply(erule_tac x=e in allE, clarsimp)
+    using real_unat_leq_plus
+     apply blast
+    apply (erule_tac x=e in allE, clarsimp)
+    using real_unat_leq_plus_real_unat
+    apply blast
+    done
   moreover
   have "just_inv  G d c s n p (ivertex_cnt G) =
     (\<forall>v. v \<in> verts ?aG \<longrightarrow>
@@ -1025,6 +1179,7 @@ proof -
       defer
       apply (simp add: just_inv_def abs_INum_def abs_IPedge_def abs_IDist_def)
       apply clarsimp
+    apply (erule_tac x=v in allE, clarsimp)
     sorry
 ultimately
    show "?thesis G d c s n p"
