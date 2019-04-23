@@ -400,17 +400,20 @@ lemma is_wellformed_spc':
 
 definition trian_inv :: "IGraph \<Rightarrow> IEInt \<Rightarrow> ICost \<Rightarrow> 32 word \<Rightarrow> bool" where
   "trian_inv G d c m \<equiv> 
-    \<forall>i < m. \<not>is_inf d (fst (iedges G i)) \<longrightarrow> \<not>is_inf d (snd (iedges G i)) \<and> unat (val d (fst (iedges G i))) + unat (c i) \<le> unat (max_word::32 word) \<and>
-    val d (snd (iedges G i)) \<le> val d (fst (iedges G i)) + c i"
+    \<forall>i < m. \<not>is_inf d (fst (iedges G i)) \<longrightarrow> 
+    (\<not>is_inf d (snd (iedges G i)) \<and> 
+     ((unat (val d (fst (iedges G i))) + unat (c i)) \<le> unat (max_word::32 word))  \<and>
+     val d (snd (iedges G i)) \<le> val d (fst (iedges G i)) + c i)"
 
 lemma trian_inv_step:
   assumes i_less_max: "i < (max_word::32 word)"
   shows "trian_inv G d c (i + 1) \<longleftrightarrow> trian_inv G d c i \<and>
   (\<not>is_inf d (fst (iedges G i)) \<longrightarrow> \<not>is_inf d (snd (iedges G i)) \<and>
-  unat (val d (fst (iedges G i))) + unat (c i) \<le> unat (max_word::32 word) \<and>
+  unat (val d (fst (iedges G i))) + unat (c i) \<le> unat (max_word::32 word)  \<and>
   val d (snd (iedges G i)) \<le> val d (fst (iedges G i)) + c i)"
   unfolding trian_inv_def
   by (metis (no_types) i_less_max less_irrefl less_x_plus_1)
+
 
 lemma inval_trian_ineq:
   fixes ee :: "32 word" and s :: lifted_globals
@@ -426,7 +429,7 @@ lemma inval_trian_ineq:
   shows "(snd (iD (snd (snd (snd iG) ee))) = 0 \<longrightarrow>
          (snd (iD (fst (snd (snd iG) ee))) = 0 \<longrightarrow> 
           ee < num_edges_C (heap_Graph_C s g) \<and>
-         (unat (fst (iD (fst (snd (snd iG) ee)))) + unat (iC ee) \<le> unat (max_word::32 word) \<longrightarrow> 
+         (fst (iD (fst (snd (snd iG) ee)))  \<le> (max_word::32 word) - iC ee \<longrightarrow> 
           \<not> fst (iD (snd (snd (snd iG) ee))) \<le> fst (iD (fst (snd (snd iG) ee))) + iC ee)) \<and> 
           snd (iD (fst (snd (snd iG) ee))) = 0) \<and> 
          (snd (iD (snd (snd (snd iG) ee))) \<noteq> 0 \<longrightarrow> 
@@ -440,16 +443,7 @@ proof -
     using a8 a3 by (simp add: two_comp_to_edge_arrlist_heap uint_nat)
   have "heap_w32 s (c +\<^sub>p uint ee) = iC ee"
     using a5 a3 by (metis (no_types) arrlist_heap uint_nat)
-  then show "(snd (iD (snd (snd (snd iG) ee))) = 0 \<longrightarrow> 
-             (snd (iD (fst (snd (snd iG) ee))) = 0 \<longrightarrow> 
-              ee < num_edges_C (heap_Graph_C s g) \<and> 
-             (unat (fst (iD (fst (snd (snd iG) ee)))) + unat (iC ee) \<le> unat (max_word::32 word) \<longrightarrow> 
-              \<not> fst (iD (snd (snd (snd iG) ee))) \<le> fst (iD (fst (snd (snd iG) ee))) + iC ee)) \<and> 
-              snd (iD (fst (snd (snd iG) ee))) = 0) \<and> 
-             (snd (iD (snd (snd (snd iG) ee))) \<noteq> 0 \<longrightarrow> 
-             (snd (iD (fst (snd (snd iG) ee))) = 0 \<longrightarrow> 
-              ee < num_edges_C (heap_Graph_C s g)) \<and> 
-              snd (iD (fst (snd (snd iG) ee))) = 0)"
+  then show ?thesis
     using f11 f10 a9 a6 a4 a3 a1 by (simp add: not_le wellformed_iGraph)
 qed
 
@@ -533,11 +527,21 @@ lemma trian_spc':
                                 metis (no_types, hide_lams) bool.simps is_inf_heap t_C_pte two_comp_to_edge_arrlist_heap wellformed_iGraph uint_nat,
                                 metis (no_types, hide_lams) bool.simps is_inf_heap s_C_pte two_comp_to_edge_arrlist_heap wellformed_iGraph uint_nat)
                         apply (rule_tac x=ee in exI)
-                        apply clarsimp
-                        defer
-                        apply (rule_tac x=ee in exI)
+                      apply clarsimp
+ 
+                      apply (subst arrlist_heap[where l=c and iL=iC], simp+)+
+                      apply (subst val_heap, blast)+
+                      apply (subst tail_heap, blast+)+
+                      apply (metis (no_types, hide_lams) wellformed_iGraph uint_nat shortest_path_checker.s_C_pte shortest_path_checker.two_comp_to_edge_arrlist_heap) 
+                      apply (subst tail_heap, blast+)+
+  find_theorems uint "(_ - _)" "_ < _"
+                    unfolding max_word_def apply simp 
+  defer
+
+ 
+                        apply (rule_tac x=ee in exI) 
   using inval_trian_ineq
-                        apply blast
+  defer
                        apply (subst val_heap, blast)
                         apply (subst tail_heap, blast)
                          apply (metis less_trans plus_one_helper word_le_less_eq)
@@ -549,7 +553,7 @@ lemma trian_spc':
                         apply (metis less_trans plus_one_helper word_le_less_eq)
                        defer 
   using val_trian_ineq
-                       apply blast
+  defer
                       apply (metis (no_types, hide_lams) le_step head_heap isInf_C_pte two_comp_to_eint_arrlist_heap wellformed_iGraph uint_nat)
   using inc_le
                      apply blast
@@ -560,8 +564,10 @@ lemma trian_spc':
                   apply (metis tail_heap wellformed_iGraph uint_nat word_less_nat_alt)
                  apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
                  apply (metis head_heap wellformed_iGraph uint_nat word_less_nat_alt)
-                apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
-               apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+                  apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+) defer
+                  defer
+(*
+               apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+) 
                apply (metis tail_heap wellformed_iGraph uint_nat word_less_nat_alt)
               apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
              apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
@@ -579,7 +585,7 @@ lemma trian_spc':
      apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
     apply wp
     apply fast
-
+*)
   sorry (*
           apply (rule_tac x="ee " in exI)
           apply (rule conjI, simp+)
@@ -638,6 +644,7 @@ lemma trian_spc':
   done
 *)
 
+
 definition just_inv :: 
   "IGraph \<Rightarrow> IEInt \<Rightarrow> ICost \<Rightarrow> IVertex \<Rightarrow> IEInt \<Rightarrow> IPEdge \<Rightarrow> 32 word \<Rightarrow> bool" where
   "just_inv G d c s n p k \<equiv>
@@ -648,7 +655,7 @@ definition just_inv ::
         val n v = val n (fst (iedges G e)) + 1)"
 
 lemma just_inv_step:
-  assumes v_less_max: "v < max_word"
+  assumes v_less_max: "v < (max_word::32 word)"
   shows "just_inv G d c s n p (v + 1) \<longleftrightarrow> just_inv G d c s n p v
     \<and> (v \<noteq> s \<and>  \<not> is_inf n v \<longrightarrow> 0 \<le> sint (p v) \<and>
       (\<exists> e. e = p v \<and> e < iedge_cnt G \<and> 
@@ -667,7 +674,7 @@ lemma just_inv_le:
 
 lemma not_just_verts:
   fixes G R c d n p s v
-  assumes v_less_max: "v < max_word"
+  assumes v_less_max: "v < (max_word::word32)"
   assumes "v < ivertex_cnt G"
   assumes "v \<noteq> s \<and> \<not> is_inf n v \<and> 0 \<le> sint (p v) \<and>
         (iedge_cnt G \<le> p v \<or>
