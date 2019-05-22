@@ -362,7 +362,7 @@ definition is_wellformed_inv :: "IGraph \<Rightarrow> 32 word \<Rightarrow> bool
 
 lemma is_wellformed_spc':
   "\<lbrace> P and 
-     (\<lambda>s. wf_digraph (abs_IGraph iG) \<and>
+     (\<lambda>s. (*wf_digraph (abs_IGraph iG) \<and>*) (* really? :) *)
           is_graph s iG g) \<rbrace>
    is_wellformed' g
    \<lbrace> (\<lambda>_ s. P s) And 
@@ -372,7 +372,6 @@ lemma is_wellformed_spc':
         M="\<lambda>(ee, s). unat (iedge_cnt iG - ee)" and
         I="\<lambda>ee s. P s \<and> is_wellformed_inv iG ee \<and> 
                    ee \<le> iedge_cnt iG \<and> 
-                   wf_digraph (abs_IGraph iG) \<and>
                    is_graph s iG g"])
   apply (simp add: skipE_def)
   apply wp
@@ -394,7 +393,7 @@ lemma is_wellformed_spc':
      apply blast
     apply (metis (mono_tags, hide_lams) diff_diff_add diff_self_eq_0 eq_iff_diff_eq_0 measure_unat not_less0 word_less_nat_alt zero_less_diff)
    apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
-  apply wp
+  apply wp 
   apply fast
   done
 
