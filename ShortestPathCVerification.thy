@@ -400,7 +400,7 @@ lemma is_wellformed_spc':
 definition trian_inv :: "IGraph \<Rightarrow> IEInt \<Rightarrow> ICost \<Rightarrow> 32 word \<Rightarrow> bool" where
   "trian_inv G d c m \<equiv> 
     \<forall>i < m. \<not> is_inf d (fst (iedges G i)) \<longrightarrow> 
-     (\<not>is_inf d (snd (iedges G i)) \<and> 
+     (\<not> is_inf d (snd (iedges G i)) \<and> 
       val d (fst (iedges G i)) + c i \<ge> val d (fst (iedges G i)) \<and>
      val d (snd (iedges G i)) \<le> val d (fst (iedges G i)) + c i)"
 
@@ -419,6 +419,34 @@ lemma trian_inv_le:
   shows "trian_inv G d c j"
   using assms 
   by (induct j) (auto simp add: trian_inv_def)
+
+lemma trian_ovfl_inval:
+  fixes ee :: "32 word" and s :: lifted_globals
+  assumes a1: "wf_digraph (abs_IGraph iG)"
+  assumes a2: "ee < num_edges_C (heap_Graph_C s g)"
+  assumes a3: "fst iG = num_vertices_C (heap_Graph_C s g)"
+  assumes a4: "fst (snd iG) = num_edges_C (heap_Graph_C s g)"
+  assumes a5: "arrlist (heap_w32 s) (is_valid_w32 s) (map (iC \<circ> of_nat) [0..<unat (num_edges_C (heap_Graph_C s g))]) c"
+  assumes a6: "isInf_C (heap_EInt_C s (d +\<^sub>p uint (first_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p uint ee))))) = 0"
+  assumes a7: "arrlist (heap_EInt_C s) (is_valid_EInt_C s) (map (to_eint \<circ> (iD \<circ> of_nat)) [0..<unat (num_vertices_C (heap_Graph_C s g))]) d"
+  assumes a8: "arrlist (heap_Edge_C s) (is_valid_Edge_C s) (map (to_edge \<circ> (snd (snd iG) \<circ> of_nat)) [0..<unat (num_edges_C (heap_Graph_C s g))]) (arcs_C (heap_Graph_C s g))"
+  assumes a9: "\<forall>i<num_edges_C (heap_Graph_C s g).
+                  snd (iD (fst (snd (snd iG) i))) = 0 \<longrightarrow> 
+                  snd (iD (snd (snd (snd iG) i))) = 0 \<and> 
+                  fst (iD (fst (snd (snd iG) i))) \<le> fst (iD (fst (snd (snd iG) i))) + iC i \<and> 
+                  fst (iD (snd (snd (snd iG) i))) \<le> fst (iD (fst (snd (snd iG) i))) + iC i"
+  assumes a10: "val_C (heap_EInt_C s (d +\<^sub>p uint (first_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p uint ee))))) + heap_w32 s (c +\<^sub>p uint ee) < val_C (heap_EInt_C s (d +\<^sub>p uint (first_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p uint ee)))))"
+  shows False
+proof-
+  have f11: "\<And>w. \<not> w < fst iG \<or> heap_EInt_C s (d +\<^sub>p uint w) = to_eint (iD w)"
+    using a7 a3 by (metis shortest_path_checker.two_comp_to_eint_arrlist_heap uint_nat)
+  have f12: "first_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p uint ee)) = fst (snd (snd iG) ee)"
+    using a8 a2 by (simp add: shortest_path_checker.tail_heap)
+  have "heap_w32 s (c +\<^sub>p uint ee) = iC ee"
+    using a5 a2 by (metis (no_types) arrlist_heap uint_nat)
+  then show False
+    using f12 f11 a10 a9 a6 a4 a2 a1 not_le wellformed_iGraph by auto
+qed
 
 lemma inval_trian_ineq:
   fixes ee :: "32 word" and s :: lifted_globals
@@ -531,20 +559,55 @@ lemma trian_spc':
                    is_dist s iG iD d \<and>
                    is_cost s iG iC c"])
   apply (simp add: skipE_def)
-  apply wp apply safe
-  thm arrlist_nth
+(*
+  apply wp 
+    apply safe
         apply (clarsimp simp: if_bool_eq_conj)+
-        apply safe 
-  unfolding trian_inv_def is_graph_def
-   apply (simp split: if_split_asm, safe, simp_all add: arrlist_nth ) 
-  using  is_inf_heap t_C_pte two_comp_to_edge_arrlist_heap wellformed_iGraph uint_nat 
-   (* apply (simp split: if_split_asm, safe, simp_all add: arrlist_nth)
+        apply safe
+  (*unfolding trian_inv_def is_graph_def*)
+                            apply (unfold trian_inv_def is_graph_def)[3]
+                            apply (simp split: if_split_asm, safe, simp_all add: arrlist_nth)
+  (*unfolding is_cost_def is_dist_def*)
+  apply (unfold is_cost_def is_dist_def)[3]
+                           apply clarsimp
+                           defer
+                           apply (clarsimp simp: if_bool_eq_conj)+
+  using trian_ovfl_inval
+                           apply blast
+                          apply (clarsimp simp: if_bool_eq_conj)+
+  using inval_trian_ineq 
+                          apply blast
+
+                         apply (unfold trian_inv_def is_graph_def)[1]
+                         apply (clarsimp simp: if_bool_eq_conj)+
+                         apply (subst head_heap, blast, metis le_step less_trans)+
+                         apply (subst tail_heap, blast, metis le_step less_trans)+
+                         apply (subst val_heap, fastforce, simp add: edge_vertex_val)+
+                         apply (subst val_heap, fastforce) 
+                          apply (metis (no_types, hide_lams) less_trans plus_one_helper head_heap wellformed_iGraph word_le_less_eq)
+  apply (subst arrlist_heap[where l=c and iL=iC], fastforce, metis le_step less_trans)+
+
+                         defer
+                         apply (unfold trian_inv_def is_graph_def)[1]
+                         apply (clarsimp simp: if_bool_eq_conj)+
+                         apply (simp add: inc_le is_graph_def)
+                        apply (simp add: is_graph_def unat_minus_plus1_less)
+  using is_graph_def
+                       apply blast
+                      apply (unfold trian_inv_def is_graph_def)[1]
+
+                      
+*)
+  apply wp
+  unfolding is_graph_def is_dist_def is_cost_def trian_inv_def
+    apply (subst if_bool_eq_conj)+
+    apply (simp split: if_split_asm, safe, simp_all add: arrlist_nth)
                          apply (rule_tac x=ee in exI)
                          apply (rule conjI,
                                 metis (no_types, hide_lams) bool.simps is_inf_heap 
-                                  t_C_pte two_comp_to_edge_arrlist_heap wellformed_iGraph uint_nat,
+                                t_C_pte two_comp_to_edge_arrlist_heap wellformed_iGraph uint_nat,
                                 metis (no_types, hide_lams) bool.simps is_inf_heap 
-                                  s_C_pte two_comp_to_edge_arrlist_heap wellformed_iGraph uint_nat)
+                                s_C_pte two_comp_to_edge_arrlist_heap wellformed_iGraph uint_nat)
                         apply (rule_tac x=ee in exI)
                         apply (simp add: tail_heap)
                         apply (subst val_heap [where f=iD], blast+, metis tail_heap wellformed_iGraph)+
@@ -556,62 +619,41 @@ lemma trian_spc':
                        apply (rule_tac x=ee in exI)
   using inval_trian_ineq
                        apply blast 
-                      apply (frule trian_inv_le)
+                      defer
                       apply (subst tail_heap, blast)
                        apply (metis less_trans plus_one_helper word_le_less_eq)
-                      apply (subst tail_heap, blast)
-                       apply (metis less_trans plus_one_helper word_le_less_eq)
-                      apply (subst val_heap, blast, blast intro: edge_vertex_val)+
                       apply (subst arrlist_heap[where l=c and iL=iC], simp)
                        apply (metis less_trans plus_one_helper word_le_less_eq)  
                       apply (drule plus_one_helper)
-thm word_le_less_eq
-                      apply (simp  word_le_less_eq)
-  apply (erule disjE) apply simp
-  *)
-(*
-                      defer 
-  using val_trian_ineq
-                      apply blast
-                     apply (metis (no_types, hide_lams) le_step head_heap isInf_C_pte two_comp_to_eint_arrlist_heap wellformed_iGraph uint_nat)
+                      defer
+                      apply (metis (no_types, hide_lams) le_step head_heap isInf_C_pte two_comp_to_eint_arrlist_heap wellformed_iGraph uint_nat)
   using inc_le
+                     apply blast
+  using unat_minus_plus1_less
                     apply blast
-  using unat_minus_plus1_less
-                   apply blast
-                  apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)+
-                 apply (metis tail_heap wellformed_iGraph uint_nat word_less_nat_alt)
+                   apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)+
+                  apply (metis tail_heap wellformed_iGraph uint_nat word_less_nat_alt)
+                 apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+                 apply (metis head_heap wellformed_iGraph uint_nat word_less_nat_alt)
                 apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
-                apply (metis head_heap wellformed_iGraph uint_nat word_less_nat_alt)
-               apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
-              defer
-              apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+) +
-              apply (metis head_heap wellformed_iGraph uint_nat word_less_nat_alt)
-    (*apply (metis tail_heap wellformed_iGraph uint_nat word_less_nat_alt)
+               defer
+               apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)+
+               apply (metis tail_heap wellformed_iGraph uint_nat word_less_nat_alt)
               apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)+
-           (*  apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
-            apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)*)
-(*apply (metis tail_heap wellformed_iGraph uint_nat word_less_nat_alt)*)
-            apply (metis head_heap wellformed_iGraph uint_nat word_less_nat_alt)*)
-  apply (metis (no_types, hide_lams) le_step bool.simps is_inf_heap tail_heap wellformed_iGraph)
-  apply (metis (no_types, hide_lams) le_step isInf_C_pte tail_heap two_comp_to_eint_arrlist_heap wellformed_iGraph uint_nat)
-  apply (metis (no_types, hide_lams) le_step isInf_C_pte tail_heap two_comp_to_eint_arrlist_heap wellformed_iGraph uint_nat)
+             apply (metis head_heap wellformed_iGraph uint_nat word_less_nat_alt)
+            apply (metis (no_types, hide_lams) le_step bool.simps is_inf_heap tail_heap wellformed_iGraph)
+           apply (metis (no_types, hide_lams) le_step isInf_C_pte tail_heap two_comp_to_eint_arrlist_heap wellformed_iGraph uint_nat)
+          apply (metis (no_types, hide_lams) le_step isInf_C_pte tail_heap two_comp_to_eint_arrlist_heap wellformed_iGraph uint_nat)
   using inc_le
-  apply blast
+         apply blast
   using unat_minus_plus1_less
-  apply blast
-  apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
-  apply (metis tail_heap wellformed_iGraph uint_nat word_less_nat_alt)
-  apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
-  apply wp
-  apply fast
-  prefer 2 
-  apply (subst val_heap, blast)
-  apply (subst tail_heap, blast)+
-  apply (metis less_trans plus_one_helper word_le_less_eq)
-  defer
-
-*)
-
+        apply blast
+       apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+       apply (metis tail_heap wellformed_iGraph uint_nat word_less_nat_alt)
+      apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+     apply wp
+     apply fast
+  apply (drule plus_one_helper)
 
   sorry
 
@@ -964,9 +1006,9 @@ lemma wf_inv_is_fin_digraph:
 
 
 lemma unat_simp: 
-  "\<And>x y:: 32 word. unat x + unat y \<le> unat (max_word:: 32 word) \<longrightarrow> 
+  "\<And>x y:: 32 word. unat x + unat y \<ge> unat x \<longrightarrow> 
       unat (x + y) = unat x + unat y"
-  by (meson not_le order_trans unat_add_lem unat_lt2p)
+  sorry
  
 lemma unat_leq_plus:
   fixes x y z :: "32 word"
@@ -989,9 +1031,9 @@ lemma real_nat:
 lemma unat_leq_trian_plus:
   fixes x y z :: "32 word"
   assumes a1: "unat x \<le> unat y + unat z"
-  assumes a2: "unat y + unat z \<le> unat (max_word :: 32 word)"
+  assumes a2: "unat y + unat z \<ge> unat y"
   shows "x \<le> y + z"
-  by (simp add: a1 a2 shortest_path_checker.unat_simp word_le_nat_alt)
+  by (simp add: a1 a2 unat_simp word_le_nat_alt)
 
 lemma unat_leq_plus_unats:
   fixes x y z :: "32 word"
@@ -1021,13 +1063,6 @@ lemma real_unat_leq_plus_real_unat:
   shows "x \<le> y + z"
   using assms
   by (simp add: unat_leq_plus_unat)
-
-lemma trian_inv_le:
-  assumes leq: "j \<le> i" 
-  assumes trian_i: "trian_inv G d c i"
-  shows "trian_inv G d c j"
-  using assms 
-  by (induct j) (auto simp add: trian_inv_def)
 
 lemma trian_imp_valid:
   fixes x y z :: "32 word"
@@ -1060,22 +1095,22 @@ proof -
    (\<forall>e. e \<in> arcs ?aG \<longrightarrow> 
     \<not> is_inf d (tail ?aG e) \<longrightarrow>
     \<not> is_inf d (head ?aG e) \<and>
-    unat (val d (tail ?aG e)) + unat (c e) \<le> unat (max_word::32 word) \<and>
+    (val d (tail ?aG e) \<le> val d (tail ?aG e) + (c e)) \<and>
    (val d (head ?aG e) \<le> val d (tail ?aG e) + (c e)))"
     by (simp add: trian_inv_def)
   have "trian_inv G d c (iedge_cnt G) =
    (\<forall>e. e \<in> arcs ?aG \<longrightarrow> 
     ?ad (tail ?aG e) \<noteq> PInfty \<longrightarrow>
     ?ad (head ?aG e) \<noteq> PInfty \<and>
-    ?ad (tail ?aG e) +  ereal (?ac e) \<le> real (unat (max_word :: 32 word)) \<and>
+   (?ad (tail ?aG e) \<le> ?ad (tail ?aG e) + ereal (?ac e)) \<and>
    (?ad (head ?aG e) \<le> ?ad (tail ?aG e) + ereal (?ac e)))"
     apply (subst trian1, clarsimp)
     apply (simp add: abs_IDist_def abs_ICost_def)
     apply (rule iffI; clarsimp)
-     apply (rule conjI)
-    using real_unat_leq_plus 
-      apply (erule_tac x=e in allE, clarsimp)
-     apply(erule_tac x=e in allE, clarsimp)
+     apply safe
+    using real_unat_leq_plus
+      apply blast  
+     apply (erule_tac x=e in allE, clarsimp)
     using real_unat_leq_plus
      apply blast
     apply (erule_tac x=e in allE, clarsimp)
