@@ -61,9 +61,9 @@ where
   "bool b = (if b=0 then False else True)"
 
 abbreviation 
-  is_inf ::  "IEInt \<Rightarrow> IVertex \<Rightarrow> bool"
+  is_inf ::  "IEInt \<Rightarrow> IVertex \<Rightarrow> 32 word"
 where 
-  "is_inf f v \<equiv> bool (snd (f v))"
+  "is_inf f v \<equiv>  (snd (f v))"
 
 (* Make List - makes a list containing the result of a function *)
 
@@ -351,7 +351,7 @@ lemma val_heap:
 
 lemma is_inf_heap:
   "\<lbrakk>arrlist h v (map (to_eint \<circ> (f \<circ> of_nat)) [0..<unat m]) ep; e < m\<rbrakk> \<Longrightarrow>
-  is_inf f e = bool (isInf_C (h (ep +\<^sub>p (uint e))))" 
+  is_inf f e =  isInf_C (h (ep +\<^sub>p (uint e)))" 
   using two_comp_arrlist_heap to_eint.simps isInf_C_pte by (metis uint_nat)
 
 thm "is_wellformed'_def"
@@ -399,15 +399,15 @@ lemma is_wellformed_spc':
 
 definition trian_inv :: "IGraph \<Rightarrow> IEInt \<Rightarrow> ICost \<Rightarrow> 32 word \<Rightarrow> bool" where
   "trian_inv G d c m \<equiv> 
-    \<forall>i < m. \<not> is_inf d (fst (iedges G i)) \<longrightarrow> 
-     (\<not> is_inf d (snd (iedges G i)) \<and> 
+    \<forall>i < m. is_inf d (fst (iedges G i)) \<noteq>0 \<longrightarrow> 
+     (is_inf d (snd (iedges G i)) \<noteq>0 \<and> 
       val d (fst (iedges G i)) + c i \<ge> val d (fst (iedges G i)) \<and>
      val d (snd (iedges G i)) \<le> val d (fst (iedges G i)) + c i)"
 
 lemma trian_inv_step:
   assumes i_less_max: "i < (max_word::32 word)"
   shows "trian_inv G d c (i + 1) \<longleftrightarrow> trian_inv G d c i \<and>
-  (\<not>is_inf d (fst (iedges G i)) \<longrightarrow> \<not>is_inf d (snd (iedges G i)) \<and>
+  (is_inf d (fst (iedges G i)) \<noteq>0 \<longrightarrow> is_inf d (snd (iedges G i)) \<noteq>0 \<and>
   val d (fst (iedges G i)) + c i \<ge> val d (fst (iedges G i)) \<and>
   val d (snd (iedges G i)) \<le> val d (fst (iedges G i)) + c i)"
   unfolding trian_inv_def
@@ -540,6 +540,7 @@ proof -
     using a5 a4 a2 a1 by (metis (no_types) tail_heap wellformed_iGraph)
 qed
 
+declare if_bool_eq_conj [[simp add]]
 lemma trian_spc':
   "\<lbrace> P and 
      (\<lambda>s. wf_digraph (abs_IGraph iG) \<and>
@@ -558,35 +559,56 @@ lemma trian_spc':
                    is_graph s iG g \<and>
                    is_dist s iG iD d \<and>
                    is_cost s iG iC c"])
+
   apply (simp add: skipE_def)
-(*
+
   apply wp 
     apply safe
         apply (clarsimp simp: if_bool_eq_conj)+
-        apply safe
+        apply safe 
+                            defer 
+                            apply (subgoal_tac " ee + 1 \<le> fst (snd iG)") prefer 2  
+                             apply (simp add: inc_le is_graph_def)
+                            apply (drule_tac j="ee + 1" in trian_inv_le, blast) 
+                            apply (subgoal_tac "ee < (max_word::32 word)") prefer 2 
+  using less_le not_le 
+                             apply fast
+                            apply (drule trian_inv_step[where d=iD and G=iG and c=iC])
+                            apply clarsimp 
+  
+                            apply (unfold trian_inv_def is_graph_def is_cost_def is_dist_def)[1] 
+
+                            apply clarsimp
   (*unfolding trian_inv_def is_graph_def*)
-                            apply (unfold trian_inv_def is_graph_def)[3]
+                            apply (unfold trian_inv_def is_graph_def is_dist_def is_cost_def)[3]
                             apply (simp split: if_split_asm, safe, simp_all add: arrlist_nth)
   (*unfolding is_cost_def is_dist_def*)
-  apply (unfold is_cost_def is_dist_def)[3]
+                           apply (unfold is_cost_def is_dist_def)[3]
                            apply clarsimp
                            defer
-                           apply (clarsimp simp: if_bool_eq_conj)+
+                           apply (clarsimp simp: if_bool_eq_conj)+ 
   using trian_ovfl_inval
                            apply blast
-                          apply (clarsimp simp: if_bool_eq_conj)+
   using inval_trian_ineq 
-                          apply blast
+                          apply blast thm trian_inv_step
+                         apply (subst trian_inv_step)
+  using less_le not_le
+                          apply fast
+                         apply safe
+                           apply (clarsimp simp: if_bool_eq_conj)+ 
+                           apply (unfold is_dist_def )[1]
+                           apply (simp add: Metis.not_atomize wellformed_iGraph) 
+                           apply (subst is_inf_heap) 
+                             apply fastforce
+                            apply (metis (no_types, hide_lams) wellformed_iGraph is_graph_def)
+                           apply (fastforce simp: head_heap is_graph_def)
+  sorry
+  find_theorems "\<not> _ \<Longrightarrow> False "
 
-                         apply (unfold trian_inv_def is_graph_def)[1]
+                         apply (unfold trian_inv_def[unfolded if_bool_eq_conj] is_graph_def)[1]
                          apply (clarsimp simp: if_bool_eq_conj)+
                          apply (subst head_heap, blast, metis le_step less_trans)+
                          apply (subst tail_heap, blast, metis le_step less_trans)+
-                         apply (subst val_heap, fastforce, simp add: edge_vertex_val)+
-                         apply (subst val_heap, fastforce) 
-                          apply (metis (no_types, hide_lams) less_trans plus_one_helper head_heap wellformed_iGraph word_le_less_eq)
-  apply (subst arrlist_heap[where l=c and iL=iC], fastforce, metis le_step less_trans)+
-
                          defer
                          apply (unfold trian_inv_def is_graph_def)[1]
                          apply (clarsimp simp: if_bool_eq_conj)+
@@ -595,9 +617,40 @@ lemma trian_spc':
   using is_graph_def
                        apply blast
                       apply (unfold trian_inv_def is_graph_def)[1]
+                      defer
+                      apply (unfold trian_inv_def is_graph_def is_cost_def is_dist_def)[1]
+                      apply (clarsimp simp: if_bool_eq_conj)+
+                      apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+                      apply (metis tail_heap wellformed_iGraph uint_nat word_less_nat_alt)
+                     apply (unfold trian_inv_def is_graph_def is_cost_def is_dist_def)[1]
+                     apply (clarsimp simp: if_bool_eq_conj)+
+                     apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+                     apply (metis head_heap wellformed_iGraph uint_nat word_less_nat_alt)
+                    apply (unfold trian_inv_def is_graph_def is_cost_def is_dist_def)[1]
+                    apply (clarsimp simp: if_bool_eq_conj)+
+                    apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+  using is_graph_def
+                   apply blast
+                  apply (unfold trian_inv_def is_graph_def is_cost_def is_dist_def)[1]
+                  apply (clarsimp simp: if_bool_eq_conj)+
+                  apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+                 apply (unfold trian_inv_def is_graph_def is_cost_def is_dist_def)[1]
+                 apply (clarsimp simp: if_bool_eq_conj)+
+                 apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+                 apply (metis tail_heap wellformed_iGraph uint_nat word_less_nat_alt)
+                apply (unfold trian_inv_def is_graph_def is_cost_def is_dist_def)[1]
+                apply (clarsimp simp: if_bool_eq_conj)+
+                apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+               apply (unfold trian_inv_def is_graph_def is_cost_def is_dist_def)[1]
+               apply (clarsimp simp: if_bool_eq_conj)+
+              apply (unfold trian_inv_def is_graph_def is_cost_def is_dist_def)[1]
+              apply (clarsimp simp: if_bool_eq_conj)+
+              apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+              apply (metis shortest_path_checker.head_heap shortest_path_checker.wellformed_iGraph uint_nat word_less_nat_alt)
+  try0 sledgehammer
 
-                      
-*)
+
+(*
   apply wp
   unfolding is_graph_def is_dist_def is_cost_def trian_inv_def
     apply (subst if_bool_eq_conj)+
@@ -653,8 +706,8 @@ lemma trian_spc':
       apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
      apply wp
      apply fast
-  apply (drule plus_one_helper)
-
+    apply (drule plus_one_helper)
+*)
   sorry
 
 definition just_inv :: 
