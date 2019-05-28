@@ -39,34 +39,31 @@ int is_wellformed(Graph *g) {
 }
 
 int trian(Graph *g, EInt *dist, unsigned int *c) {
-	for(unsigned int edge_id = 0; edge_id < edge_cnt(g); edge_id++) {
+	  for(unsigned int edge_id = 0; edge_id < edge_cnt(g); edge_id++) {
         if(dist[arcs(g, edge_id).first].isInf == 0) {
             if(dist[arcs(g, edge_id).second].isInf != 0) return 0;
-            if(dist[arcs(g, edge_id).first].val + c[edge_id] < dist[arcs(g, edge_id).first].val) return 0; // check there is no overflow
+            if(dist[arcs(g, edge_id).first].val > dist[arcs(g, edge_id).first].val + c[edge_id]) return 0; // check there is no overflow
             if(dist[arcs(g, edge_id).second].val > dist[arcs(g, edge_id).first].val + c[edge_id]) return 0;
         }
-        // if(dist[src].val + c[edge_id] > 4294967295) return 0;  // check there is no overflow
-		// if(dist[dest].val > dist[src].val + c[edge_id]) return 0;
-	}
-	return 1;
+    }
+    return 1;
 }
 
 int just(Graph *g, EInt *dist, unsigned int *c, unsigned int s, EInt *enu, int *pred) {
-	unsigned int edge_id;
-	for(unsigned int v = 0; v < vertex_cnt(g); v++) {
-        // if(pred[v] < 0) return 0;
-	    edge_id = (unsigned int) pred[v];
-		if(v != s) {
+	  unsigned int edge_id;
+	  for(unsigned int v = 0; v < vertex_cnt(g); v++) {
+        edge_id = (unsigned int) pred[v];
+        if(v != s) {
             if(enu[v].isInf == 0) {
                 if(pred[v] < 0) return 0;
-				if(edge_id >= edge_cnt(g)) return 0;
-				if(arcs(g, edge_id).second != v) return 0;
-				if(dist[v].val != dist[arcs(g, edge_id).first].val + c[edge_id]) return 0;
-				if(enu[v].val != enu[arcs(g, edge_id).first].val + 1) return 0; // onum
-			}
-		}
-	}
-	return 1;
+                if(edge_id >= edge_cnt(g)) return 0;
+                if(arcs(g, edge_id).second != v) return 0;
+                if(dist[v].val != dist[arcs(g, edge_id).first].val + c[edge_id]) return 0;
+                if(enu[v].val != enu[arcs(g, edge_id).first].val + 1) return 0;
+            }
+        }
+	  }
+	  return 1;
 }
 
 int no_path(Graph *g, EInt *dist, EInt *enu) {
