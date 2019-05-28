@@ -664,6 +664,32 @@ lemma trian_spc':
   apply (metis (mono_tags, lifting) less_irrefl pred_conj_app is_graph_def trian_inv_def word_gt_a_gt_0 word_zero_le)
   done
 
+definition trian_inv' :: "IGraph \<Rightarrow> IEInt \<Rightarrow> ICost \<Rightarrow> 32 word \<Rightarrow> bool" where
+  "trian_inv' G d c m \<equiv> 
+    \<forall>i < m. is_inf d (fst (iedges G i)) = 0 \<longrightarrow> 
+     (is_inf d (snd (iedges G i)) = 0 \<and> 
+     val d (snd (iedges G i)) \<le> val d (fst (iedges G i)) + c i)"
+
+
+lemma trian_inv'_imp_trian_inv: "trian_inv G d c m \<Longrightarrow> trian_inv' G d c m " 
+  by (simp add: trian_inv_def trian_inv'_def)
+
+lemma trian_spc'':
+  "\<lbrace> P and 
+     (\<lambda>s. wf_digraph (abs_IGraph iG) \<and>
+          is_graph s iG g \<and>
+          is_dist s iG iD d \<and>
+          is_cost s iG iC c)\<rbrace>
+   trian' g d c
+   \<lbrace> (\<lambda>_ s. P s) And 
+     (\<lambda>rr s. rr \<noteq> 0 \<longrightarrow> trian_inv' iG iD iC (iedge_cnt iG)) \<rbrace>!"
+  apply (rule validNF_pre_post_imp)
+  apply (rule trian_spc') 
+   apply blast 
+   apply (clarsimp simp: trian_inv'_imp_trian_inv)
+  done
+
+
 definition just_inv :: 
   "IGraph \<Rightarrow> IEInt \<Rightarrow> ICost \<Rightarrow> IVertex \<Rightarrow> IEInt \<Rightarrow> IPEdge \<Rightarrow> 32 word \<Rightarrow> bool" where
   "just_inv G d c s n p k \<equiv>
@@ -1113,6 +1139,19 @@ theorem test:
   fixes x y z :: "32 word"
   assumes "real (unat y) \<le> real (unat y) + real (unat z)"
   shows "y \<le> y + z"
+  oops 
+lemma fin_digraph_is_wellformed_inv:  "fin_digraph (abs_IGraph G) \<longleftrightarrow> is_wellformed_inv G (iedge_cnt G)"
+    unfolding is_wellformed_inv_def fin_digraph_def fin_digraph_axioms_def
+      wf_digraph_def no_loops_def 
+    by auto
+
+lemma trian_inv_eq: "trian_inv G d c (iedge_cnt G) = 
+   (\<forall>e. e \<in> arcs (abs_IGraph G) \<longrightarrow> 
+    is_inf d (tail (abs_IGraph G) e) = 0 \<longrightarrow>
+    is_inf d (head (abs_IGraph G) e) = 0 \<and>
+   (val d (tail (abs_IGraph G) e) \<le> val d (tail (abs_IGraph G) e) + (c e)) \<and>
+   (val d (head (abs_IGraph G) e) \<le> val d (tail (abs_IGraph G) e) + (c e)))"
+    by (simp add: trian_inv_def)
 
 lemma basic_just_sp_eq_invariants:
 "\<And>G dist c s enum pred. 
@@ -1121,7 +1160,7 @@ lemma basic_just_sp_eq_invariants:
       (abs_ICost c) s (abs_INum enum) (abs_IPedge pred) \<longleftrightarrow> 
     (is_wellformed_inv G (iedge_cnt G) \<and> 
     (abs_IDist dist) s \<le> 0 \<and> 
-    trian_inv G dist c (iedge_cnt G) \<and> 
+    trian_inv' G dist c (iedge_cnt G) \<and> 
     just_inv G dist c s enum pred (ivertex_cnt G))"
 proof -
   fix G d c s n p 
@@ -1131,9 +1170,7 @@ proof -
   let ?an = "abs_INum n"  
   let ?ap = "abs_IPedge p"
   have "fin_digraph (abs_IGraph G) \<longleftrightarrow> is_wellformed_inv G (iedge_cnt G)"
-    unfolding is_wellformed_inv_def fin_digraph_def fin_digraph_axioms_def
-      wf_digraph_def no_loops_def 
-      by auto
+      by (rule fin_digraph_is_wellformed_inv)
     moreover
   have trian1: "trian_inv G d c (iedge_cnt G) = 
    (\<forall>e. e \<in> arcs ?aG \<longrightarrow> 
@@ -1142,34 +1179,32 @@ proof -
    (val d (tail ?aG e) \<le> val d (tail ?aG e) + (c e)) \<and>
    (val d (head ?aG e) \<le> val d (tail ?aG e) + (c e)))"
     by (simp add: trian_inv_def)
-  have "trian_inv G d c (iedge_cnt G) =
+  have trian2: "trian_inv G d c (iedge_cnt G) = 
    (\<forall>e. e \<in> arcs ?aG \<longrightarrow> 
-    ?ad (tail ?aG e) \<noteq> PInfty \<longrightarrow>
-    ?ad (head ?aG e) \<noteq> PInfty \<and>
-   (?ad (tail ?aG e) \<le> ?ad (tail ?aG e) + ereal (?ac e)) \<and>
-   (?ad (head ?aG e) \<le> ?ad (tail ?aG e) + ereal (?ac e)))"
-    apply (subst trian1, clarsimp)
+    is_inf d (tail ?aG e) = 0 \<longrightarrow>
+    is_inf d (head ?aG e) = 0 \<and>
+   (val d (tail ?aG e) \<le> val d (tail ?aG e) + (c e)) \<and>
+   (val d (head ?aG e) \<le> val d (tail ?aG e) + (c e)))"
+    by (simp add: trian_inv_def)
+  then have "trian_inv' G d c (iedge_cnt G) \<longleftrightarrow>
+   (\<forall>e. e \<in> arcs ?aG \<longrightarrow> 
+  (*  ?ad (tail ?aG e) \<noteq> PInfty \<longrightarrow>
+    ?ad (head ?aG e) \<noteq> PInfty \<and>*)
+  (* (?ad (tail ?aG e) \<le> ?ad (tail ?aG e) + ereal (?ac e)) \<and>*)
+    ?ad (head ?aG e) \<le> ?ad (tail ?aG e) + ?ac e)"
+   (* apply (subst trian1, clarsimp)
     apply (simp add: abs_IDist_def abs_ICost_def)
-    apply (rule iffI; clarsimp)
-     apply safe
-    using real_unat_leq_plus
-      apply blast  
-     apply (erule_tac x=e in allE, clarsimp)
-    using real_unat_leq_plus
-     apply blast
-      apply (erule_tac x=e in allE, clarsimp)
-     apply (case_tac "snd (d (snd (snd (snd G) e))) \<noteq> 0")
-    apply blast
-    apply clarsimp
-     apply (simp add: unat_leq_plus_unats unat_simp)
-    sorry
-  moreover
+    apply (clarsimp)
+     apply (drule_tac x=e in spec)
+    apply (blast intro: real_unat_leq_plus) 
+    done*) sorry
+      moreover
   have "just_inv  G d c s n p (ivertex_cnt G) =
     (\<forall>v. v \<in> verts ?aG \<longrightarrow>
       v \<noteq> s \<longrightarrow> ?an v \<noteq> \<infinity> \<longrightarrow> 
       (\<exists>e \<in> arcs ?aG. e = the (?ap v) \<and>
       v = head ?aG e \<and> 
-      ?ad v = ?ad (tail ?aG e) + ereal (?ac e) \<and> 
+      ?ad v = ?ad (tail ?aG e) +  (?ac e) \<and> 
      ?an v = ?an (tail ?aG e) + enat 1))"
     apply clarsimp
     apply safe
@@ -1194,14 +1229,7 @@ ultimately
     basic_just_sp_pred_def 
     basic_just_sp_pred_axioms_def 
     basic_sp_def basic_sp_axioms_def
-   apply safe
-   prefer 4
-   defer
-             apply fastforce+
-   apply clarsimp
-   apply (erule_tac x=e in allE)+
-   apply clarsimp
-   sorry
+   by simp
 qed
 
 
