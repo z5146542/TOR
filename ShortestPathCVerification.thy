@@ -1111,7 +1111,7 @@ lemma trian_inv_eq: "trian_inv G d c (iedge_cnt G) =
     is_inf d (head (abs_IGraph G) e) = 0 \<and>
    (val d (tail (abs_IGraph G) e) \<le> val d (tail (abs_IGraph G) e) + (c e)) \<and>
    (val d (head (abs_IGraph G) e) \<le> val d (tail (abs_IGraph G) e) + (c e)))"
-    by (simp add: trian_inv_def)
+  by (simp add: trian_inv_def)
 
 lemma basic_just_sp_eq_invariants:
 "\<And>G dist c s enum pred. 
@@ -1157,8 +1157,42 @@ proof -
     apply (clarsimp)
      apply (drule_tac x=e in spec)
     apply (blast intro: real_unat_leq_plus) 
-    done*) sorry
-      moreover
+    done*)
+    apply clarsimp
+    apply safe
+           apply (simp add: abs_IDist_def abs_ICost_def trian_inv'_def)
+           apply (blast intro: real_unat_leq_plus)
+          apply (simp add: abs_IDist_def abs_ICost_def trian_inv'_def)
+         apply (simp add: abs_IDist_def abs_ICost_def trian_inv'_def)
+        apply (simp add: abs_IDist_def abs_ICost_def trian_inv'_def trian_inv_def)
+        apply fastforce
+       apply (simp add: abs_IDist_def abs_ICost_def trian_inv'_def trian_inv_def)
+       apply (blast intro: real_unat_leq_plus)
+      apply (simp add: abs_IDist_def abs_ICost_def trian_inv'_def trian_inv_def)
+      apply clarsimp
+      defer
+      apply (simp add: abs_IDist_def abs_ICost_def trian_inv'_def trian_inv_def)
+     apply (simp add: abs_IDist_def abs_ICost_def trian_inv'_def trian_inv_def)
+     apply clarsimp
+     defer
+     apply safe
+               defer
+               defer
+               apply force
+              apply force
+             defer
+             defer
+             defer
+             defer
+             apply fastforce
+            apply force
+           defer
+           defer
+           defer
+          
+
+    sorry
+  moreover
   have "just_inv  G d c s n p (ivertex_cnt G) =
     (\<forall>v. v \<in> verts ?aG \<longrightarrow>
       v \<noteq> s \<longrightarrow> ?an v \<noteq> \<infinity> \<longrightarrow> 
@@ -1175,13 +1209,13 @@ proof -
       apply (simp add: just_inv_def abs_INum_def abs_IPedge_def abs_ICost_def abs_IDist_def)
       apply (rule conjI, clarsimp)
        apply (meson enat.distinct(2) not_le)
-    defer
-    apply (simp add: just_inv_def abs_INum_def abs_IPedge_def)
+      defer
+      apply (simp add: just_inv_def abs_INum_def abs_IPedge_def)
       defer
       apply (simp add: just_inv_def abs_INum_def abs_IPedge_def abs_IDist_def)
       apply clarsimp
       apply (erule_tac x=v in allE, clarsimp)
-      
+
     sorry
 ultimately
    show "?thesis G d c s n p"
@@ -1189,7 +1223,7 @@ ultimately
     basic_just_sp_pred_def 
     basic_just_sp_pred_axioms_def 
     basic_sp_def basic_sp_axioms_def
-   by simp
+   by presburger
 qed
 
 
