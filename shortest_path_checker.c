@@ -29,11 +29,11 @@ typedef struct EInt {
 // Procedures
 
 int is_wellformed(Graph *g) {
-	Edge e;
-	for(unsigned int i = 0; i < edge_cnt(g); i++) {
-		e = arcs(g, i);
-		if(vertex_cnt(g) <= e.first) return 0;
-		if(vertex_cnt(g) <= e.second) return 0;
+	  Edge e;
+	  for(unsigned int i = 0; i < edge_cnt(g); i++) {
+  	    e = arcs(g, i);
+  	    if(vertex_cnt(g) <= e.first) return 0;
+  	    if(vertex_cnt(g) <= e.second) return 0;
 	}
 	return 1;
 }
@@ -67,42 +67,42 @@ int just(Graph *g, EInt *dist, unsigned int *c, unsigned int s, EInt *enu, int *
 }
 
 int no_path(Graph *g, EInt *dist, EInt *enu) {
-	for(unsigned int v = 0; v < vertex_cnt(g); v++) {
-		if(dist[v].isInf != 0) {
-			if(enu[v].isInf == 0) return 0;
-		}
-		else {
-			if(enu[v].isInf != 0) return 0;
-		}
-	}
-	return 1;
+    for(unsigned int v = 0; v < vertex_cnt(g); v++) {
+        if(dist[v].isInf != 0) {
+            if(enu[v].isInf == 0) return 0;
+        }
+        else {
+            if(enu[v].isInf != 0) return 0;
+        }
+    }
+    return 1;
 }
 
 // int pos_cost(Graph *g, unsigned int *c) {
-	// for(unsigned int edge_id = 0; edge_id < edge_cnt(g); edge_id++) {
-		// if(c[edge_id] < 0) return 0;
-	// }
-	// return 1;
+    // for(unsigned int edge_id = 0; edge_id < edge_cnt(g); edge_id++) {
+        // if(c[edge_id] < 0) return 0;
+    // }
+    // return 1;
 // }
 
 int check_basic_just_sp(Graph *g, EInt *dist, unsigned int *c, unsigned int s, EInt *enu, int *pred) {
-	if(!is_wellformed(g)) return 0;
-    if(dist[s].isInf == 0) return 0;
+    if(!is_wellformed(g)) return 0;
+    if(dist[s].isInf != 0) return 0;
     if(dist[s].val > 0) return 0;
-	if(!trian(g, dist, c)) return 0;
-	if(!just(g, dist, c, s, enu, pred)) return 0;
-	return 1;
+    if(!trian(g, dist, c)) return 0;
+    if(!just(g, dist, c, s, enu, pred)) return 0;
+    return 1;
 }
 
 int check_sp(Graph *g, EInt *dist, unsigned int *c, unsigned int s, EInt *enu, int *pred) {
-	if(!check_basic_just_sp(g, dist, c, s, enu, pred)) return 0;
-	if(s >= vertex_cnt(g)) return 0;
-	if(dist[s].val != 0) return 0;
-	if(!no_path(g, dist, enu)) return 0;
-//	if(!pos_cost(g, c)) return 0;
-	return 1;
+    if(!check_basic_just_sp(g, dist, c, s, enu, pred)) return 0;
+    if(s >= vertex_cnt(g)) return 0;
+    if(dist[s].val != 0) return 0;
+    if(!no_path(g, dist, enu)) return 0;
+    // if(!pos_cost(g, c)) return 0;
+    return 1;
 }
 
 int main(int argc, char **argv) {
-	return 0;
+    return 0;
 }

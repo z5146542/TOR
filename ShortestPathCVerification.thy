@@ -1139,17 +1139,10 @@ proof -
    (val d (tail ?aG e) \<le> val d (tail ?aG e) + (c e)) \<and>
    (val d (head ?aG e) \<le> val d (tail ?aG e) + (c e)))"
     by (simp add: trian_inv_def)
-  have trian2: "trian_inv G d c (iedge_cnt G) = 
+  then have "trian_inv' G d c (iedge_cnt G) \<longrightarrow>
    (\<forall>e. e \<in> arcs ?aG \<longrightarrow> 
-    is_inf d (tail ?aG e) = 0 \<longrightarrow>
-    is_inf d (head ?aG e) = 0 \<and>
-   (val d (tail ?aG e) \<le> val d (tail ?aG e) + (c e)) \<and>
-   (val d (head ?aG e) \<le> val d (tail ?aG e) + (c e)))"
-    by (simp add: trian_inv_def)
-  then have "trian_inv' G d c (iedge_cnt G) \<longleftrightarrow>
-   (\<forall>e. e \<in> arcs ?aG \<longrightarrow> 
-  (*  ?ad (tail ?aG e) \<noteq> PInfty \<longrightarrow>
-    ?ad (head ?aG e) \<noteq> PInfty \<and>*)
+    ?ad (tail ?aG e) \<noteq> PInfty \<longrightarrow>
+    ?ad (head ?aG e) \<noteq> PInfty \<and>
   (* (?ad (tail ?aG e) \<le> ?ad (tail ?aG e) + ereal (?ac e)) \<and>*)
     ?ad (head ?aG e) \<le> ?ad (tail ?aG e) + ?ac e)"
    (* apply (subst trian1, clarsimp)
@@ -1158,40 +1151,18 @@ proof -
      apply (drule_tac x=e in spec)
     apply (blast intro: real_unat_leq_plus) 
     done*)
+    apply (simp add: trian_inv'_def)
     apply clarsimp
     apply safe
-           apply (simp add: abs_IDist_def abs_ICost_def trian_inv'_def)
-           apply (blast intro: real_unat_leq_plus)
-          apply (simp add: abs_IDist_def abs_ICost_def trian_inv'_def)
-         apply (simp add: abs_IDist_def abs_ICost_def trian_inv'_def)
-        apply (simp add: abs_IDist_def abs_ICost_def trian_inv'_def trian_inv_def)
-        apply fastforce
-       apply (simp add: abs_IDist_def abs_ICost_def trian_inv'_def trian_inv_def)
-       apply (blast intro: real_unat_leq_plus)
-      apply (simp add: abs_IDist_def abs_ICost_def trian_inv'_def trian_inv_def)
-      apply clarsimp
-      defer
-      apply (simp add: abs_IDist_def abs_ICost_def trian_inv'_def trian_inv_def)
-     apply (simp add: abs_IDist_def abs_ICost_def trian_inv'_def trian_inv_def)
-     apply clarsimp
-     defer
-     apply safe
-               defer
-               defer
-               apply force
-              apply force
-             defer
-             defer
-             defer
-             defer
-             apply fastforce
-            apply force
-           defer
-           defer
-           defer
-          
-
-    sorry
+       apply (simp add: abs_IDist_def abs_ICost_def trian_inv_def)
+       apply force
+      apply (simp add: abs_IDist_def abs_ICost_def trian_inv_def)
+      apply (safe, force, blast intro: real_unat_leq_plus)
+     apply (simp add: abs_IDist_def abs_ICost_def trian_inv_def)
+     apply fastforce
+    apply (simp add: abs_IDist_def abs_ICost_def trian_inv_def)
+    apply (safe, force, blast intro: real_unat_leq_plus)
+    done
   moreover
   have "just_inv  G d c s n p (ivertex_cnt G) =
     (\<forall>v. v \<in> verts ?aG \<longrightarrow>
@@ -1216,14 +1187,32 @@ proof -
       apply clarsimp
       apply (erule_tac x=v in allE, clarsimp)
 
-    sorry
+    oops
 ultimately
    show "?thesis G d c s n p"
    unfolding 
     basic_just_sp_pred_def 
     basic_just_sp_pred_axioms_def 
     basic_sp_def basic_sp_axioms_def
-   by presburger
+   apply safe
+         defer
+         apply blast
+        apply blast
+       defer
+       apply force
+      apply blast
+     apply blast
+    apply clarsimp
+    apply (simp add: trian_inv'_def is_wellformed_inv_def just_inv_def abs_INum_def abs_IPedge_def abs_ICost_def abs_IDist_def)
+    apply clarsimp
+    apply safe
+     apply force
+    defer
+    apply (simp add: trian_inv'_def is_wellformed_inv_def just_inv_def abs_INum_def abs_IPedge_def abs_ICost_def abs_IDist_def)
+    apply clarsimp
+    apply safe
+     apply (metis PInfty_neq_ereal(2) infinity_ereal_def)
+   oops
 qed
 
 
