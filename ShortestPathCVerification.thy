@@ -211,12 +211,12 @@ definition
   abs_IDist :: "(32 word \<Rightarrow> (32 word \<times> 32 word)) \<Rightarrow> 32 word \<Rightarrow> ereal"
 where
   "abs_IDist d v \<equiv> if snd (d v) \<noteq> 0 then PInfty else 
-         ereal (real (unat (fst (d v))))"
+         real (unat (fst (d v)))"
 
 definition
   abs_INum :: "(32 word \<Rightarrow> (32 word \<times> 32 word)) \<Rightarrow> 32 word \<Rightarrow> enat"
 where
-  "abs_INum n v \<equiv> if snd (n v) \<noteq> 0 then \<infinity> else enat (unat (fst (n v)))"
+  "abs_INum n v \<equiv> if snd (n v) \<noteq> 0 then \<infinity> else unat (fst (n v))"
 
 definition 
   abs_IPedge :: "(32 word \<Rightarrow> 32 word) \<Rightarrow> 32 word \<Rightarrow> 32 word option" 
@@ -691,7 +691,7 @@ definition just_inv ::
 lemma just_inv_step:
   assumes v_less_max: "v < max_word"
   shows "just_inv G d c s n p (v + 1) \<longleftrightarrow> just_inv G d c s n p v
-    \<and> (v \<noteq> s \<and>  is_inf n v = 0 \<longrightarrow> 0 \<le> sint (p v) \<and>
+    \<and> (v \<noteq> s \<and> is_inf n v = 0 \<longrightarrow> 0 \<le> sint (p v) \<and>
       (\<exists> e. e = p v \<and> e < iedge_cnt G \<and> 
         v = snd (iedges G e) \<and>
         val d v = val d (fst (iedges G e)) +  c e \<and>
@@ -1139,7 +1139,7 @@ proof -
    (val d (tail ?aG e) \<le> val d (tail ?aG e) + (c e)) \<and>
    (val d (head ?aG e) \<le> val d (tail ?aG e) + (c e)))"
     by (simp add: trian_inv_def)
-  then have "trian_inv' G d c (iedge_cnt G) \<longrightarrow>
+  then have "trian_inv' G d c (iedge_cnt G) =
    (\<forall>e. e \<in> arcs ?aG \<longrightarrow> 
     ?ad (tail ?aG e) \<noteq> PInfty \<longrightarrow>
     ?ad (head ?aG e) \<noteq> PInfty \<and>
@@ -1151,6 +1151,7 @@ proof -
      apply (drule_tac x=e in spec)
     apply (blast intro: real_unat_leq_plus) 
     done*)
+(*
     apply (simp add: trian_inv'_def)
     apply clarsimp
     apply safe
@@ -1161,16 +1162,48 @@ proof -
      apply (simp add: abs_IDist_def abs_ICost_def trian_inv_def)
      apply fastforce
     apply (simp add: abs_IDist_def abs_ICost_def trian_inv_def)
-    apply (safe, force, blast intro: real_unat_leq_plus)
+              apply (safe, force, blast intro: real_unat_leq_plus)
+    sorry
     done
-  moreover
-  have "just_inv  G d c s n p (ivertex_cnt G) =
-    (\<forall>v. v \<in> verts ?aG \<longrightarrow>
-      v \<noteq> s \<longrightarrow> ?an v \<noteq> \<infinity> \<longrightarrow> 
-      (\<exists>e \<in> arcs ?aG. e = the (?ap v) \<and>
+*)
+    apply (safe, simp_all add: trian_inv_def trian_inv'_def abs_IDist_def abs_ICost_def)
+          apply fastforce
+         apply (presburger add: infinity_ereal_def real_unat_leq_plus)
+        apply fastforce
+       apply force
+      apply (presburger add: infinity_ereal_def real_unat_leq_plus)
+     apply safe
+               apply (metis PInfty_neq_ereal(2) infinity_ereal_def)
+              apply (erule_tac x=e in allE, clarsimp) defer
+              apply force
+             apply fastforce
+            apply (metis PInfty_neq_ereal(2) infinity_ereal_def)
+           apply (erule_tac x=e in allE, clarsimp) defer
+           apply (metis PInfty_neq_ereal(2) infinity_ereal_def)
+          apply (erule_tac x=e in allE, clarsimp) defer
+          apply (metis PInfty_neq_ereal(2) infinity_ereal_def)
+         apply fastforce
+        apply (metis PInfty_neq_ereal(2) infinity_ereal_def)
+       apply (erule_tac x=e in allE, clarsimp) defer
+
+        
+    
+
+    sorry
+  then have "trian_inv' G d c (iedge_cnt G) =
+   (\<forall>e. e \<in> arcs ?aG \<longrightarrow> 
+  (*  ?ad (tail ?aG e) \<noteq> PInfty \<longrightarrow>
+    ?ad (head ?aG e) \<noteq> PInfty \<and> *)
+  (* (?ad (tail ?aG e) \<le> ?ad (tail ?aG e) + ereal (?ac e)) \<and>*)
+    ?ad (head ?aG e) \<le> ?ad (tail ?aG e) + ?ac e)"
+    by (simp add: trian_inv'_def abs_IDist_def abs_ICost_def)
+  moreover have "just_inv  G d c s n p (ivertex_cnt G) =
+    (\<forall>v. v \<in> verts ?aG \<and>
+      v \<noteq> s \<and> ?an v \<noteq> \<infinity> \<longrightarrow> 
+    (\<exists>e \<in> arcs ?aG. e = the (?ap v) \<and>
       v = head ?aG e \<and> 
-      ?ad v = ?ad (tail ?aG e) +  (?ac e) \<and> 
-     ?an v = ?an (tail ?aG e) + enat 1))"
+      ?ad v = ?ad (tail ?aG e) + (?ac e) \<and> 
+      ?an v = ?an (tail ?aG e) + enat 1))"
     apply clarsimp
     apply safe
         apply (simp add: just_inv_def abs_IDist_def abs_ICost_def abs_INum_def abs_IPedge_def)
@@ -1186,14 +1219,20 @@ proof -
       apply (simp add: just_inv_def abs_INum_def abs_IPedge_def abs_IDist_def)
       apply clarsimp
       apply (erule_tac x=v in allE, clarsimp)
-
-    oops
+      defer
+      apply clarsimp
+      apply safe[1]
+    
+      
+    sorry
 ultimately
    show "?thesis G d c s n p"
    unfolding 
     basic_just_sp_pred_def 
     basic_just_sp_pred_axioms_def 
     basic_sp_def basic_sp_axioms_def
+   by blast
+(*
    apply safe
          defer
          apply blast
@@ -1212,7 +1251,7 @@ ultimately
     apply clarsimp
     apply safe
      apply (metis PInfty_neq_ereal(2) infinity_ereal_def)
-   oops
+    *)
 qed
 
 
