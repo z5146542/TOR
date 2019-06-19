@@ -686,8 +686,10 @@ definition just_inv ::
       (\<exists> e. e = p v \<and> e < iedge_cnt G \<and>
         v = snd (iedges G e) \<and>
         is_inf d (fst (iedges G e)) = 0 \<and>
+        val d (fst (iedges G e)) \<le> val d (fst (iedges G e)) + c e \<and> 
         val d v = val d (fst (iedges G e)) + c e \<and>
         is_inf n (fst (iedges G e)) = 0 \<and>
+        val n (fst (iedges G e)) \<le> val n (fst (iedges G e)) + 1 \<and>
         val n v = val n (fst (iedges G e)) + 1)"
 
 lemma just_inv_step:
@@ -697,9 +699,11 @@ lemma just_inv_step:
       (\<exists> e. e = p v \<and> e < iedge_cnt G \<and> 
         v = snd (iedges G e) \<and>
         is_inf d (fst (iedges G e)) = 0 \<and>
-        val d v = val d (fst (iedges G e)) +  c e \<and>
+        val d (fst (iedges G e)) \<le> val d (fst (iedges G e)) + c e \<and> 
+        val d v = val d (fst (iedges G e)) + c e \<and>
         is_inf n (fst (iedges G e)) = 0 \<and>
-        val n v = val n (fst (iedges G e)) +  1))"
+        val n (fst (iedges G e)) \<le> val n (fst (iedges G e)) + 1 \<and>
+        val n v = val n (fst (iedges G e)) + 1))"
   unfolding just_inv_def using v_less_max  
   by (force simp: less_x_plus_1) 
   
@@ -896,6 +900,7 @@ lemma just_spc':
    just' g d c sc n p
    \<lbrace> (\<lambda>_ s. P s) And 
      (\<lambda>rr s. rr \<noteq> 0 \<longleftrightarrow> just_inv iG iD iC sc iN iP (ivertex_cnt iG)) \<rbrace>!"
+  sorry
   apply (clarsimp simp: just'_def)
   apply (subst whileLoopE_add_inv [where 
         M="\<lambda>(vv, s). unat (ivertex_cnt iG - vv)" and
@@ -1294,149 +1299,6 @@ lemma fin_digraph_is_wellformed_inv:  "fin_digraph (abs_IGraph G) \<longleftrigh
       wf_digraph_def no_loops_def 
     by auto
 
-
-
-lemma basic_just_sp_eq_invariants:
-"\<And>G dist c s enum pred. 
-  basic_just_sp_pred 
-      (abs_IGraph G) (abs_IDist dist) 
-      (abs_ICost c) s (abs_INum enum) (abs_IPedge pred) \<longleftrightarrow> 
-    (is_wellformed_inv G (iedge_cnt G) \<and> 
-    (abs_IDist dist) s \<le> 0 \<and> 
-    trian_inv' G dist c (iedge_cnt G) \<and> 
-    just_inv G dist c s enum pred (ivertex_cnt G))"
-proof -
-  fix G d c s n p 
-  let ?aG = "abs_IGraph G"
-  let ?ad = "abs_IDist d"
-  let ?ac = "abs_ICost c"
-  let ?an = "abs_INum n"  
-  let ?ap = "abs_IPedge p"
-  have "fin_digraph (abs_IGraph G) \<longleftrightarrow> is_wellformed_inv G (iedge_cnt G)"
-      by (rule fin_digraph_is_wellformed_inv)
-    moreover
-  have trian1: "trian_inv G d c (iedge_cnt G) = 
-   (\<forall>e. e \<in> arcs ?aG \<longrightarrow> 
-    is_inf d (tail ?aG e) = 0 \<longrightarrow>
-    is_inf d (head ?aG e) = 0 \<and>
-   (val d (tail ?aG e) \<le> val d (tail ?aG e) + (c e)) \<and>
-   (val d (head ?aG e) \<le> val d (tail ?aG e) + (c e)))"
-    by (simp add: trian_inv_def)
-  then have "trian_inv' G d c (iedge_cnt G) =
-   (\<forall>e. e \<in> arcs ?aG \<longrightarrow> 
-    ?ad (tail ?aG e) \<noteq> PInfty \<longrightarrow>
-    ?ad (head ?aG e) \<noteq> PInfty \<and>
-  (* (?ad (tail ?aG e) \<le> ?ad (tail ?aG e) + ereal (?ac e)) \<and>*)
-    ?ad (head ?aG e) \<le> ?ad (tail ?aG e) + ?ac e)"
-   (* apply (subst trian1, clarsimp)
-    apply (simp add: abs_IDist_def abs_ICost_def)
-    apply (clarsimp)
-     apply (drule_tac x=e in spec)
-    apply (blast intro: real_unat_leq_plus) 
-    done*)
-(*
-    apply (simp add: trian_inv'_def)
-    apply clarsimp
-    apply safe
-       apply (simp add: abs_IDist_def abs_ICost_def trian_inv_def)
-       apply force
-      apply (simp add: abs_IDist_def abs_ICost_def trian_inv_def)
-      apply (safe, force, blast intro: real_unat_leq_plus)
-     apply (simp add: abs_IDist_def abs_ICost_def trian_inv_def)
-     apply fastforce
-    apply (simp add: abs_IDist_def abs_ICost_def trian_inv_def)
-              apply (safe, force, blast intro: real_unat_leq_plus)
-    sorry
-    done
-*)
-    apply (safe, simp_all add: trian_inv_def trian_inv'_def abs_IDist_def abs_ICost_def)
-          apply fastforce
-         apply (presburger add: infinity_ereal_def real_unat_leq_plus)
-        apply fastforce
-       apply force
-      apply (presburger add: infinity_ereal_def real_unat_leq_plus)
-     apply safe
-               apply (metis PInfty_neq_ereal(2) infinity_ereal_def)
-              apply (erule_tac x=e in allE, clarsimp) defer
-              apply force
-             apply fastforce
-            apply (metis PInfty_neq_ereal(2) infinity_ereal_def)
-           apply (erule_tac x=e in allE, clarsimp) defer
-           apply (metis PInfty_neq_ereal(2) infinity_ereal_def)
-          apply (erule_tac x=e in allE, clarsimp) defer
-          apply (metis PInfty_neq_ereal(2) infinity_ereal_def)
-         apply fastforce
-        apply (metis PInfty_neq_ereal(2) infinity_ereal_def)
-       apply (erule_tac x=e in allE, clarsimp) defer
-
-        
-    
-
-    sorry
-  then have "trian_inv' G d c (iedge_cnt G) =
-   (\<forall>e. e \<in> arcs ?aG \<longrightarrow> 
-  (*  ?ad (tail ?aG e) \<noteq> PInfty \<longrightarrow>
-    ?ad (head ?aG e) \<noteq> PInfty \<and> *)
-  (* (?ad (tail ?aG e) \<le> ?ad (tail ?aG e) + ereal (?ac e)) \<and>*)
-    ?ad (head ?aG e) \<le> ?ad (tail ?aG e) + ?ac e)"
-    by (simp add: trian_inv'_def abs_IDist_def abs_ICost_def)
-  moreover have "just_inv  G d c s n p (ivertex_cnt G) =
-    (\<forall>v. v \<in> verts ?aG \<and>
-      v \<noteq> s \<and> ?an v \<noteq> \<infinity> \<longrightarrow> 
-    (\<exists>e \<in> arcs ?aG. e = the (?ap v) \<and>
-      v = head ?aG e \<and> 
-      ?ad v = ?ad (tail ?aG e) + (?ac e) \<and> 
-      ?an v = ?an (tail ?aG e) + enat 1))"
-    apply clarsimp
-    apply safe
-        apply (simp add: just_inv_def abs_IDist_def abs_ICost_def abs_INum_def abs_IPedge_def)
-        apply (meson enat.distinct(2) not_le)
-       apply (simp add: just_inv_def abs_INum_def abs_IPedge_def)
-       apply (meson enat.distinct(2) not_le)
-      apply (simp add: just_inv_def abs_INum_def abs_IPedge_def abs_ICost_def abs_IDist_def)
-      apply (rule conjI, clarsimp)
-       apply (meson enat.distinct(2) not_le)
-      defer
-      apply (simp add: just_inv_def abs_INum_def abs_IPedge_def)
-      defer
-      apply (simp add: just_inv_def abs_INum_def abs_IPedge_def abs_IDist_def)
-      apply clarsimp
-      apply (erule_tac x=v in allE, clarsimp)
-      defer
-      apply clarsimp
-      apply safe[1]
-    
-      
-    sorry
-ultimately
-   show "?thesis G d c s n p"
-   unfolding 
-    basic_just_sp_pred_def 
-    basic_just_sp_pred_axioms_def 
-    basic_sp_def basic_sp_axioms_def
-   by blast
-(*
-   apply safe
-         defer
-         apply blast
-        apply blast
-       defer
-       apply force
-      apply blast
-     apply blast
-    apply clarsimp
-    apply (simp add: trian_inv'_def is_wellformed_inv_def just_inv_def abs_INum_def abs_IPedge_def abs_ICost_def abs_IDist_def)
-    apply clarsimp
-    apply safe
-     apply force
-    defer
-    apply (simp add: trian_inv'_def is_wellformed_inv_def just_inv_def abs_INum_def abs_IPedge_def abs_ICost_def abs_IDist_def)
-    apply clarsimp
-    apply safe
-     apply (metis PInfty_neq_ereal(2) infinity_ereal_def)
-    *)
-qed
-
 lemma basic_just_sp_eq_invariants_imp:
 "\<And>G dist c s enum pred. 
 (is_wellformed_inv G (iedge_cnt G) \<and> 
@@ -1484,9 +1346,9 @@ proof -
       v \<noteq> s \<and> is_inf n v = 0 \<longrightarrow>  0 \<le> sint (p v) \<and>
     (\<exists>e \<in> arcs ?aG. e = p v \<and>
       v = head ?aG e \<and> 
-      (*is_inf d (tail ?aG e) = 0 \<and>*)
+      is_inf d (tail ?aG e) = 0 \<and>
       val d v = val d (tail ?aG e) + (c e) \<and>
-      (*is_inf n (tail ?aG e) = 0 \<and>*)
+      is_inf n (tail ?aG e) = 0 \<and>
       val n v = val n (tail ?aG e) + 1))"
     by (simp add: just_inv_def)
   then have "just_inv G d c s n p (ivertex_cnt G) \<longrightarrow>
@@ -1495,9 +1357,11 @@ proof -
       v \<noteq> s \<and> ?an v \<noteq> \<infinity> \<longrightarrow> 
     (\<exists>e \<in> arcs ?aG. e = the (?ap v) \<and>
       v = head ?aG e \<and> 
-      (*?ad (tail ?aG e) \<noteq> PInfty \<and>*)
+      ?ad (tail ?aG e) \<noteq> PInfty \<and>
+      ?ad (tail ?aG e) \<le> ?ad (tail ?aG e) + (?ac e) \<and>
       ?ad v = ?ad (tail ?aG e) + (?ac e) \<and>
-      (*?an (tail ?aG e) \<noteq> PInfty \<and> *)
+      ?an (tail ?aG e) \<noteq> PInfty \<and> 
+      ?an (tail ?aG e) \<le> ?an (tail ?aG e) + enat 1 \<and>
       ?an v = ?an (tail ?aG e) + enat 1))"
     apply clarsimp
     unfolding just_inv'_def
@@ -1509,29 +1373,22 @@ proof -
     apply clarsimp
     unfolding abs_IPedge_def 
     apply (case_tac "sint (p v) < 0"; clarsimp)
+    apply (rule conjI) 
+     apply (unfold abs_IDist_def abs_ICost_def)[1]
+     apply (case_tac "snd (d v) \<noteq> 0"; clarsimp)
+    apply (simp add: no_path_inv_def)
+    apply (case_tac "snd (d (fst (snd (snd G) (p v)))) = 0")
+     apply clarsimp
+    unfolding abs_INum_def abs_ICost_def 
+     apply clarsimp
+     defer
+     apply fast
+    unfolding abs_IDist_def
     apply (rule conjI)
-    unfolding  abs_IDist_def  abs_ICost_def
-    apply (case_tac "snd (d v) \<noteq> 0"; clarsimp)
-      apply (simp add: no_path_inv_def)
-     apply (case_tac "snd (d (fst (snd (snd G) (p v)))) = 0")
-      apply clarsimp
-     
-(*
-    apply (rule conjI)+
-               apply (meson enat.distinct(2) not_le)
-              apply (meson enat.distinct(2) not_le)
-             defer
-             defer
-             defer
-             defer
-             apply (meson enat.distinct(2) not_le)
-            apply (meson enat.distinct(2) not_le)
-           defer
-           defer
-           apply (meson enat.distinct(2) not_le)
-          defer
-*)
-    sorry
+     apply clarsimp
+    apply clarsimp
+    apply (simp add: just_inv_def unat_plus_simple)
+    done
   then have "just_inv G d c s n p (ivertex_cnt G) \<longrightarrow>
        no_path_inv  G d n (ivertex_cnt G) \<longrightarrow>
     (\<forall>v. v \<in> verts ?aG \<and>
@@ -1548,9 +1405,6 @@ ultimately
     basic_just_sp_pred_axioms_def 
     basic_sp_def basic_sp_axioms_def
    by presburger
-   
-  
-
 qed
 
 
