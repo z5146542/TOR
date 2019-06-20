@@ -566,7 +566,7 @@ lemma trian_spc':
 
   apply (simp add: skipE_def)
 
-  apply wp 
+  apply wp
     apply safe
         apply (clarsimp simp: if_bool_eq_conj)+
         apply safe 
@@ -688,7 +688,7 @@ definition just_inv ::
         is_inf d (fst (iedges G e)) = 0 \<and>
         val d (fst (iedges G e)) \<le> val d (fst (iedges G e)) + c e \<and> 
         val d v = val d (fst (iedges G e)) + c e \<and>
-        is_inf n (fst (iedges G e)) = 0 \<and>
+        (*is_inf n (fst (iedges G e)) = 0 \<and>*)
         val n (fst (iedges G e)) \<le> val n (fst (iedges G e)) + 1 \<and>
         val n v = val n (fst (iedges G e)) + 1)"
 
@@ -701,7 +701,7 @@ lemma just_inv_step:
         is_inf d (fst (iedges G e)) = 0 \<and>
         val d (fst (iedges G e)) \<le> val d (fst (iedges G e)) + c e \<and> 
         val d v = val d (fst (iedges G e)) + c e \<and>
-        is_inf n (fst (iedges G e)) = 0 \<and>
+        (*is_inf n (fst (iedges G e)) = 0 \<and>*)
         val n (fst (iedges G e)) \<le> val n (fst (iedges G e)) + 1 \<and>
         val n v = val n (fst (iedges G e)) + 1))"
   unfolding just_inv_def using v_less_max  
@@ -1304,7 +1304,8 @@ lemma basic_just_sp_eq_invariants_imp:
 (is_wellformed_inv G (iedge_cnt G) \<and> 
     (abs_IDist dist) s \<le> 0 \<and> 
     trian_inv' G dist c (iedge_cnt G) \<and> 
-    just_inv G dist c s enum pred (ivertex_cnt G)) \<longrightarrow>
+    just_inv G dist c s enum pred (ivertex_cnt G)) \<and>
+    no_path_inv  G dist enum (ivertex_cnt G) \<longrightarrow>
   basic_just_sp_pred 
       (abs_IGraph G) (abs_IDist dist) 
       (abs_ICost c) s (abs_INum enum) (abs_IPedge pred) 
@@ -1348,11 +1349,12 @@ proof -
       v = head ?aG e \<and> 
       is_inf d (tail ?aG e) = 0 \<and>
       val d v = val d (tail ?aG e) + (c e) \<and>
-      is_inf n (tail ?aG e) = 0 \<and>
+      (*is_inf n (tail ?aG e) = 0 \<and>*)
       val n v = val n (tail ?aG e) + 1))"
     by (simp add: just_inv_def)
   then have "just_inv G d c s n p (ivertex_cnt G) \<longrightarrow>
     no_path_inv  G d n (ivertex_cnt G) \<longrightarrow>
+    is_wellformed_inv G (iedge_cnt G) \<longrightarrow> 
     (\<forall>v. v \<in> verts ?aG \<and>
       v \<noteq> s \<and> ?an v \<noteq> \<infinity> \<longrightarrow> 
     (\<exists>e \<in> arcs ?aG. e = the (?ap v) \<and>
@@ -1360,7 +1362,7 @@ proof -
       ?ad (tail ?aG e) \<noteq> PInfty \<and>
       ?ad (tail ?aG e) \<le> ?ad (tail ?aG e) + (?ac e) \<and>
       ?ad v = ?ad (tail ?aG e) + (?ac e) \<and>
-      ?an (tail ?aG e) \<noteq> PInfty \<and> 
+     (* ?an (tail ?aG e) \<noteq> PInfty \<and> *)
       ?an (tail ?aG e) \<le> ?an (tail ?aG e) + enat 1 \<and>
       ?an v = ?an (tail ?aG e) + enat 1))"
     apply clarsimp
@@ -1379,18 +1381,18 @@ proof -
     apply (simp add: no_path_inv_def)
     apply (case_tac "snd (d (fst (snd (snd G) (p v)))) = 0")
      apply clarsimp
-    unfolding abs_INum_def abs_ICost_def 
+     unfolding abs_INum_def abs_ICost_def 
      apply clarsimp
-     defer
-     apply fast
-    unfolding abs_IDist_def
-    apply (rule conjI)
+     unfolding abs_IDist_def
+     apply (rule conjI)
+      apply (clarsimp simp: no_path_inv_def is_wellformed_inv_def)
      apply clarsimp
-    apply clarsimp
-    apply (simp add: just_inv_def unat_plus_simple)
+      apply (simp add: just_inv_def unat_plus_simple)
+    apply fast
     done
   then have "just_inv G d c s n p (ivertex_cnt G) \<longrightarrow>
        no_path_inv  G d n (ivertex_cnt G) \<longrightarrow>
+       is_wellformed_inv G (iedge_cnt G) \<longrightarrow> 
     (\<forall>v. v \<in> verts ?aG \<and>
       v \<noteq> s \<and> ?an v \<noteq> \<infinity> \<longrightarrow> 
     (\<exists>e \<in> arcs ?aG. e = the (?ap v) \<and>

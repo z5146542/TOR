@@ -2,16 +2,16 @@
 // Seung Hoon Park and Christine Rizkallah
 
 
-typedef struct IEdge {
+typedef struct Edge {
 	unsigned int first;
 	unsigned int second;
-} IEdge;
+} Edge;
 
-typedef struct IGraph {
+typedef struct Graph {
 	unsigned int num_vertices;
 	unsigned int num_edges;
-	IEdge *arcs;
-} IGraph;
+	Edge *arcs;
+} Graph;
 
 //typedef int enat;
 typedef struct EInt {
@@ -47,8 +47,8 @@ typedef struct Cycle {
 
 // the following procedures are from the nonnegative shortest path 
 
-int is_wellformed(IGraph *g) {
-	IEdge e;
+int is_wellformed(Graph *g) {
+	Edge e;
 	for(unsigned int i = 0; i < edge_cnt(g); i++) {
 		e = arcs(g, i);
 		if(vertex_cnt(g) <= e.first) return 0;
@@ -57,7 +57,7 @@ int is_wellformed(IGraph *g) {
 	return 1;
 }
 
-int trian(IGraph *g, EInt *dist, int *c) {
+int trian(Graph *g, EInt *dist, int *c) {
 	for(unsigned int edge_id = 0; edge_id < edge_cnt(g); edge_id++) {
 		// confirms the distance to some vertices are finite
 		if(dist[arcs(g, edge_id).second].isInf != 0) return 0;
@@ -66,8 +66,8 @@ int trian(IGraph *g, EInt *dist, int *c) {
 	}
 	return 1;
 }
-
-int just(IGraph *g, EInt *dist, int *c, unsigned int s, EInt *onum, int *pred) {
+/*
+int just(Graph *g, EInt *dist, int *c, unsigned int s, EInt *onum, int *pred) {
 	unsigned int edge_id;
 	for(unsigned int v = 0; v < vertex_cnt(g); v++) {
 		edge_id = (unsigned int) pred[v];
@@ -85,8 +85,27 @@ int just(IGraph *g, EInt *dist, int *c, unsigned int s, EInt *onum, int *pred) {
 	}
 	return 1; 
 }
+*/
 
-int check_basic_just_sp(IGraph *g, EInt *dist, int *c, unsigned int s, EInt *onum, int *pred) {
+int just(Graph *g, EInt *dist, int *c, unsigned int s, EInt *enu, int *pred) {
+	unsigned int edge_id;
+	for(unsigned int v = 0; v < vertex_cnt(g); v++) {
+        // if(pred[v] < 0) return 0;
+	    edge_id = (unsigned int) pred[v];
+		if(v != s) {
+        if(enu[v].isInf == 0) {
+          if(pred[v] < 0) return 0;
+				  if(edge_id >= edge_cnt(g)) return 0;
+				  if(arcs(g, edge_id).second != v) return 0;
+				  if(dist[v].val != dist[arcs(g, edge_id).first].val + c[edge_id]) return 0;
+				  if(enu[v].val != enu[arcs(g, edge_id).first].val + 1) return 0; // onum
+			}
+		}
+	}
+	return 1;
+}
+
+int check_basic_just_sp(Graph *g, EInt *dist, int *c, unsigned int s, EInt *onum, int *pred) {
 	if(!is_wellformed(g)) return 0;
 	if(dist[s].isInf > 0) return 0;
 	if(dist[s].isInf == 0 && dist[s].val > 0) return 0;
@@ -97,7 +116,7 @@ int check_basic_just_sp(IGraph *g, EInt *dist, int *c, unsigned int s, EInt *onu
 
 // the folloiwng are for the general-weight edge shrotest path
 
-int s_assums(IGraph *g, unsigned int s, EInt *dist, int *pred, EInt *onum) {
+int s_assums(Graph *g, unsigned int s, EInt *dist, int *pred, EInt *onum) {
 	if(s >= vertex_cnt(g)) return 0;
 	if(dist[s].isInf > 0) return 0;
 	if(pred[s] >= 0) return 0;
@@ -105,7 +124,7 @@ int s_assums(IGraph *g, unsigned int s, EInt *dist, int *pred, EInt *onum) {
 	return 1;
 }
 
-int parent_num_assms(IGraph *g, unsigned int s, EInt *dist, int *pred, EInt *onum) {
+int parent_num_assms(Graph *g, unsigned int s, EInt *dist, int *pred, EInt *onum) {
 	unsigned int edge_id;
 	for(unsigned int v = 0; v < vertex_cnt(g); v++) {
 		edge_id = pred[v];
@@ -121,7 +140,7 @@ int parent_num_assms(IGraph *g, unsigned int s, EInt *dist, int *pred, EInt *onu
 	return 1;
 }
 
-int no_p_edge(IGraph *g, EInt *dist) {
+int no_p_edge(Graph *g, EInt *dist) {
 	for(unsigned int edge_id = 0; edge_id < edge_cnt(g); edge_id++) {
 		if(dist[arcs(g, edge_id).first].isInf <= 0) {
 			if(dist[arcs(g, edge_id).second].isInf > 0) return 0;
@@ -130,7 +149,7 @@ int no_p_edge(IGraph *g, EInt *dist) {
 	return 1;
 }
 
-int source_val(IGraph *g, unsigned int s, EInt *dist, EInt *onum){
+int source_val(Graph *g, unsigned int s, EInt *dist, EInt *onum){
 	for(unsigned int v = 0; v < vertex_cnt(g); v++) {
 		if(onum[v].isInf == 0 && onum[v].val == 0) {
 			if(dist[s].isInf == 0) {
@@ -141,7 +160,7 @@ int source_val(IGraph *g, unsigned int s, EInt *dist, EInt *onum){
 	return 0;
 }
 
-int no_edge_Vm_Vf(IGraph *g, EInt *dist) {
+int no_edge_Vm_Vf(Graph *g, EInt *dist) {
 	for(unsigned int edge_id = 0; edge_id < edge_cnt(g); edge_id++) {
 		if(dist[arcs(g, edge_id).first].isInf < 0) {
 			if(dist[arcs(g, edge_id).second].isInf == 0) return 0;
@@ -155,7 +174,7 @@ int no_edge_Vm_Vf(IGraph *g, EInt *dist) {
 // checks if the sequence of edge_ids are connected
 // also checks if the last vertex and the first vertex are the same
 
-int awalk(IGraph *g, Cycle C) {
+int awalk(Graph *g, Cycle C) {
 	for(unsigned int z = 0; z < C.length - 1; z++) {
 		// return false if the second vertex of the first edge is not the same as the first vertex of the second edge
 		if(arcs(g, C.path[z]).second != arcs(g, C.path[z+1]).first) return 0;
@@ -176,7 +195,7 @@ int awalk_cost(int *c, unsigned int *path, unsigned int length) {
 // assume that a cycle is defined with a fixed length
 // then the following holds
 
-int C_se(IGraph *g, Cycle *C, int *c, unsigned int nc, EInt *dist) {
+int C_se(Graph *g, Cycle *C, int *c, unsigned int nc, EInt *dist) {
 	for(unsigned int y = 0; y < nc; y++) {
 		if(dist[C[y].start].isInf > 0) return 0;
 		if(awalk(g, C[y]) == 0) return 0;
@@ -187,7 +206,7 @@ int C_se(IGraph *g, Cycle *C, int *c, unsigned int nc, EInt *dist) {
 
 // checks if a vertex s is connected to the vertex v given a list of parent edges of each respective vertices
 
-int is_connected(IGraph *g, unsigned int s, int *p, unsigned int v) {
+int is_connected(Graph *g, unsigned int s, int *p, unsigned int v) {
 	unsigned int n = v;
 	// the while loop will eventually terminate given n is either the source vertex or some other disjoint vertex
 	while(p[n] >= 0) {
@@ -205,7 +224,7 @@ int is_connected(IGraph *g, unsigned int s, int *p, unsigned int v) {
 // maybe define pwalk internally?
 
 // note pedge defines the edgeid of parent edges of vertices
-int int_neg_cyc(IGraph *g, unsigned int s, EInt *dist, Cycle *C, int *c, int *p, unsigned int nc) {
+int int_neg_cyc(Graph *g, unsigned int s, EInt *dist, Cycle *C, int *c, int *p, unsigned int nc) {
 	unsigned int u;
 	unsigned int i;
 	unsigned int is_neg_cycle;
@@ -234,14 +253,14 @@ int int_neg_cyc(IGraph *g, unsigned int s, EInt *dist, Cycle *C, int *c, int *p,
 	return 1;
 }
 
-int shortest_paths_locale_step1(IGraph *g, unsigned int s, int *c, EInt *onum, int *pred, EInt *dist) {
+int shortest_paths_locale_step1(Graph *g, unsigned int s, int *c, EInt *onum, int *pred, EInt *dist) {
 	if(s_assums(g, s, dist, pred, onum) == 0) return 0;
 	if(parent_num_assms(g, s, dist, pred, onum) == 0) return 0;
 	if(no_p_edge(g, dist) == 0) return 0;
 	return 1;
 }
 
-int shortest_paths_locale_step2(IGraph *g, unsigned int s, int *c, EInt *onum, int *pred, EInt *dist) {
+int shortest_paths_locale_step2(Graph *g, unsigned int s, int *c, EInt *onum, int *pred, EInt *dist) {
 	if(shortest_paths_locale_step1(g, s, c, onum, pred, dist) == 0) return 0;
 	if(check_basic_just_sp(g, dist, c, s, onum, pred) == 0) return 0;
 	if(source_val(g, s, dist, onum) == 0) return 0;
@@ -249,7 +268,7 @@ int shortest_paths_locale_step2(IGraph *g, unsigned int s, int *c, EInt *onum, i
 	return 1;
 }
 
-int shortest_paths_locale_step3(IGraph *g, unsigned int s, int *c, EInt *onum, int *pred, EInt *dist, Cycle *C, unsigned int nc) {
+int shortest_paths_locale_step3(Graph *g, unsigned int s, int *c, EInt *onum, int *pred, EInt *dist, Cycle *C, unsigned int nc) {
 	if(shortest_paths_locale_step2(g, s, c, onum, pred, dist) == 0) return 0;
 	if(C_se(g, C, c, nc, dist) == 0) return 0;
 	if(int_neg_cyc(g, s, dist, C, c, pred, nc) == 0) return 0;
