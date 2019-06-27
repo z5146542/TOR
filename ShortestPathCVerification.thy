@@ -779,22 +779,6 @@ proof -
   show ?thesis using a6 a5 a4 a3 a2 a1 s_C_pte two_comp_to_edge_arrlist_heap two_comp_to_eint_arrlist_heap val_C_pte by metis
 qed
 
-lemma enat_abs_C_equiv_temp:
-  fixes vv :: "32 word" and s :: lifted_globals
-  assumes a1: "arrlist (\<lambda>p. heap_w32 s (ptr_coerce p)) (\<lambda>p. is_valid_w32 s (ptr_coerce p)) (map (iP \<circ> of_nat) [0..<unat (num_vertices_C (heap_Graph_C s g))]) p"
-  assumes a2: "fst iG = num_vertices_C (heap_Graph_C s g)"
-  assumes a3: "vv < num_vertices_C (heap_Graph_C s g)"
-  assumes a4: "arrlist (heap_Edge_C s) (is_valid_Edge_C s) (map (to_edge \<circ> (snd (snd iG) \<circ> of_nat)) [0..<unat (num_edges_C (heap_Graph_C s g))]) (arcs_C (heap_Graph_C s g))"
-  assumes a5: "arrlist (heap_EInt_C s) (is_valid_EInt_C s) (map (to_eint \<circ> (iL \<circ> of_nat)) [0..<unat (num_vertices_C (heap_Graph_C s g))]) l"
-  assumes a6: "iP vv < num_edges_C (heap_Graph_C s g)"
-  assumes a7: "\<forall>e<num_edges_C (heap_Graph_C s g). fst (snd (snd iG) e) < num_vertices_C (heap_Graph_C s g)"
-  shows "fst (iL (fst (snd (snd iG) (iP vv)))) = val_C (heap_EInt_C s (l +\<^sub>p int (unat (first_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p int (unat (heap_w32 s (ptr_coerce (p +\<^sub>p int (unat vv)))))))))))"
-proof -
-  have "\<forall>w. heap_w32 s (ptr_coerce (p +\<^sub>p int (unat w))) = iP w \<or> \<not> w < fst iG"
-    using a2 a1 heap_ptr_coerce unat_0 by fastforce
-  then show ?thesis
-    using a7 a6 a5 a4 a3 a2 by (metis (full_types) s_C_pte two_comp_to_edge_arrlist_heap two_comp_to_eint_arrlist_heap val_C_pte)
-qed
 lemma  word32_minus_comm: "(x:: 32 word) - y - z = x - z - y" by simp
 
 lemma just_spc':
@@ -852,20 +836,21 @@ lemma just_spc':
            apply (clarsimp, rule_tac x=vv in exI, simp add: uint_nat)
            apply (rule conjI)
             apply (metis isInf_C_pte two_comp_to_eint_arrlist_heap)
-           apply clarsimp
-           apply (subgoal_tac "fst (iD (fst (snd (snd iG) (iP vv)))) = val_C (heap_EInt_C s (d +\<^sub>p int (unat (first_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p int (unat (heap_w32 s (ptr_coerce (p +\<^sub>p int (unat vv)))))))))))")
-            apply (subgoal_tac "iC (iP vv) = heap_w32 s (c +\<^sub>p int (unat (heap_w32 s (ptr_coerce (p +\<^sub>p int (unat vv))))))") 
-             apply force
-            apply (metis pedge_abs_C_equiv cost_abs_C_equiv)
-           apply(simp add: arrlist_heap[where iL=iP] enat_abs_C_equiv)
+           apply (rule impI)+
+           apply (simp add: pedge_abs_C_equiv)
+           apply (simp add: enat_abs_C_equiv)
+           apply (simp add: cost_abs_C_equiv)
           apply (rule conjI, rule impI, rule conjI)
             apply (unfold just_inv_def is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
             apply (clarsimp, rule_tac x=vv in exI, simp add: uint_nat)
-            apply (subgoal_tac "\<forall>w. heap_w32 s (c +\<^sub>p int (unat w)) = iC w \<or> \<not> w < num_edges_C (heap_Graph_C s g)")
-             apply (subgoal_tac "heap_w32 s (ptr_coerce (p +\<^sub>p int (unat vv))) = iP vv")
-              apply (metis (no_types) isInf_C_pte s_C_pte two_comp_to_edge_arrlist_heap two_comp_to_eint_arrlist_heap val_C_pte)
-             apply (metis (no_types) pedge_abs_C_equiv)
-            apply (metis (no_types) cost_abs_C_equiv)
+            apply (rule conjI)
+             apply (subst is_inf_heap, blast, blast)
+             apply (simp add: pedge_abs_C_equiv)
+             apply (simp add: uint_nat)
+           apply (rule impI)+
+            apply (simp add: pedge_abs_C_equiv enat_abs_C_equiv cost_abs_C_equiv)
+            apply (subst val_heap, blast, blast, simp add:uint_nat)
+            apply (metis two_comp_to_eint_arrlist_heap val_C_pte)
            apply (rule conjI, rule impI, rule conjI)
              apply (rule impI, rule conjI)
               apply blast
@@ -886,20 +871,18 @@ lemma just_spc':
               apply (clarsimp, rule_tac x=vv in exI, simp add: uint_nat)
               apply (rule conjI)
                apply (metis isInf_C_pte two_comp_to_eint_arrlist_heap)
-              apply clarsimp
-              apply (subgoal_tac "fst (iN (fst (snd (snd iG) (iP vv)))) = val_C (heap_EInt_C s (n +\<^sub>p int (unat (first_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p int (unat (heap_w32 s (ptr_coerce (p +\<^sub>p int (unat vv)))))))))))")
-               apply (subgoal_tac "iC (iP vv) = heap_w32 s (c +\<^sub>p int (unat (heap_w32 s (ptr_coerce (p +\<^sub>p int (unat vv))))))") 
-                apply force
-               apply (metis pedge_abs_C_equiv cost_abs_C_equiv)
-              apply (blast intro: enat_abs_C_equiv_temp)
+              apply (rule impI)+
+              apply (simp add: pedge_abs_C_equiv)
+              apply (simp add: enat_abs_C_equiv)
              apply (rule conjI, rule impI, rule conjI)
                apply (unfold just_inv_def is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
                apply (clarsimp, rule_tac x=vv in exI, simp add: uint_nat)
-               apply (subgoal_tac "\<forall>w. heap_w32 s (c +\<^sub>p int (unat w)) = iC w \<or> \<not> w < num_edges_C (heap_Graph_C s g)")
-                apply (subgoal_tac "heap_w32 s (ptr_coerce (p +\<^sub>p int (unat vv))) = iP vv")
-                 apply (metis (no_types) isInf_C_pte s_C_pte two_comp_to_edge_arrlist_heap two_comp_to_eint_arrlist_heap val_C_pte)
-                apply (metis (no_types) pedge_abs_C_equiv)
-               apply (metis (no_types) cost_abs_C_equiv)
+               apply (rule conjI)
+                apply (metis isInf_C_pte two_comp_to_eint_arrlist_heap)
+               apply (rule impI)+
+               apply (simp add: pedge_abs_C_equiv)
+               apply (simp add: enat_abs_C_equiv)
+               apply (metis two_comp_to_eint_arrlist_heap s_C_pte val_C_pte)
               apply (rule conjI, rule impI, rule conjI)
                 apply meson
                apply (rule conjI)
