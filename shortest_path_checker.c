@@ -58,6 +58,7 @@ int just(Graph *g, EInt *dist, unsigned int *c, unsigned int s, EInt *enu, int *
                 if(pred[v] < 0) return 0;
                 if(edge_id >= edge_cnt(g)) return 0;
                 if(arcs(g, edge_id).second != v) return 0;
+                if(dist[v].isInf != 0) return 0;
                 if(dist[arcs(g, edge_id).first].isInf != 0) return 0;
                 if(dist[arcs(g, edge_id).first].val > dist[arcs(g, edge_id).first].val + c[edge_id]) return 0;
                 if(dist[v].val != dist[arcs(g, edge_id).first].val + c[edge_id]) return 0;
@@ -72,12 +73,7 @@ int just(Graph *g, EInt *dist, unsigned int *c, unsigned int s, EInt *enu, int *
 
 int no_path(Graph *g, EInt *dist, EInt *enu) {
     for(unsigned int v = 0; v < vertex_cnt(g); v++) {
-        if(dist[v].isInf != 0) {
-            if(enu[v].isInf == 0) return 0;
-        }
-        else {
-            if(enu[v].isInf != 0) return 0;
-        }
+        if((dist[v].isInf == 0) != (enu[v].isInf == 0)) return 0;
     }
     return 1;
 }
