@@ -1219,15 +1219,16 @@ lemma fin_digraph_is_wellformed_inv:  "fin_digraph (abs_IGraph G) \<longleftrigh
   by auto
 
 lemma basic_just_sp_eq_invariants_imp:
-"\<And>G dist c s enum pred. 
+"\<And>G d c s n p. 
     (is_wellformed_inv G (iedge_cnt G) \<and> 
-    (abs_IDist dist) s \<le> 0 \<and> 
-    trian_inv' G dist c (iedge_cnt G) \<and> 
-    just_inv G dist c s enum pred (ivertex_cnt G))
+    is_inf d s = 0 \<and>
+    val d s \<le> 0 \<and>
+    trian_inv G d c (iedge_cnt G) \<and> 
+    just_inv G d c s n p (ivertex_cnt G))
     \<longrightarrow>
     basic_just_sp_pred 
-    (abs_IGraph G) (abs_IDist dist) 
-    (abs_ICost c) s (abs_INum enum) (abs_IPedge pred) 
+    (abs_IGraph G) (abs_IDist d) 
+    (abs_ICost c) s (abs_INum n) (abs_IPedge p) 
     "
 proof -
   fix G d c s n p 
@@ -1246,18 +1247,19 @@ proof -
    (val d (tail ?aG e) \<le> val d (tail ?aG e) + (c e)) \<and>
    (val d (head ?aG e) \<le> val d (tail ?aG e) + (c e)))"
     by (simp add: trian_inv_def)
-  then have "trian_inv' G d c (iedge_cnt G) \<longrightarrow>
+  then have "trian_inv G d c (iedge_cnt G) \<longrightarrow>
    (\<forall>e. e \<in> arcs ?aG \<longrightarrow> 
     ?ad (tail ?aG e) \<noteq> PInfty \<longrightarrow>
     ?ad (head ?aG e) \<noteq> PInfty \<and>
     ?ad (head ?aG e) \<le> ?ad (tail ?aG e) + ?ac e)"
     apply (safe, simp_all add: trian_inv_def trian_inv'_def abs_IDist_def abs_ICost_def)
-       apply fastforce
-      apply (presburger add: infinity_ereal_def real_unat_leq_plus)
      apply fastforce
     apply (presburger add: infinity_ereal_def real_unat_leq_plus)
     done
-  then have "trian_inv' G d c (iedge_cnt G) \<longrightarrow>
+     (*apply fastforce
+    apply (presburger add: infinity_ereal_def real_unat_leq_plus)
+    done*)
+  then have "trian_inv G d c (iedge_cnt G) \<longrightarrow>
    (\<forall>e. e \<in> arcs ?aG \<longrightarrow>
     ?ad (head ?aG e) \<le> ?ad (tail ?aG e) + ?ac e)"
     by force
@@ -1310,6 +1312,11 @@ proof -
       ?ad v = ?ad (tail ?aG e) + (?ac e) \<and>
       ?an v = ?an (tail ?aG e) + enat 1))"
     by blast
+  moreover have "(is_inf d s = 0 \<and> (is_inf d s = 0 \<longrightarrow> val d s \<le> 0)) \<longleftrightarrow> abs_IDist d s \<le> 0"
+    unfolding abs_IDist_def
+    by (simp add: unat_eq_zero)
+  then have "(is_inf d s = 0 \<and> (is_inf d s = 0 \<longrightarrow> val d s \<le> 0)) \<longrightarrow> abs_IDist d s \<le> 0"
+    by blast
 ultimately
    show "?thesis G d c s n p"
    unfolding 
@@ -1319,46 +1326,59 @@ ultimately
    by presburger
 qed
 
-
-lemma shortest_path_pos_cost_pred_num_eq_invariants':
-"\<And>G d c sc n p. 
-  ((shortest_path_pos_cost_pred (abs_IGraph G) (abs_IDist d) (abs_ICost c) sc (abs_INum n) (abs_IPedge p)) \<and>
-    (\<forall>v \<in> verts (abs_IGraph G). v \<noteq> sc \<longrightarrow> (abs_INum n) sc < unat (ivertex_cnt G))) = 
-    (wf_digraph (abs_IGraph G) \<and> 
-    trian_inv G d c (ivertex_cnt G) \<and> 
-    just_inv G d c sc n p (ivertex_cnt G) \<and> 
-    no_path_inv G d n (ivertex_cnt G))"
-proof -
-  fix G fix sc::"32 word" fix d n::"32 word \<Rightarrow> (32 word \<times> 32 word)" fix c p::"32 word \<Rightarrow> 32 word"
-  let ?aG = "abs_IGraph G"
-  let ?ad = "abs_IDist d"
-  let ?ap = "abs_IPedge p"
-  let ?an = "abs_INum n"
-  let ?ac = "abs_ICost c"
-  let ?is_src = "sc \<in> verts ?aG \<and> ?ap sc = None \<and> ?an sc = 0"
-  let ?wf = "wf_digraph ?aG"
-  oops
-
-
-
 lemma shortest_path_pos_cost_pred_eq_invariants':
 "\<And>G d c s n p.
-    (wf_digraph (abs_IGraph G) \<and> 
-    trian_inv G d c (ivertex_cnt G) \<and> 
+    (abs_IDist d) s = 0 \<and>
+    s < ivertex_cnt G \<and>
+    (is_wellformed_inv G (iedge_cnt G) \<and> 
+    trian_inv G d c (iedge_cnt G) \<and> 
     just_inv G d c s n p (ivertex_cnt G) \<and> 
-    no_path_inv G d n (ivertex_cnt G)) 
+    no_path_inv G d n (ivertex_cnt G))
     \<longrightarrow>
-    (shortest_path_pos_cost_pred (abs_IGraph G) (abs_IDist d) (abs_ICost c) s (abs_INum n) (abs_IPedge p))"
+    shortest_path_pos_cost_pred (abs_IGraph G) (abs_IDist d) (abs_ICost c) s (abs_INum n) (abs_IPedge p)"
+proof -
+  fix G d c s n p 
+  let ?aG = "abs_IGraph G"
+  let ?ad = "abs_IDist d"
+  let ?ac = "abs_ICost c"
+  let ?an = "abs_INum n"  
+  let ?ap = "abs_IPedge p"
+  have no_path_assms: "no_path_inv G d n (ivertex_cnt G) \<longrightarrow> 
+    (\<forall>v < fst G. (is_inf d v \<noteq> 0 \<longleftrightarrow> is_inf n v \<noteq> 0))"
+    by (simp add:no_path_inv_def)
+  then have "no_path_inv G d n (ivertex_cnt G) \<longrightarrow> 
+    (\<forall>v. v \<in> verts ?aG \<longrightarrow> (?ad v \<noteq> PInfty \<longleftrightarrow> ?an v \<noteq> PInfty))"
+    unfolding no_path_inv_def abs_IDist_def abs_INum_def by simp
+  moreover have "(\<forall>e. e \<in> arcs ?aG \<longrightarrow> 0 \<le> ?ac e)"
+    unfolding abs_ICost_def by fastforce
+ultimately 
+  show "?thesis G d c s n p"
   unfolding 
     basic_just_sp_pred_def 
     basic_just_sp_pred_axioms_def 
     basic_sp_def basic_sp_axioms_def
     shortest_path_pos_cost_pred_def
     shortest_path_pos_cost_pred_axioms_def
-  
-  sorry
+  using basic_just_sp_eq_invariants_imp
+  apply (clarsimp, safe)
+         apply (simp add: fin_digraph_is_wellformed_inv)
+        apply (simp add: abs_IDist_def abs_ICost_def trian_inv_def, blast intro: real_unat_leq_plus)
+       apply (simp add: abs_IPedge_def abs_IDist_def just_inv_def, metis PInfty_eq_infinity less_le order.asym no_path_assms)
+      apply (simp add: abs_IPedge_def abs_IDist_def just_inv_def, metis (no_types) enat.distinct(2) not_le abs_INum_def)
+     apply (simp add: abs_IPedge_def abs_IDist_def abs_ICost_def just_inv_def, safe)
+          apply (metis no_path_assms not_le)
+         apply (simp add: no_path_inv_def abs_INum_def, (auto)[1])
+        apply (metis no_path_assms not_le)
+       apply (metis no_path_assms)
+      apply (simp add: no_path_inv_def abs_INum_def, (auto)[1])
+     apply (metis (no_types) no_path_assms of_nat_add unat_plus_simple)
+    apply (simp add: abs_IPedge_def abs_INum_def just_inv_def, metis (no_types, hide_lams) add.commute add.right_neutral enat.distinct(2) enat.inject not_le unatSuc word_le_0_iff word_less_1)
+   apply (simp add: no_path_inv_def abs_IDist_def abs_INum_def, force)
+  apply (simp add: no_path_inv_def abs_IDist_def abs_INum_def, force)
+  done
+qed
 
-lemma check_shortest_path_pos_cost_pred_spc:
+lemma check_basic_just_sp_spc_intermediate:
   "\<lbrace> P and 
      (\<lambda>s. wf_digraph (abs_IGraph iG) \<and>
           is_graph s iG g \<and>
@@ -1369,13 +1389,65 @@ lemma check_shortest_path_pos_cost_pred_spc:
           is_pedge s iG iP p)\<rbrace>
    check_basic_just_sp' g d c sc n p
    \<lbrace> (\<lambda>_ s. P s) And 
-     (\<lambda>rr s. rr \<noteq> 0 \<longrightarrow>
-       shortest_path_pos_cost_pred (abs_IGraph iG) (abs_IDist iD) (abs_ICost iC) sc (abs_INum iN) (abs_IPedge iP))\<rbrace>!"
+     (\<lambda>rr s. rr \<noteq> 0 \<longleftrightarrow>
+       (is_wellformed_inv iG (iedge_cnt iG) \<and>
+        is_inf iD sc = 0 \<and>
+        val iD sc \<le> 0 \<and>
+        trian_inv iG iD iC (iedge_cnt iG) \<and> 
+        just_inv iG iD iC sc iN iP (ivertex_cnt iG)))\<rbrace>!"
   apply (clarsimp simp: check_basic_just_sp'_def)
-  apply (clarsimp simp: shortest_path_pos_cost_pred_eq_invariants')
+  (*apply (clarsimp simp: basic_just_sp_eq_invariants_imp)*)
   apply wp
+     prefer 3
+     apply wp
+    apply (simp add: just_spc')
+    defer
+    apply (simp add: trian_spc')
+    defer
+    apply (simp add: is_wellformed_spc')
+    defer
+  
+
+    
+
+
+  sorry
+
+     prefer 3 apply wp
+    defer
      apply (rule_tac P1=" P and 
     (\<lambda>s. wf_digraph (abs_IGraph iG) \<and> 
+         is_graph s iG g \<and>
+         is_dist s iG iD d \<and>
+         is_cost s iG iC c)" 
+      in validNF_post_imp[OF _ trian_spc'])
+    apply fastforce
+   apply (auto simp: is_wellformed_spc' is_wellformed_inv_def) defer
+   apply (auto simp: just_spc' just_inv_def)
+  
+
+    
+   
+  sorry
+
+lemma check_basic_just_sp_spc:
+  "\<lbrace> P and 
+     (\<lambda>s. wf_digraph (abs_IGraph iG) \<and>
+          is_graph s iG g \<and>
+          is_dist s iG iD d \<and>
+          is_cost s iG iC c \<and>
+          sc < ivertex_cnt iG \<and>
+          is_numm s iG iN n \<and>
+          is_pedge s iG iP p)\<rbrace>
+   check_basic_just_sp' g d c sc n p
+   \<lbrace> (\<lambda>_ s. P s) And 
+     (\<lambda>rr s. rr \<noteq> 0 \<longleftrightarrow>
+       basic_just_sp_pred (abs_IGraph iG) (abs_IDist iD) (abs_ICost iC) sc (abs_INum iN) (abs_IPedge iP))\<rbrace>!"
+  apply (clarsimp simp: check_basic_just_sp'_def)
+  apply (clarsimp simp: basic_just_sp_eq_invariants_imp)
+  apply wp
+     apply (rule_tac P1=" P and 
+    (\<lambda>s. wf_digraph (abs_IGraph iG) \<and>                                  
          is_graph s iG g \<and>
          is_dist s iG iD d \<and>
          is_cost s iG iC c \<and>
