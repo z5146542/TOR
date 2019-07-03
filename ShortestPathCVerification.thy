@@ -787,7 +787,7 @@ lemma just_spc':
           is_graph s iG g \<and>
           is_dist s iG iD d \<and>
           is_cost s iG iC c \<and>
-          sc < ivertex_cnt iG \<and>
+    (*      sc < ivertex_cnt iG \<and>*)
           is_numm s iG iN n \<and>
           is_pedge s iG iP p)\<rbrace>
    just' g d c sc n p
@@ -802,7 +802,6 @@ lemma just_spc':
                    is_graph s iG g \<and>
                    is_dist s iG iD d \<and>
                    is_cost s iG iC c \<and>
-                   sc < ivertex_cnt iG \<and>
                    is_numm s iG iN n \<and>
                    is_pedge s iG iP p"])
   apply (simp add: skipE_def)
@@ -1053,9 +1052,9 @@ lemma just_spc':
           apply (unfold just_inv_def is_graph_def is_cost_def is_dist_def is_numm_def is_pedge_def)[1]
           apply clarsimp
          apply (simp add:less_le not_le, meson less_le max_word_max not_le)
-        apply (simp add: inc_le is_graph_def)
-       apply (blast intro: inc_le)
-      apply (blast intro: unat_minus_plus1_less)
+        apply (simp add: inc_le is_graph_def) 
+       apply (simp add: inc_le is_graph_def) 
+      apply (simp add: unat_minus_plus1_less is_graph_def)
      apply (unfold is_graph_def)[1]
      apply blast
     apply (unfold is_graph_def is_pedge_def)[1]
@@ -1112,8 +1111,7 @@ lemma no_path_inv_step:
 
 lemma no_path_spc':
   "\<lbrace> P and 
-     (\<lambda>s. wf_digraph (abs_IGraph iG) \<and>
-          is_graph s iG g \<and>
+     (\<lambda>s. is_graph s iG g \<and>
           is_dist s iG iD d \<and>
           is_numm s iG iN n)\<rbrace>
    no_path' g d n
@@ -1123,8 +1121,7 @@ lemma no_path_spc':
   apply (subst whileLoopE_add_inv [where 
         M="\<lambda>(vv, s). unat (ivertex_cnt iG - vv)" and
         I="\<lambda>vv s. P s \<and> no_path_inv iG iD iN vv \<and> 
-                   vv \<le> ivertex_cnt iG \<and>
-                   wf_digraph (abs_IGraph iG) \<and> 
+                   vv \<le> ivertex_cnt iG \<and> 
                    is_graph s iG g \<and>
                    is_dist s iG iD d \<and>
                    is_numm s iG iN n"])
@@ -1243,17 +1240,16 @@ proof -
   have trian1: "trian_inv G d c (iedge_cnt G) \<longrightarrow>
    (\<forall>e. e \<in> arcs ?aG \<longrightarrow> 
     is_inf d (tail ?aG e) = 0 \<longrightarrow>
-    is_inf d (head ?aG e) = 0 \<and>
+    is_inf d (head ?aG e) = 0 \<and> 
    (val d (tail ?aG e) \<le> val d (tail ?aG e) + (c e)) \<and>
    (val d (head ?aG e) \<le> val d (tail ?aG e) + (c e)))"
     by (simp add: trian_inv_def)
   then have "trian_inv G d c (iedge_cnt G) \<longrightarrow>
-   (\<forall>e. e \<in> arcs ?aG \<longrightarrow> 
+   (\<forall>e. e \<in> arcs ?aG \<longrightarrow> (*
     ?ad (tail ?aG e) \<noteq> PInfty \<longrightarrow>
-    ?ad (head ?aG e) \<noteq> PInfty \<and>
+    ?ad (head ?aG e) \<noteq> PInfty \<and> *)
     ?ad (head ?aG e) \<le> ?ad (tail ?aG e) + ?ac e)"
     apply (safe, simp_all add: trian_inv_def trian_inv'_def abs_IDist_def abs_ICost_def)
-     apply fastforce
     apply (presburger add: infinity_ereal_def real_unat_leq_plus)
     done
      (*apply fastforce
@@ -1350,7 +1346,7 @@ proof -
     (\<forall>v. v \<in> verts ?aG \<longrightarrow> (?ad v \<noteq> PInfty \<longleftrightarrow> ?an v \<noteq> PInfty))"
     unfolding no_path_inv_def abs_IDist_def abs_INum_def by simp
   moreover have "(\<forall>e. e \<in> arcs ?aG \<longrightarrow> 0 \<le> ?ac e)"
-    unfolding abs_ICost_def by fastforce
+    unfolding abs_ICost_def by force
 ultimately 
   show "?thesis G d c s n p"
   unfolding 
@@ -1377,8 +1373,99 @@ ultimately
   apply (simp add: no_path_inv_def abs_IDist_def abs_INum_def, force)
   done
 qed
+(*
+ if(!is_wellformed(g)) return 0;
+    if(dist[s].isInf != 0) return 0;
+    if(dist[s].val > 0) return 0;
+    if(!trian(g, dist, c)) return 0;
+    if(!just(g, dist, c, s, enu, pred)) return 0;
+*)
+
+definition basic_just_sp_inv :: 
+  "IGraph \<Rightarrow> IEInt \<Rightarrow> ICost \<Rightarrow> IVertex \<Rightarrow> IEInt \<Rightarrow> IPEdge \<Rightarrow> bool" where
+  "basic_just_sp_inv G d c s n p \<equiv>
+    (is_wellformed_inv G (iedge_cnt G) \<and>
+     val d s = 0 \<and>
+        is_inf d s = 0 \<and>
+        trian_inv G d c (iedge_cnt G) \<and> 
+        just_inv G d c s n p (ivertex_cnt G))"
+
 
 lemma check_basic_just_sp_spc_intermediate:
+  "\<lbrace> P and 
+     (\<lambda>s. is_graph s iG g \<and>
+          is_dist s iG iD d \<and>
+          is_cost s iG iC c \<and>
+          is_numm s iG iN n \<and>
+          is_pedge s iG iP p)\<rbrace>
+   check_basic_just_sp' g d c sc n p
+   \<lbrace> (\<lambda>_ s. P s) And 
+     (\<lambda>rr s. rr \<noteq> 0  \<longleftrightarrow> 
+       basic_just_sp_inv iG iD iC sc iN iP)\<rbrace>!"
+  apply (clarsimp simp: check_basic_just_sp'_def basic_just_sp_inv_def)
+  apply wp prefer 4
+  apply clarsimp
+apply (rule_tac P' = " P and 
+    (\<lambda>s.  is_graph s iG g \<and>
+          is_dist s iG iD d \<and>
+          is_cost s iG iC c \<and>
+          is_numm s iG iN n \<and>
+          is_pedge s iG iP p) " and 
+         P1 = " P and (\<lambda>s.  is_graph s iG g) " and 
+Q' = "\<lambda>ret' s. if ret' = 0 then ((\<lambda>_. P) And (\<lambda>rr s. (rr \<noteq> 0) = (is_wellformed_inv iG (fst (snd iG)) \<and> fst (iD sc) = 0 \<and> snd (iD sc) = 0 \<and> trian_inv iG iD iC (fst (snd iG)) \<and> just_inv iG iD iC sc iN iP (fst iG)))) 0 s
+               else (\<lambda> r s. P s \<and> is_graph s iG g \<and>
+          is_wellformed_inv iG (iedge_cnt iG)) ret' s"
+     in validNF_pre_post_imp[OF is_wellformed_spc']) apply fastforce apply auto[1]
+  apply (rule_tac P1=" P and 
+    (\<lambda>s. is_graph s iG g \<and>
+          is_dist s iG iD d \<and>
+          is_cost s iG iC c \<and>
+          is_numm s iG iN n \<and>
+          is_pedge s iG iP p \<and>
+          is_wellformed_inv iG (iedge_cnt iG) \<and>
+          val iD sc = 0 \<and>
+          is_inf iD sc = 0 \<and>
+          trian_inv iG iD iC (iedge_cnt iG))" 
+     in validNF_post_imp[OF _ just_spc']) 
+     apply fastforce
+    apply (rule_tac P1=" P and 
+    (\<lambda>s.  is_graph s iG g \<and>
+          is_dist s iG iD d \<and>
+          is_cost s iG iC c \<and>
+          is_numm s iG iN n \<and>
+          is_pedge s iG iP p \<and>
+          is_wellformed_inv iG (iedge_cnt iG) \<and>
+          val iD sc = 0 \<and>
+          is_inf iD sc = 0) (*\<and>
+          just_inv iG iD iC (iedge_cnt iG))*)" 
+     in validNF_post_imp[OF _ trian_spc']) 
+     using fin_digraph_def fin_digraph_axioms_def
+     apply (fastforce simp: wf_inv_is_fin_digraph)
+     apply wp
+     apply safe apply auto
+     thm is_wellformed_spc'
+   apply (rule_tac P' = " P and 
+    (\<lambda>s.  is_graph s iG g \<and>
+          is_dist s iG iD d \<and>
+          is_cost s iG iC c \<and>
+          is_numm s iG iN n \<and>
+          is_pedge s iG iP p) " and 
+         P1 = " P and (\<lambda>s.  is_graph s iG g) " and 
+        Q' = "(\<lambda>_ s. P s) And 
+     (\<lambda>rr s. rr \<noteq> 0  \<longleftrightarrow> 
+       basic_just_sp_inv iG iD iC sc iN iP)"
+     in validNF_pre_post_imp[OF is_wellformed_spc']) apply fastforce
+     apply (auto)
+     
+    apply (simp add: just_spc')
+    defer
+    apply (simp add: trian_spc')
+    defer
+    apply (simp add: is_wellformed_spc')
+    defer
+  sorry
+
+lemma shortest_path_pos_cost_imp_spc:
   "\<lbrace> P and 
      (\<lambda>s. wf_digraph (abs_IGraph iG) \<and>
           is_graph s iG g \<and>
@@ -1387,7 +1474,7 @@ lemma check_basic_just_sp_spc_intermediate:
           sc < ivertex_cnt iG \<and>
           is_numm s iG iN n \<and>
           is_pedge s iG iP p)\<rbrace>
-   check_basic_just_sp' g d c sc n p
+   check_sp' g d c sc n p
    \<lbrace> (\<lambda>_ s. P s) And 
      (\<lambda>rr s. rr \<noteq> 0 \<longleftrightarrow>
        (is_wellformed_inv iG (iedge_cnt iG) \<and>
@@ -1395,81 +1482,15 @@ lemma check_basic_just_sp_spc_intermediate:
         val iD sc \<le> 0 \<and>
         trian_inv iG iD iC (iedge_cnt iG) \<and> 
         just_inv iG iD iC sc iN iP (ivertex_cnt iG)))\<rbrace>!"
-  apply (clarsimp simp: check_basic_just_sp'_def)
-  (*apply (clarsimp simp: basic_just_sp_eq_invariants_imp)*)
-  apply wp
-     prefer 3
-     apply wp
-    apply (simp add: just_spc')
-    defer
-    apply (simp add: trian_spc')
-    defer
-    apply (simp add: is_wellformed_spc')
-    defer
-  
-
-    
-
-
   sorry
 
-     prefer 3 apply wp
-    defer
-     apply (rule_tac P1=" P and 
-    (\<lambda>s. wf_digraph (abs_IGraph iG) \<and> 
-         is_graph s iG g \<and>
-         is_dist s iG iD d \<and>
-         is_cost s iG iC c)" 
-      in validNF_post_imp[OF _ trian_spc'])
-    apply fastforce
-   apply (auto simp: is_wellformed_spc' is_wellformed_inv_def) defer
-   apply (auto simp: just_spc' just_inv_def)
-  
 
-    
-   
-  sorry
-
-lemma check_basic_just_sp_spc:
-  "\<lbrace> P and 
-     (\<lambda>s. wf_digraph (abs_IGraph iG) \<and>
-          is_graph s iG g \<and>
-          is_dist s iG iD d \<and>
-          is_cost s iG iC c \<and>
-          sc < ivertex_cnt iG \<and>
-          is_numm s iG iN n \<and>
-          is_pedge s iG iP p)\<rbrace>
-   check_basic_just_sp' g d c sc n p
-   \<lbrace> (\<lambda>_ s. P s) And 
-     (\<lambda>rr s. rr \<noteq> 0 \<longleftrightarrow>
-       basic_just_sp_pred (abs_IGraph iG) (abs_IDist iD) (abs_ICost iC) sc (abs_INum iN) (abs_IPedge iP))\<rbrace>!"
-  apply (clarsimp simp: check_basic_just_sp'_def)
-  apply (clarsimp simp: basic_just_sp_eq_invariants_imp)
-  apply wp
-     apply (rule_tac P1=" P and 
-    (\<lambda>s. wf_digraph (abs_IGraph iG) \<and>                                  
-         is_graph s iG g \<and>
-         is_dist s iG iD d \<and>
-         is_cost s iG iC c \<and>
-         sc < ivertex_cnt iG \<and> 
-         is_numm s iG iN n \<and> 
-         is_pedge s iG iP p)" 
-      in validNF_post_imp[OF _ just_spc'])
-     apply clarsimp
-  unfolding fin_digraph_def fin_digraph_axioms_def 
-     defer
-     apply (rule_tac P1=" P and 
-    (\<lambda>s. wf_digraph (abs_IGraph iG) \<and> 
-         is_graph s iG g \<and>
-         is_dist s iG iD d \<and>
-         is_cost s iG iC c)" 
-      in validNF_post_imp[OF _ trian_spc'])
-     apply clarsimp
-     defer
-     apply wp
-    apply clarsimp
-    
-  sorry
+lemma shortest_path_pos_cost_imp_correct:
+"\<And>G d c s n p . 
+  shortest_path_pos_cost_pred (abs_IGraph G) d c s n p \<longrightarrow>
+   (\<forall>v \<in> verts (abs_IGraph G).
+   d v = wf_digraph.\<mu> (abs_IGraph G) c s v)"
+using shortest_path_pos_cost_pred.correct_shortest_path_pred by fast
 
 
 end
