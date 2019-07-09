@@ -1235,7 +1235,7 @@ proof -
      apply clarsimp
      apply (rule conjI)
       apply (simp add: just_inv_def unat_simp word_le_nat_alt)
-     apply (metis (no_types, hide_lams) add.commute add_cancel_right_left lt1_neq0 just_inv_def unatSuc word_le_0_iff)
+     apply (metis (no_types, hide_lams) add.commute add_cancel_right_left lt1_neq0 unatSuc word_le_0_iff)
     apply (metis enat.distinct(2) abs_INum_def)
     done
   then have "just_inv G d c s n p (ivertex_cnt G) \<longrightarrow>
