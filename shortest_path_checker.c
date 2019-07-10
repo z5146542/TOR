@@ -42,8 +42,8 @@ int trian(Graph *g, EInt *dist, unsigned int *c) {
 	  for(unsigned int edge_id = 0; edge_id < edge_cnt(g); edge_id++) {
         if(dist[arcs(g, edge_id).first].isInf == 0) {
             if(dist[arcs(g, edge_id).second].isInf != 0) return 0;
-            if(dist[arcs(g, edge_id).first].val > dist[arcs(g, edge_id).first].val + c[edge_id]) return 0; // check there is no overflow
-            if(dist[arcs(g, edge_id).second].val > dist[arcs(g, edge_id).first].val + c[edge_id]) return 0;
+            // if(dist[arcs(g, edge_id).first].val > dist[arcs(g, edge_id).first].val + c[edge_id]) return 0; // check there is no overflow
+            if((unsigned long) dist[arcs(g, edge_id).second].val > (unsigned long) dist[arcs(g, edge_id).first].val + (unsigned long)c[edge_id]) return 0;
         }
     }
     return 1;

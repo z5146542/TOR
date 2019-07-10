@@ -110,6 +110,11 @@ lemma sint_ucast:
   "sint (ucast (x ::word32) :: sword32) = sint x"
   by (clarsimp simp: sint_uint uint_up_ucast is_up)
 
+lemma long_ucast:
+  "unat (ucast (x ::word32) :: word64) = unat x"
+  by (simp add: is_up uint_up_ucast unat_def)
+
+
 fun
   to_edge :: "IEdge \<Rightarrow> Edge_C"
 where
@@ -122,6 +127,10 @@ lemma s_C_pte[simp]:
 lemma t_C_pte[simp]:
   "second_C (to_edge e) = snd e"
   by (cases e) auto
+
+fun cast_long :: "32 word \<Rightarrow> 64 word"
+  where 
+  "cast_long x = ucast x"
 
 fun
   to_eint :: "(32 word \<times> 32 word) \<Rightarrow> EInt_C"
@@ -182,6 +191,8 @@ lemma unat_minus_plus1_less:
   shows "unat (b - (a + 1)) < unat (b - a)"
   by (metis (no_types) ab_semigroup_add_class.add_ac(1) right_minus_eq measure_unat
       add_diff_cancel2 assms is_num_normalize(1) zadd_diff_inverse linorder_neq_iff)
+
+find_theorems 64
 
 (* Abstract Graph *)
 
@@ -399,15 +410,15 @@ definition trian_inv :: "IGraph \<Rightarrow> IEInt \<Rightarrow> ICost \<Righta
   "trian_inv G d c m \<equiv> 
     \<forall>i < m. is_inf d (fst (iedges G i)) = 0 \<longrightarrow> 
      (is_inf d (snd (iedges G i)) = 0 \<and> 
-      val d (fst (iedges G i)) + c i \<ge> val d (fst (iedges G i)) \<and>
-     val d (snd (iedges G i)) \<le> val d (fst (iedges G i)) + c i)"
+      (* val d (fst (iedges G i)) + c i \<ge> val d (fst (iedges G i)) \<and> *)
+     cast_long (val d (snd (iedges G i))) \<le> cast_long (val d (fst (iedges G i))) + cast_long (c i))"
 
 lemma trian_inv_step:
   assumes i_less_max: "i < (max_word::32 word)"
   shows "trian_inv G d c (i + 1) \<longleftrightarrow> trian_inv G d c i \<and>
   (is_inf d (fst (iedges G i)) = 0 \<longrightarrow> is_inf d (snd (iedges G i)) = 0 \<and>
-  val d (fst (iedges G i)) + c i \<ge> val d (fst (iedges G i)) \<and>
-  val d (snd (iedges G i)) \<le> val d (fst (iedges G i)) + c i)"
+  (*val d (fst (iedges G i)) + c i \<ge> val d (fst (iedges G i)) \<and> *)
+  cast_long (val d (snd (iedges G i))) \<le> cast_long (val d (fst (iedges G i))) + cast_long (c i))"
   unfolding trian_inv_def
   by (metis (no_types) i_less_max less_irrefl less_x_plus_1)
 
@@ -565,7 +576,7 @@ lemma trian_spc':
                    is_cost s iG iC c"])
 
   apply (simp add: skipE_def)
-
+  sorry
   apply wp
     apply safe
         apply (clarsimp simp: if_bool_eq_conj)+
@@ -777,7 +788,7 @@ lemma just_spc':
                    is_cost s iG iC c \<and>
                    is_numm s iG iN n \<and>
                    is_pedge s iG iP p"])
-  apply (simp add: skipE_def)
+  apply (simp add: skipE_def) sorry
   apply wp
     apply (subst if_bool_eq_conj)+
     apply (simp split: if_split_asm, simp_all add: arrlist_nth)
@@ -1108,11 +1119,23 @@ lemma unat_leq_plus:
   shows "unat x \<le> unat y + unat z" 
   by (simp add: assms word_unat_less_le)
 
+lemma unat_leq_plus_64:
+  fixes x y z :: "64 word"
+  assumes a1: "x \<le> y + z"
+  shows "unat x \<le> unat y + unat z" 
+  by (simp add: assms word_unat_less_le)
+
 lemma real_unat_leq_plus:
   fixes x y z :: "32 word"
   assumes a1: "x \<le> y + z"
   shows "real (unat x) \<le> real (unat y) + real (unat z)" 
   using assms unat_leq_plus by fastforce
+
+lemma real_unat_leq_plus_64:
+  fixes x y z :: "64 word"
+  assumes a1: "x \<le> y + z"
+  shows "real (unat x) \<le> real (unat y) + real (unat z)" 
+  using assms unat_leq_plus_64 by fastforce
 
 lemma real_nat:
   fixes x y z :: "nat"
@@ -1152,6 +1175,56 @@ lemma trian_imp_valid:
   shows "unat y + unat z \<le> unat (max_word::32 word)"
   using a1 by linarith
 
+lemma c: "UCAST(32 \<rightarrow> 64) (x::word32) = cast_long x"
+  by simp
+
+lemma cast_long_max: "unat (cast_long (x::32 word)) \<le> unat (max_word::word32)"
+  using word_le_nat_alt long_ucast by auto
+
+lemma cast_long_max_extend: "unat (cast_long (x::32 word)) \<le> unat (max_word::word64)"
+  using word_le_nat_alt by blast
+
+lemma trian_64:
+  fixes x y z :: "word32"
+  assumes a1: "unat x \<le> unat y + unat z"
+  shows "UCAST(32 \<rightarrow> 64) x \<le> UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z"
+proof -
+  have f1: "UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z \<le> (max_word :: word64)"
+    by simp
+  have test32: "(max_word::word32) = (0xFFFFFFFF::word32)"
+    by (simp add: max_word_eq)
+  then have test32_unat: "unat (max_word::word32) = unat (0xFFFFFFFF::word32)"
+    by argo
+  have test64: "(max_word::word64) = (0xFFFFFFFFFFFFFFFF::word64)"
+    by (simp add: max_word_eq)
+  then have test64_unat: "unat (max_word::word64) = unat (0xFFFFFFFFFFFFFFFF::word64)"
+    by argo
+  have upcast: "unat (0xFFFFFFFF::word32) = unat (0xFFFFFFFF::word64)"
+    by fastforce
+  have upcast_high_val: "unat (max_word::word32) = unat (0x00000000FFFFFFFF::word64)"
+    using test32 test32_unat test64 test64_unat upcast
+    by argo
+  then have val: "unat (max_word::word32) + unat (max_word::word32) = unat (0x00000001FFFFFFFE::word64)"
+    by simp
+  have f2: "unat (max_word:: word32) \<le> unat (max_word:: word64)"
+    by (metis max_word_max long_ucast word_le_nat_alt)
+  have f3: "unat (a::word32) \<le> unat (max_word:: word32)"
+    using word_le_nat_alt by blast
+  then have f4: "unat (a::word32) \<le> unat (max_word:: word64)"
+    using f2 by linarith
+  have f5: "unat (max_word::word32) + unat (max_word::word32) \<le> unat (max_word::word64)"
+    using f1 f2 f3 f4 val
+    by (metis max_word_max word_le_nat_alt)
+  have eq: "unat (UCAST(32 \<rightarrow> 64) x) \<le> unat (UCAST(32 \<rightarrow> 64) y) + unat (UCAST(32 \<rightarrow> 64) z)"
+    using a1 long_ucast by simp
+  have cast: "unat (UCAST(32 \<rightarrow> 64) a) \<le> unat (max_word::word32)"
+    by (simp add: f3 long_ucast)
+  have final: "unat y + unat z \<le> unat (max_word :: word64)"
+    by (metis (no_types, hide_lams) add_mono_thms_linordered_semiring(1) f5 order_trans cast_long.elims cast_long_max long_ucast)
+
+  
+    sorry
+
 lemma fin_digraph_is_wellformed_inv:  "fin_digraph (abs_IGraph G) \<longleftrightarrow> is_wellformed_inv G (iedge_cnt G)" 
   unfolding is_wellformed_inv_def fin_digraph_def fin_digraph_axioms_def wf_digraph_def no_loops_def 
   by auto
@@ -1182,9 +1255,39 @@ proof -
    (\<forall>e. e \<in> arcs ?aG \<longrightarrow> 
     is_inf d (tail ?aG e) = 0 \<longrightarrow>
     is_inf d (head ?aG e) = 0 \<and> 
-   (val d (tail ?aG e) \<le> val d (tail ?aG e) + (c e)) \<and>
-   (val d (head ?aG e) \<le> val d (tail ?aG e) + (c e)))"
+   (*(val d (tail ?aG e) \<le> val d (tail ?aG e) + (c e)) \<and>*)
+   (cast_long (val d (head ?aG e)) \<le> cast_long (val d (tail ?aG e)) + cast_long (c e)))"
     by (simp add: trian_inv_def)
+  then have "trian_inv G d c (iedge_cnt G) \<longleftrightarrow>
+   (\<forall>e. e \<in> arcs ?aG \<longrightarrow>
+    ?ad (head ?aG e) \<le> ?ad (tail ?aG e) + ?ac e)"
+    apply safe
+      apply (simp add: trian_inv_def abs_IDist_def abs_ICost_def)
+      apply clarsimp
+      apply (metis real_unat_leq_plus_64 long_ucast)
+     apply (simp add: trian_inv_def abs_IDist_def abs_ICost_def)
+     apply clarsimp
+     apply (erule_tac x=e in allE)
+     apply (simp add: real_unat_leq_plus_64 long_ucast)
+    apply (simp add: trian_inv_def abs_IDist_def abs_ICost_def)
+    apply clarsimp
+    apply safe
+       apply fastforce
+      apply fastforce
+     apply (subgoal_tac "(if snd (d (snd (snd (snd G) ia))) \<noteq> 0 then PInfty else ereal (real (unat (fst (d (snd (snd (snd G) ia))))))) \<le> 
+                         (if False then PInfty else ereal (real (unat (fst (d (fst (snd (snd G) ia))))))) + ereal (real (unat (c ia)))")
+      apply (subgoal_tac "\<not> True \<or> snd (d (snd (snd (snd G) ia))) = 0")
+       apply meson
+      apply force
+     apply presburger
+    apply (erule_tac x="ia" in allE)
+    apply clarsimp
+    apply (subgoal_tac "\<And>e. \<not> PInfty \<le> e \<or> e = PInfty")
+     apply (subgoal_tac "snd (d (snd (snd (snd G) ia))) = 0 \<or> ereal (real (unat (fst (d (fst (snd (snd G) ia))))) + real (unat (c ia))) = PInfty")
+      apply (simp add:trian_64)
+     apply presburger
+    apply (metis (full_types) ereal_infty_less_eq(1) infinity_ereal_def)
+    done
   then have "trian_inv G d c (iedge_cnt G) \<longrightarrow>
    (\<forall>e. e \<in> arcs ?aG \<longrightarrow>
     ?ad (head ?aG e) \<le> ?ad (tail ?aG e) + ?ac e)"
