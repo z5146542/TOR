@@ -609,8 +609,8 @@ definition just_inv ::
         cast_long (val d v) = cast_long (val d (fst (iedges G e))) + cast_long (c e) \<and>
         is_inf n (fst (iedges G e)) = 0 \<and>
         (* val n (fst (iedges G e)) \<le> val n (fst (iedges G e)) + 1 \<and> *)
-        val n v < ivertex_cnt G \<and>
-        val n v = val n (fst (iedges G e)) + 1)"
+        (*val n v < ivertex_cnt G \<and> *)
+        cast_long (val n v) = cast_long (val n (fst (iedges G e))) + 1)"
 
 lemma just_inv_step:
   assumes v_less_max: "v < (max_word::32 word)"
@@ -624,8 +624,8 @@ lemma just_inv_step:
         cast_long (val d v) = cast_long (val d (fst (iedges G e))) + cast_long (c e) \<and>
         is_inf n (fst (iedges G e)) = 0 \<and>
         (* val n (fst (iedges G e)) \<le> val n (fst (iedges G e)) + 1 \<and> *)
-        val n v < ivertex_cnt G \<and>
-        val n v = val n (fst (iedges G e)) + 1))"
+        (* val n v < ivertex_cnt G \<and> *)
+        cast_long (val n v) = cast_long (val n (fst (iedges G e))) + 1))"
   unfolding just_inv_def using v_less_max  
   by (force simp: less_x_plus_1)
   
@@ -634,7 +634,7 @@ lemma just_inv_le:
   assumes just_i: "just_inv G d c s n p i"
   shows "just_inv G d c s n p j"
   using assms 
-  by (induct j) (auto simp add: just_inv_def, force)
+  by (induct j) (auto simp add: just_inv_def)
 
 lemma pedge_abs_C_equiv:
   fixes vv :: "32 word" and s :: lifted_globals
@@ -1192,8 +1192,8 @@ proof -
       is_inf d (tail ?aG e) = 0 \<and>
       cast_long (val d v) = cast_long (val d (tail ?aG e)) + cast_long (c e) \<and>
       is_inf n (tail ?aG e) = 0 \<and>
-      val n v < ivertex_cnt G \<and>
-      val n v = val n (tail ?aG e) + 1))"
+      (* val n v < ivertex_cnt G \<and> *)
+      cast_long (val n v) = cast_long (val n (tail ?aG e)) + 1))"
     using just_inv_def
     by auto
   then have "just_inv G d c s n p (ivertex_cnt G) \<longrightarrow>
@@ -1203,36 +1203,36 @@ proof -
       v = head ?aG e \<and> 
       ?ad v = ?ad (tail ?aG e) + (?ac e) \<and>
       ?an v = ?an (tail ?aG e) + enat 1))"
-  apply safe
+    apply safe
     apply clarsimp
     apply safe
-           apply (unfold abs_IPedge_def abs_INum_def)[1]
-           apply clarsimp
-           apply (rule conjI)
-            apply (meson enat.distinct(2) not_le)
-           apply (rule impI)
-           apply (meson enat.distinct(2))
-          apply (unfold abs_IPedge_def abs_INum_def)[1]
-  using option.sel 
+       apply (unfold abs_IPedge_def abs_INum_def)[1]
+       apply clarsimp
+       apply (rule conjI)
+        apply (meson enat.distinct(2) not_le)
+       apply (rule impI)
+       apply (meson enat.distinct(2))
+      apply (unfold abs_IPedge_def abs_INum_def)[1]
+    using option.sel 
       apply fastforce
-      apply (unfold abs_IPedge_def abs_INum_def abs_IDist_def abs_ICost_def)[1]
-      apply clarsimp
-   apply (meson enat.distinct(2) not_le)
-   apply (erule_tac x=v in allE)
-  using just_64
-   apply force
-  apply (unfold abs_INum_def abs_IPedge_def)[1]
-  apply clarsimp
-  apply (meson enat.distinct(2) not_le)
-  apply (erule_tac x=v in allE)
-  apply safe
-  using just_inv_def 
-   apply force
-  apply clarsimp
-  try0 sledgehammer
-  
-
-  sorry
+     apply (unfold abs_IPedge_def abs_INum_def abs_IDist_def abs_ICost_def)[1]
+     apply clarsimp
+     apply (meson enat.distinct(2) not_le)
+     apply (erule_tac x=v in allE)
+    using just_64
+     apply force
+    apply (unfold abs_INum_def abs_IPedge_def)[1]
+    apply clarsimp
+    apply (meson enat.distinct(2) not_le)
+    apply (erule_tac x=v in allE)
+    apply safe
+    using just_inv_def 
+     apply force
+    apply clarsimp
+    apply (subgoal_tac "UCAST(32 \<rightarrow> 64) (fst (n v)) \<noteq> (0::64 word)")
+     apply (metis (no_types) add.commute enat.distinct(2) enat.inject long_ucast unatSuc)
+    apply (metis add.commute le_add_same_cancel1 lt1_neq0 trian_64 ucast_1 zero_le)
+    done
   then have "just_inv G d c s n p (ivertex_cnt G) \<longleftrightarrow>
     (\<forall>v. v \<in> verts ?aG \<and>
       v \<noteq> s \<and> ?an v \<noteq> \<infinity> \<longrightarrow> 
@@ -1241,7 +1241,16 @@ proof -
       ?ad v = ?ad (tail ?aG e) + (?ac e) \<and>
       ?an v = ?an (tail ?aG e) + enat 1))"
   apply safe
-    apply clarsimp
+     apply clarsimp
+     apply (unfold just_inv_def)[1]
+     apply clarsimp
+     apply (erule_tac x=v in allE, clarsimp)
+     apply safe
+                    apply (unfold abs_INum_def, clarsimp)[1]
+                   apply (unfold abs_IPedge_def abs_INum_def)[1]
+                   apply clarsimp
+                  
+(*
     apply safe
            apply (unfold abs_IPedge_def abs_INum_def)[1]
            apply clarsimp
@@ -1260,9 +1269,8 @@ proof -
      apply (unfold abs_INum_def abs_IPedge_def)[1]
   apply clarsimp
 apply (meson enat.distinct(2) not_le)
-     defer
-  
-
+     defer 
+*)
   sorry
   moreover have "(is_inf d s = 0 \<and> (is_inf d s = 0 \<longrightarrow> val d s \<le> 0)) \<longleftrightarrow> abs_IDist d s \<le> 0"
     unfolding abs_IDist_def
