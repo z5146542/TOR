@@ -192,8 +192,6 @@ lemma unat_minus_plus1_less:
   by (metis (no_types) ab_semigroup_add_class.add_ac(1) right_minus_eq measure_unat
       add_diff_cancel2 assms is_num_normalize(1) zadd_diff_inverse linorder_neq_iff)
 
-find_theorems 64
-
 (* Abstract Graph *)
 
 definition 
@@ -235,11 +233,11 @@ where
   "abs_IPedge p v \<equiv> if sint (p v) < 0 then None else Some (p v)"
 
 lemma None_abs_pedgeI[simp]: 
-  "((abs_IPedge p) v = None) = (sint (p v) < 0)"
+  "(abs_IPedge p v = None) = (sint (p v) < 0)"
   using abs_IPedge_def by auto
 
 lemma Some_abs_pedgeI[simp]: 
-  "(\<exists>e. (abs_IPedge p) v = Some e) = (sint (p v) \<ge> 0)"
+  "(\<exists>e. abs_IPedge p v = Some e) = (sint (p v) \<ge> 0)"
   using None_not_eq None_abs_pedgeI 
   by (metis abs_IPedge_def linorder_not_le option.simps(3))
     
@@ -1196,7 +1194,7 @@ proof -
       cast_long (val n v) = cast_long (val n (tail ?aG e)) + 1))"
     using just_inv_def
     by auto
-  then have "just_inv G d c s n p (ivertex_cnt G) \<longrightarrow>
+  then have "just_inv G d c s n p (ivertex_cnt G) \<longleftrightarrow>
     (\<forall>v. v \<in> verts ?aG \<and>
       v \<noteq> s \<and> ?an v \<noteq> \<infinity> \<longrightarrow> 
     (\<exists>e. e = the (?ap v) \<and> e \<in> arcs ?aG \<and>
@@ -1232,14 +1230,13 @@ proof -
     apply (subgoal_tac "UCAST(32 \<rightarrow> 64) (fst (n v)) \<noteq> (0::64 word)")
      apply (metis (no_types) add.commute enat.distinct(2) enat.inject long_ucast unatSuc)
     apply (metis add.commute le_add_same_cancel1 lt1_neq0 trian_64 ucast_1 zero_le)
-    done
-  then have "just_inv G d c s n p (ivertex_cnt G) \<longleftrightarrow>
-    (\<forall>v. v \<in> verts ?aG \<and>
-      v \<noteq> s \<and> ?an v \<noteq> \<infinity> \<longrightarrow> 
-    (\<exists>e. e = the (?ap v) \<and> e \<in> arcs ?aG \<and>
-      v = head ?aG e \<and> 
-      ?ad v = ?ad (tail ?aG e) + (?ac e) \<and>
-      ?an v = ?an (tail ?aG e) + enat 1))"
+     apply clarsimp
+     apply (subgoal_tac "(\<not> 0 \<le> sint (p v)) \<longrightarrow> \<not>(the (abs_IPedge p v) < fst (snd G))")
+    using abs_INum_def apply simp
+     apply (unfold abs_IPedge_def)[1]
+    
+    
+(*
   apply safe
      apply clarsimp
      apply (unfold just_inv_def)[1]
@@ -1249,7 +1246,19 @@ proof -
                     apply (unfold abs_INum_def, clarsimp)[1]
                    apply (unfold abs_IPedge_def abs_INum_def)[1]
                    apply clarsimp
-                  
+    defer
+                   apply (unfold abs_INum_def)[7]
+                   apply fastforce+
+            apply (unfold abs_INum_def abs_IPedge_def)[1]
+            apply clarsimp
+    defer
+            apply (unfold abs_INum_def abs_IPedge_def)[1]
+            apply clarsimp
+    try0
+    *)
+
+    
+
 (*
     apply safe
            apply (unfold abs_IPedge_def abs_INum_def)[1]
