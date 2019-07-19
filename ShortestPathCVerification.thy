@@ -1072,11 +1072,37 @@ lemma cast_long_max: "unat (cast_long (x::32 word)) \<le> unat (max_word::word32
 lemma cast_long_max_extend: "unat (cast_long (x::32 word)) \<le> unat (max_word::word64)"
   using word_le_nat_alt by blast
 
+lemma trian_64_reverse:
+  fixes x y z :: "word32"
+  assumes a1: "UCAST(32 \<rightarrow> 64) x \<le> UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z"
+  shows "unat x \<le> unat y + unat z"
+  by (metis (no_types, hide_lams) assms is_up len_of_word_comparisons(2) unat_leq_plus_64 uint_up_ucast unat_def)
+  
+
 lemma trian_64:
   fixes x y z :: "word32"
   assumes a1: "unat x \<le> unat y + unat z"
   shows "UCAST(32 \<rightarrow> 64) x \<le> UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z"
-  sorry (*
+proof -
+  have "UCAST(32 \<rightarrow> 64) y \<le> UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z"
+  proof -
+    {
+      have "y \<le> (max_word :: word32)" by simp
+      then have "UCAST(32 \<rightarrow> 64) y \<le> UCAST (32 \<rightarrow> 64) (max_word :: word32)"
+        by (simp add: is_up uint_up_ucast unat_def word_le_nat_alt)
+      moreover have "z \<le> (max_word :: word32)" by simp
+      then have "UCAST(32 \<rightarrow> 64) z \<le> UCAST(32 \<rightarrow> 64) (max_word :: word32)" 
+        by (simp add: is_up uint_up_ucast unat_def word_le_nat_alt)
+      moreover have "UCAST(32 \<rightarrow> 64) (max_word :: word32) + UCAST(32 \<rightarrow> 64) (max_word :: word32) \<le> (max_word::word64)"
+        by blast
+      then have "UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z \<le> (max_word :: word64)"
+        by blast
+      then have "unat (UCAST(32 \<rightarrow> 64) y) + unat (UCAST(32 \<rightarrow> 64) z) \<le> unat (max_word :: word64)"
+        try0 sledgehammer
+      
+    }
+  qed
+qed (*
 proof -
   have f1: "UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z \<le> (max_word :: word64)"
     by simp
@@ -1114,25 +1140,16 @@ proof -
 
 lemma just_64:
   fixes x y z :: "word32"
-  shows "(UCAST(32 \<rightarrow> 64) x = UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z) \<longleftrightarrow> unat x = unat y + unat z"
+  shows "(UCAST(32 \<rightarrow> 64) x = UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z) = (unat x = unat y + unat z)"
 proof -
   have "(UCAST(32 \<rightarrow> 64) x = UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z) \<longrightarrow> unat x = unat y + unat z"
     by (metis (mono_tags, hide_lams) is_up le_add_same_cancel1 len_of_word_comparisons(2) trian_64 uint_up_ucast unat_def unat_plus_simple zero_le)
-  moreover have "unat x = unat y + unat z"
-
-lemma just_64:
-  fixes x y z :: "word32"
-  assumes a1: "UCAST(32 \<rightarrow> 64) x = UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z"
-  shows "unat x = unat y + unat z"
-  by (metis (mono_tags, hide_lams) assms is_up le_add_same_cancel1 len_of_word_comparisons(2) trian_64 uint_up_ucast unat_def unat_plus_simple zero_le)
-
-lemma just_64_reverse:
-  fixes x y z :: "word32"
-  assumes "unat x = unat y + unat z"
-  shows "UCAST(32 \<rightarrow> 64) x = UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z"
-  by (metis (mono_tags, hide_lams) assms is_up len_of_word_comparisons(2) uint_up_ucast unat_def word_arith_nat_add word_unat.Rep_inverse)
+  moreover 
+  have "unat x = unat y + unat z \<longrightarrow> (UCAST(32 \<rightarrow> 64) x = UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z)"
+    by (metis (mono_tags, hide_lams) is_up len_of_word_comparisons(2) uint_up_ucast unat_def word_arith_nat_add word_unat.Rep_inverse)
+  ultimately show ?thesis by blast
+qed
   
-
 lemma fin_digraph_is_wellformed_inv:  "fin_digraph (abs_IGraph G) \<longleftrightarrow> is_wellformed_inv G (iedge_cnt G)" 
   unfolding is_wellformed_inv_def fin_digraph_def fin_digraph_axioms_def wf_digraph_def no_loops_def 
   by auto
@@ -1266,84 +1283,6 @@ proof -
        apply safe[1]
         apply force
        apply clarsimp
-
-(*
-       apply (meson enat.distinct(2))
-      apply (unfold abs_IPedge_def abs_INum_def)[1]
-    using option.sel 
-      apply fastforce
-     apply (unfold abs_IPedge_def abs_INum_def abs_IDist_def abs_ICost_def)[1]
-     apply clarsimp
-     apply (meson enat.distinct(2) not_le)
-     apply (erule_tac x=v in allE)
-    using just_64
-     apply force
-    apply (unfold abs_INum_def abs_IPedge_def)[1]
-    apply clarsimp
-    apply (meson enat.distinct(2) not_le)
-    apply (erule_tac x=v in allE)
-    apply safe
-    using just_inv_def 
-     apply force
-    apply clarsimp
-    apply (subgoal_tac "UCAST(32 \<rightarrow> 64) (fst (n v)) \<noteq> (0::64 word)")
-     apply (metis (no_types) add.commute enat.distinct(2) enat.inject long_ucast unatSuc)
-    apply (metis add.commute le_add_same_cancel1 lt1_neq0 trian_64 ucast_1 zero_le)
-
-      apply clarsimp
-      apply (unfold just_inv_def)[1]
-      apply clarsimp
-*)
-(*
-     apply (subgoal_tac "(\<not> 0 \<le> sint (p v)) \<longrightarrow> \<not>(the (abs_IPedge p v) < fst (snd G))")
-    using abs_INum_def apply simp
-     apply (unfold abs_IPedge_def)[1]
-    apply clarsimp 
-    find_theorems "the None" *)
-(*
-  apply safe
-     apply clarsimp
-     apply (unfold just_inv_def)[1]
-     apply clarsimp
-     apply (erule_tac x=v in allE, clarsimp)
-     apply safe
-                    apply (unfold abs_INum_def, clarsimp)[1]
-                   apply (unfold abs_IPedge_def abs_INum_def)[1]
-                   apply clarsimp
-    defer
-                   apply (unfold abs_INum_def)[7]
-                   apply fastforce+
-            apply (unfold abs_INum_def abs_IPedge_def)[1]
-            apply clarsimp
-    defer
-            apply (unfold abs_INum_def abs_IPedge_def)[1]
-            apply clarsimp
-    try0
-    *)
-
-    
-
-(*
-    apply safe
-           apply (unfold abs_IPedge_def abs_INum_def)[1]
-           apply clarsimp
-           apply (rule conjI)
-            apply (meson enat.distinct(2) not_le)
-           apply (rule impI)
-           apply (meson enat.distinct(2))
-          apply (unfold abs_IPedge_def abs_INum_def)[1]
-  using option.sel 
-      apply fastforce
-      apply (unfold abs_IPedge_def abs_INum_def abs_IDist_def abs_ICost_def)[1]
-      apply clarsimp
-      apply (meson enat.distinct(2) not_le)
-
-      defer
-     apply (unfold abs_INum_def abs_IPedge_def)[1]
-  apply clarsimp
-apply (meson enat.distinct(2) not_le)
-     defer 
-*)
   sorry
   moreover have "(is_inf d s = 0 \<and> (is_inf d s = 0 \<longrightarrow> val d s \<le> 0)) \<longleftrightarrow> abs_IDist d s \<le> 0"
     unfolding abs_IDist_def
@@ -1354,7 +1293,7 @@ ultimately
     basic_just_sp_pred_def 
     basic_just_sp_pred_axioms_def 
     basic_sp_def basic_sp_axioms_def
-   by (safe, simp_all)
+   by meson
 qed
 
 lemma shortest_path_pos_cost_pred_eq_invariants':
