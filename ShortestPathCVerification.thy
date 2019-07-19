@@ -1114,9 +1114,24 @@ proof -
 
 lemma just_64:
   fixes x y z :: "word32"
+  shows "(UCAST(32 \<rightarrow> 64) x = UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z) \<longleftrightarrow> unat x = unat y + unat z"
+proof -
+  have "(UCAST(32 \<rightarrow> 64) x = UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z) \<longrightarrow> unat x = unat y + unat z"
+    by (metis (mono_tags, hide_lams) is_up le_add_same_cancel1 len_of_word_comparisons(2) trian_64 uint_up_ucast unat_def unat_plus_simple zero_le)
+  moreover have "unat x = unat y + unat z"
+
+lemma just_64:
+  fixes x y z :: "word32"
   assumes a1: "UCAST(32 \<rightarrow> 64) x = UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z"
   shows "unat x = unat y + unat z"
   by (metis (mono_tags, hide_lams) assms is_up le_add_same_cancel1 len_of_word_comparisons(2) trian_64 uint_up_ucast unat_def unat_plus_simple zero_le)
+
+lemma just_64_reverse:
+  fixes x y z :: "word32"
+  assumes "unat x = unat y + unat z"
+  shows "UCAST(32 \<rightarrow> 64) x = UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z"
+  by (metis (mono_tags, hide_lams) assms is_up len_of_word_comparisons(2) uint_up_ucast unat_def word_arith_nat_add word_unat.Rep_inverse)
+  
 
 lemma fin_digraph_is_wellformed_inv:  "fin_digraph (abs_IGraph G) \<longleftrightarrow> is_wellformed_inv G (iedge_cnt G)" 
   unfolding is_wellformed_inv_def fin_digraph_def fin_digraph_axioms_def wf_digraph_def no_loops_def 
@@ -1155,9 +1170,11 @@ proof -
    (\<forall>e. e \<in> arcs ?aG \<longrightarrow>
     ?ad (head ?aG e) \<le> ?ad (tail ?aG e) + ?ac e)"
     apply safe
+    (* program implies maths *)
       apply (simp add: trian_inv_def abs_IDist_def abs_ICost_def)
       apply clarsimp
       apply (metis real_unat_leq_plus_64 long_ucast)
+    (* maths implies program *)
      apply (simp add: trian_inv_def abs_IDist_def abs_ICost_def)
      apply clarsimp
      apply (erule_tac x=e in allE)
@@ -1184,7 +1201,7 @@ proof -
   moreover have "just_inv G d c s n p (ivertex_cnt G) \<longleftrightarrow>
     (\<forall>v. v \<in> verts ?aG \<and>
       v \<noteq> s \<and> is_inf n v = 0 \<longrightarrow> 0 \<le> sint (p v) \<and>
-    (\<exists>e. e = p v \<and> e \<in> arcs ?aG \<and>
+    (\<exists>e. p v = e \<and> e \<in> arcs ?aG \<and>
       v = head ?aG e \<and>
       is_inf d v = 0 \<and>
       is_inf d (tail ?aG e) = 0 \<and>
@@ -1197,18 +1214,60 @@ proof -
   then have "just_inv G d c s n p (ivertex_cnt G) \<longleftrightarrow>
     (\<forall>v. v \<in> verts ?aG \<and>
       v \<noteq> s \<and> ?an v \<noteq> \<infinity> \<longrightarrow> 
-    (\<exists>e. e = the (?ap v) \<and> e \<in> arcs ?aG \<and>
+    (\<exists>e. ?ap v = Some e \<and> e \<in> arcs ?aG \<and>
       v = head ?aG e \<and> 
       ?ad v = ?ad (tail ?aG e) + (?ac e) \<and>
       ?an v = ?an (tail ?aG e) + enat 1))"
     apply safe
+    (* program implies maths *)
     apply clarsimp
-    apply safe
-       apply (unfold abs_IPedge_def abs_INum_def)[1]
+      apply (unfold abs_IPedge_def abs_INum_def)[1]
+      apply (erule_tac x=v in allE)
        apply clarsimp
        apply (rule conjI)
         apply (meson enat.distinct(2) not_le)
-       apply (rule impI)
+      apply (rule impI)
+      apply (unfold abs_IDist_def abs_ICost_def)[1]
+      apply clarsimp
+      apply (safe, simp_all)
+    using just_64 apply force
+    apply (subgoal_tac "UCAST(32 \<rightarrow> 64) (fst (n v)) \<noteq> (0::64 word)")
+     apply (metis (no_types) add.commute enat.distinct(2) enat.inject long_ucast unatSuc)
+      apply (metis add.commute le_add_same_cancel1 lt1_neq0 trian_64 ucast_1 zero_le)
+    (* maths implies program *)
+     apply (unfold just_inv_def abs_IPedge_def)[1]
+     apply clarsimp
+     apply (erule_tac x=v in allE)
+     apply (simp add: shortest_path_checker.abs_INum_def)
+    apply safe
+          apply (unfold abs_INum_def abs_IPedge_def)[1]
+          apply (subgoal_tac "\<forall>na w. (((w = s \<or> enat (unat (fst (n w))) \<noteq> enat na) \<or> snd (n w) \<noteq> 0) \<or> \<not> w < fst G) \<or> \<not> sint (p w) < 0")
+           apply (subgoal_tac "\<forall>na w. (((Some (p w) = Some (esk1_1 w) \<or> w = s) \<or> enat (unat (fst (n w))) \<noteq> enat na) \<or> snd (n w) \<noteq> 0) \<or> \<not> w < fst G")
+            apply (subgoal_tac "\<forall>na. (if snd (n (fst (snd (snd G) (esk1_1 v)))) \<noteq> 0 
+                                      then \<infinity> else enat (unat (fst (n (fst (snd (snd G) (esk1_1 v))))))) + enat (Suc 0) = enat (unat (fst (n v))) \<or> enat (unat (fst (n v))) \<noteq> enat na")
+             apply (subgoal_tac "p v = esk1_1 v")
+              apply (subgoal_tac "snd (n (fst (snd (snd G) (esk1_1 v)))) = 0")
+               apply argo
+    using enat.distinct(2) plus_enat_simps(2)
+              apply force
+             apply blast
+            apply fastforce
+           apply fastforce
+          apply (metis (no_types) option.simps(3))
+         defer
+         defer
+         defer
+         apply (unfold abs_INum_def abs_IPedge_def)[1]
+         apply (metis option.sel option.simps(3))
+        apply (unfold abs_INum_def abs_IPedge_def)[1]
+        apply (metis option.sel option.simps(3))
+       apply (unfold abs_INum_def abs_IPedge_def)[1]
+       apply (erule_tac x=v in allE)
+       apply safe[1]
+        apply force
+       apply clarsimp
+
+(*
        apply (meson enat.distinct(2))
       apply (unfold abs_IPedge_def abs_INum_def)[1]
     using option.sel 
@@ -1230,12 +1289,17 @@ proof -
     apply (subgoal_tac "UCAST(32 \<rightarrow> 64) (fst (n v)) \<noteq> (0::64 word)")
      apply (metis (no_types) add.commute enat.distinct(2) enat.inject long_ucast unatSuc)
     apply (metis add.commute le_add_same_cancel1 lt1_neq0 trian_64 ucast_1 zero_le)
-     apply clarsimp
+
+      apply clarsimp
+      apply (unfold just_inv_def)[1]
+      apply clarsimp
+*)
+(*
      apply (subgoal_tac "(\<not> 0 \<le> sint (p v)) \<longrightarrow> \<not>(the (abs_IPedge p v) < fst (snd G))")
     using abs_INum_def apply simp
      apply (unfold abs_IPedge_def)[1]
-    
-    
+    apply clarsimp 
+    find_theorems "the None" *)
 (*
   apply safe
      apply clarsimp

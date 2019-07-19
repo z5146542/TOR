@@ -89,7 +89,7 @@ definition just_inv ::
   "IGraph \<Rightarrow> IDist \<Rightarrow> ICost \<Rightarrow> IVertex \<Rightarrow> INum \<Rightarrow> IPEdge \<Rightarrow> nat \<Rightarrow> bool" where
   "just_inv G d c s n p k \<equiv> 
     \<forall>v < k. v \<noteq> s \<and> n v \<noteq> \<infinity> \<longrightarrow> 
-      (\<exists> e. e = the (p v) \<and> e < iedge_cnt G \<and> 
+      (\<exists> e. p v = Some e \<and> e < iedge_cnt G \<and> 
         v = snd (iarcs G e) \<and>
         d v = d (fst (iarcs G e)) + ereal (c e) \<and>
         n v = n (fst (iarcs G e)) + (enat 1))"
@@ -261,7 +261,7 @@ done
 lemma just_inv_step:
   "just_inv G d c s n p (Suc v) \<longleftrightarrow> just_inv G d c s n p v
     \<and> (v \<noteq> s \<and> n v \<noteq> \<infinity> \<longrightarrow> 
-      (\<exists> e. e = the (p v) \<and> e < iedge_cnt G \<and> 
+      (\<exists> e. p v = Some e \<and> e < iedge_cnt G \<and> 
         v = snd (iarcs G e) \<and>
         d v = d (fst (iarcs G e)) + ereal (c e) \<and>
         n v = n (fst (iarcs G e)) + (enat 1)))"
@@ -357,7 +357,7 @@ moreover
   have "just_inv  G d c s n p (ivertex_cnt G) =
     (\<forall>v. v \<in> verts ?aG \<longrightarrow>
       v \<noteq> s \<longrightarrow> n v \<noteq> \<infinity> \<longrightarrow> 
-      (\<exists>e\<in>arcs ?aG. e = the (p v) \<and>
+      (\<exists>e\<in>arcs ?aG. p v = Some e \<and>
       v = head ?aG e \<and> 
       d v = d (tail ?aG e) + ereal (c e) \<and> 
      n v = n (tail ?aG e) + enat 1))"
