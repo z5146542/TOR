@@ -123,7 +123,8 @@ done
 lemma basic_just_sp_eq_invariants:
 "\<And>G dist c s enum pred. 
   basic_just_sp_pred (abs_IGraph G) dist c s enum pred \<longleftrightarrow> 
-    (is_wellformed_inv G (iedge_cnt G) \<and> 
+    (is_wellformed_inv G (iedge_cnt G) \<and>
+    s < ivertex_cnt G \<and>
     dist s \<le> 0 \<and> 
     trian_inv G dist c (iedge_cnt G) \<and> 
     just_inv G dist c s enum pred (ivertex_cnt G))"
@@ -172,12 +173,13 @@ lemma (in check_basic_just_sp_impl) check_basic_just_sp_imp_locale:
 *)
 lemma shortest_path_non_neg_cost_eq_invariants:
 "\<And>G d c s n p . 
-  shortest_path_non_neg_cost_pred (abs_IGraph G) d c s n p \<longleftrightarrow> 
+  shortest_path_pos_cost_pred (abs_IGraph G) d c s n p \<longleftrightarrow> 
     (is_wellformed_inv G (iedge_cnt G) \<and> 
+    s < ivertex_cnt G \<and> d s = 0 \<and> 
     d s \<le> 0 \<and> 
     trian_inv G d c (iedge_cnt G) \<and> 
     just_inv G d c s n p (ivertex_cnt G) \<and>
-    s < ivertex_cnt G \<and> d s = 0 \<and> 
+    d s = 0 \<and>
     no_path_inv G d n (ivertex_cnt G) \<and>
     non_neg_cost_inv G c (iedge_cnt G))"
 proof -
@@ -192,23 +194,23 @@ moreover
     by (simp add: non_neg_cost_inv_def)
 ultimately
    show "?thesis G d c s n p"
-   unfolding shortest_path_non_neg_cost_pred_def 
-    shortest_path_non_neg_cost_pred_axioms_def
+   unfolding shortest_path_pos_cost_pred_def 
+    shortest_path_pos_cost_pred_axioms_def
    using basic_just_sp_eq_invariants by simp
 qed
 
 theorem (in check_sp_impl) check_sp_eq_locale:
   "\<forall> G d c s n p . \<Gamma> \<turnstile>\<^sub>t \<lbrace> \<acute>G = G \<and> \<acute>dist = d \<and> \<acute>c = c \<and> \<acute>s = s \<and> \<acute>enum = n \<and> \<acute>pred = p \<rbrace>
     \<acute>R :== PROC check_sp(\<acute>G, \<acute>dist, \<acute>c, \<acute>s, \<acute>enum, \<acute>pred)
-    \<lbrace> \<acute>R = shortest_path_non_neg_cost_pred (abs_IGraph G) d c s n p\<rbrace>"
+    \<lbrace> \<acute>R = shortest_path_pos_cost_pred (abs_IGraph G) d c s n p\<rbrace>"
     by vcg (auto simp add: shortest_path_non_neg_cost_eq_invariants)
 
 lemma shortest_path_non_neg_cost_imp_correct:
 "\<And>G d c s n p . 
-  shortest_path_non_neg_cost_pred (abs_IGraph G) d c s n p \<longrightarrow>
+  shortest_path_pos_cost_pred (abs_IGraph G) d c s n p \<longrightarrow>
    (\<forall>v \<in> verts (abs_IGraph G). 
    d v = wf_digraph.\<mu> (abs_IGraph G) c s v)"
-using shortest_path_non_neg_cost_pred.correct_shortest_path_pred by fast
+using shortest_path_pos_cost_pred.correct_shortest_path_pred by fast
 
 theorem (in check_sp_impl) check_sp_spec:
   "\<forall> G d c s n p . \<Gamma> \<turnstile>\<^sub>t \<lbrace> \<acute>G = G \<and> \<acute>dist = d \<and> \<acute>c = c \<and> \<acute>s = s \<and> \<acute>enum = n \<and> \<acute>pred = p \<rbrace>

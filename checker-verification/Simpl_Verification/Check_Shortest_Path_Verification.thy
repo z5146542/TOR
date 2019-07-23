@@ -123,7 +123,8 @@ done
 lemma basic_just_sp_eq_invariants:
 "\<And>G dist c s enum pred. 
   basic_just_sp_pred (abs_IGraph G) dist c s enum pred \<longleftrightarrow> 
-    (is_wellformed_inv G (iedge_cnt G) \<and> 
+    (is_wellformed_inv G (iedge_cnt G) \<and>
+    s < ivertex_cnt G \<and>
     dist s \<le> 0 \<and> 
     trian_inv G dist c (iedge_cnt G) \<and> 
     just_inv G dist c s enum pred (ivertex_cnt G))"
@@ -133,7 +134,10 @@ proof -
   have "fin_digraph (abs_IGraph G) \<longleftrightarrow> is_wellformed_inv G (iedge_cnt G)"
     unfolding is_wellformed_inv_def fin_digraph_def fin_digraph_axioms_def
       wf_digraph_def no_loops_def 
-      by auto
+    by auto
+moreover
+  have "s < ivertex_cnt G \<longleftrightarrow> s \<in> verts ?aG"
+    by simp
 moreover
   have "trian_inv G d c (iedge_cnt G) = 
     (\<forall>e. e \<in> arcs (abs_IGraph G) \<longrightarrow> 
@@ -174,10 +178,11 @@ lemma shortest_path_non_neg_cost_eq_invariants:
 "\<And>G d c s n p . 
   shortest_path_pos_cost_pred (abs_IGraph G) d c s n p \<longleftrightarrow> 
     (is_wellformed_inv G (iedge_cnt G) \<and> 
+    s < ivertex_cnt G \<and> 
     d s \<le> 0 \<and> 
     trian_inv G d c (iedge_cnt G) \<and> 
     just_inv G d c s n p (ivertex_cnt G) \<and>
-    s < ivertex_cnt G \<and> d s = 0 \<and> 
+    d s = 0 \<and>
     no_path_inv G d n (ivertex_cnt G) \<and>
     non_neg_cost_inv G c (iedge_cnt G))"
 proof -
@@ -194,7 +199,7 @@ ultimately
    show "?thesis G d c s n p"
    unfolding shortest_path_pos_cost_pred_def 
     shortest_path_pos_cost_pred_axioms_def
-   using basic_just_sp_eq_invariants by simp
+   using basic_just_sp_eq_invariants by auto
 qed
 
 theorem (in check_sp_impl) check_sp_eq_locale:

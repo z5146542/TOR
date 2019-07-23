@@ -89,7 +89,7 @@ definition just_inv ::
   "IGraph \<Rightarrow> IDist \<Rightarrow> ICost \<Rightarrow> IVertex \<Rightarrow> INum \<Rightarrow> IPEdge \<Rightarrow> nat \<Rightarrow> bool" where
   "just_inv G d c s n p k \<equiv> 
     \<forall>v < k. v \<noteq> s \<and> n v \<noteq> \<infinity> \<longrightarrow> 
-      (\<exists> e. p v = Some e \<and> e < iedge_cnt G \<and> 
+      (\<exists> e. e = the (p v) \<and> e < iedge_cnt G \<and> 
         v = snd (iarcs G e) \<and>
         d v = d (fst (iarcs G e)) + ereal (c e) \<and>
         n v = n (fst (iarcs G e)) + (enat 1))"
@@ -194,12 +194,14 @@ procedures check_basic_just_sp (G :: IGraph, dist :: IDist, c :: ICost,
     R2 :: bool
     R3 :: bool
     R4 :: bool
+    R5 :: bool
   in "
     \<acute>R1 :== CALL is_wellformed (\<acute>G) ;;
-    \<acute>R2 :== \<acute>dist \<acute>s \<le> 0 ;;
-    \<acute>R3 :== CALL trian (\<acute>G, \<acute>dist, \<acute>c) ;;
-    \<acute>R4 :== CALL just (\<acute>G, \<acute>dist, \<acute>c, \<acute>s, \<acute>enum, \<acute>pred) ;;
-    \<acute>R :== \<acute>R1 \<and> \<acute>R2 \<and> \<acute>R3 \<and> \<acute>R4
+    \<acute>R2 :== \<acute>s < ivertex_cnt \<acute>G ;;
+    \<acute>R3 :== \<acute>dist \<acute>s \<le> 0 ;;
+    \<acute>R4 :== CALL trian (\<acute>G, \<acute>dist, \<acute>c) ;;
+    \<acute>R5 :== CALL just (\<acute>G, \<acute>dist, \<acute>c, \<acute>s, \<acute>enum, \<acute>pred) ;;
+    \<acute>R :== \<acute>R1 \<and> \<acute>R2 \<and> \<acute>R3 \<and> \<acute>R4 \<and> \<acute>R5
   "
 
 procedures check_sp (G :: IGraph, dist :: IDist, c :: ICost, 
@@ -211,7 +213,7 @@ procedures check_sp (G :: IGraph, dist :: IDist, c :: ICost,
     R4 :: bool
   in "
     \<acute>R1 :== CALL check_basic_just_sp (\<acute>G, \<acute>dist, \<acute>c, \<acute>s, \<acute>enum, \<acute>pred) ;;
-    \<acute>R2 :== \<acute>s < ivertex_cnt \<acute>G \<and> \<acute>dist \<acute>s = 0 ;;
+    \<acute>R2 :== \<acute>dist \<acute>s = 0 ;;
     \<acute>R3 :== CALL no_path (\<acute>G, \<acute>dist, \<acute>enum) ;;
     \<acute>R4 :== CALL pos_cost (\<acute>G, \<acute>c) ;;
     \<acute>R :== \<acute>R1 \<and> \<acute>R2 \<and> \<acute>R3 \<and> \<acute>R4
@@ -261,7 +263,7 @@ done
 lemma just_inv_step:
   "just_inv G d c s n p (Suc v) \<longleftrightarrow> just_inv G d c s n p v
     \<and> (v \<noteq> s \<and> n v \<noteq> \<infinity> \<longrightarrow> 
-      (\<exists> e. p v = Some e \<and> e < iedge_cnt G \<and> 
+      (\<exists> e. e = the (p v) \<and> e < iedge_cnt G \<and> 
         v = snd (iarcs G e) \<and>
         d v = d (fst (iarcs G e)) + ereal (c e) \<and>
         n v = n (fst (iarcs G e)) + (enat 1)))"
@@ -303,7 +305,7 @@ lemma (in just_impl) just_spec:
     \<lbrace> \<acute>R = just_inv  G d c s n p (ivertex_cnt G)\<rbrace>"
   apply vcg 
   apply (auto simp: not_just_verts just_inv_step)
-  apply (simp add: just_inv_def) 
+   apply (simp add: just_inv_def) 
 done
 
 lemma no_path_inv_step:
@@ -337,7 +339,8 @@ done
 lemma basic_just_sp_eq_invariants:
 "\<And>G dist c s enum pred. 
   basic_just_sp_pred (abs_IGraph G) dist c s enum pred \<longleftrightarrow> 
-    (is_wellformed_inv G (iedge_cnt G) \<and> 
+    (is_wellformed_inv G (iedge_cnt G) \<and>
+    s < ivertex_cnt G \<and>
     dist s \<le> 0 \<and> 
     trian_inv G dist c (iedge_cnt G) \<and> 
     just_inv G dist c s enum pred (ivertex_cnt G))"
@@ -347,8 +350,11 @@ proof -
   have "fin_digraph (abs_IGraph G) \<longleftrightarrow> is_wellformed_inv G (iedge_cnt G)"
     unfolding is_wellformed_inv_def fin_digraph_def fin_digraph_axioms_def
       wf_digraph_def no_loops_def 
-      by auto
-moreover
+    by auto
+  moreover
+  have "(s < ivertex_cnt G) \<longleftrightarrow> (s \<in> verts ?aG)"
+    by auto
+  moreover
   have "trian_inv G d c (iedge_cnt G) = 
     (\<forall>e. e \<in> arcs (abs_IGraph G) \<longrightarrow> 
    (d (head ?aG e) \<le> d (tail ?aG e) + ereal (c e)))"
@@ -357,7 +363,7 @@ moreover
   have "just_inv  G d c s n p (ivertex_cnt G) =
     (\<forall>v. v \<in> verts ?aG \<longrightarrow>
       v \<noteq> s \<longrightarrow> n v \<noteq> \<infinity> \<longrightarrow> 
-      (\<exists>e\<in>arcs ?aG. p v = Some e \<and>
+      (\<exists>e\<in>arcs ?aG. e = the (p v) \<and>
       v = head ?aG e \<and> 
       d v = d (tail ?aG e) + ereal (c e) \<and> 
      n v = n (tail ?aG e) + enat 1))"
@@ -388,10 +394,11 @@ lemma shortest_path_pos_cost_eq_invariants:
 "\<And>G d c s n p . 
   shortest_path_pos_cost_pred (abs_IGraph G) d c s n p \<longleftrightarrow> 
     (is_wellformed_inv G (iedge_cnt G) \<and> 
+    s < ivertex_cnt G \<and>
     d s \<le> 0 \<and> 
     trian_inv G d c (iedge_cnt G) \<and> 
     just_inv G d c s n p (ivertex_cnt G) \<and>
-    s < ivertex_cnt G \<and> d s = 0 \<and> 
+    d s = 0 \<and> 
     no_path_inv G d n (ivertex_cnt G) \<and>
     pos_cost_inv G c (iedge_cnt G))"
 proof -
@@ -408,7 +415,7 @@ ultimately
    show "?thesis G d c s n p"
    unfolding shortest_path_pos_cost_pred_def 
     shortest_path_pos_cost_pred_axioms_def
-   using basic_just_sp_eq_invariants by simp
+   using basic_just_sp_eq_invariants by auto
 qed
 
 theorem (in check_sp_impl) check_sp_eq_locale:

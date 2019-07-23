@@ -193,12 +193,14 @@ procedures check_basic_just_sp (G :: IGraph, dist :: IDist, c :: ICost,
     R2 :: bool
     R3 :: bool
     R4 :: bool
+    R5 :: bool
   in "
     \<acute>R1 :== CALL is_wellformed (\<acute>G) ;;
-    \<acute>R2 :== \<acute>dist \<acute>s \<le> 0 ;;
-    \<acute>R3 :== CALL trian (\<acute>G, \<acute>dist, \<acute>c) ;;
-    \<acute>R4 :== CALL just (\<acute>G, \<acute>dist, \<acute>c, \<acute>s, \<acute>enum, \<acute>pred) ;;
-    \<acute>R :== \<acute>R1 \<and> \<acute>R2 \<and> \<acute>R3 \<and> \<acute>R4
+    \<acute>R2 :== \<acute>s < ivertex_cnt \<acute>G ;;
+    \<acute>R3 :== \<acute>dist \<acute>s \<le> 0 ;;
+    \<acute>R4 :== CALL trian (\<acute>G, \<acute>dist, \<acute>c) ;;
+    \<acute>R5 :== CALL just (\<acute>G, \<acute>dist, \<acute>c, \<acute>s, \<acute>enum, \<acute>pred) ;;
+    \<acute>R :== \<acute>R1 \<and> \<acute>R2 \<and> \<acute>R3 \<and> \<acute>R4 \<and> \<acute>R5
   "
 
 procedures check_sp (G :: IGraph, dist :: IDist, c :: ICost, 
@@ -210,7 +212,7 @@ procedures check_sp (G :: IGraph, dist :: IDist, c :: ICost,
     R4 :: bool
   in "
     \<acute>R1 :== CALL check_basic_just_sp (\<acute>G, \<acute>dist, \<acute>c, \<acute>s, \<acute>enum, \<acute>pred) ;;
-    \<acute>R2 :== \<acute>s < ivertex_cnt \<acute>G \<and> \<acute>dist \<acute>s = 0 ;;
+    \<acute>R2 :== \<acute>dist \<acute>s = 0 ;;
     \<acute>R3 :== CALL no_path (\<acute>G, \<acute>dist, \<acute>enum) ;;
     \<acute>R4 :== CALL non_neg_cost (\<acute>G, \<acute>c) ;;
     \<acute>R :== \<acute>R1 \<and> \<acute>R2 \<and> \<acute>R3 \<and> \<acute>R4

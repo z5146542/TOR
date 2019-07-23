@@ -1,13 +1,9 @@
 Edge_C
-	first_C:Word 32
-	second_C:Word 32
+	s_C:Word 32
+	t_C:Word 32
 
 Graph_C
-	num_edges_C:Word 32
-	num_vertices_C:Word 32
-	arcs_C:Ptr Edge_C
-
-EInt_C
-	val_C:Word 32
-	isInf_C:Word 32
+	m_C:Word 32
+	n_C:Word 32
+	es_C:Ptr Edge_C
 
