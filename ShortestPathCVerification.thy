@@ -1076,13 +1076,51 @@ lemma trian_64_reverse:
   fixes x y z :: "word32"
   assumes a1: "UCAST(32 \<rightarrow> 64) x \<le> UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z"
   shows "unat x \<le> unat y + unat z"
-  by (metis (no_types, hide_lams) assms is_up len_of_word_comparisons(2) unat_leq_plus_64 uint_up_ucast unat_def)
+  by (metis (no_types, hide_lams) assms is_up len_of_word_comparisons(2) unat_leq_plus_64 
+            uint_up_ucast unat_def)
+
+thm uint_up_ucast ucast_up_ucast_id ucast_down_add[no_vars] 
+
+find_theorems "_ + _" "uint" 
+thm abstract_val_def
+thm uint_bounded
+
+
+
+lemma ucast_up_add_32_64: 
+  "unat (UCAST(32 \<rightarrow> 64) a + UCAST(32 \<rightarrow> 64) b) = unat a + unat b" 
+  using [[show_types]]
   
+  thm uint_bounded
+
+
+  thm uint_word_of_int
+  apply (subst long_ucast[symmetric])
+  apply (subst long_ucast[symmetric]) 
+  oops
 
 lemma trian_64:
   fixes x y z :: "word32"
   assumes a1: "unat x \<le> unat y + unat z"
-  shows "UCAST(32 \<rightarrow> 64) x \<le> UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z"
+  shows "(UCAST(32 \<rightarrow> 64) x) \<le> (UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z)"
+
+  apply (insert a1)
+  apply (subgoal_tac "unat (UCAST(32 \<rightarrow> 64) x) \<le> unat (UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z)")
+  using word_le_nat_alt apply blast
+apply (subgoal_tac "uint x < 2 ^ LENGTH(32)")
+    apply (subgoal_tac "uint y < 2 ^ LENGTH(32)")
+   apply (subgoal_tac "uint z < 2 ^  LENGTH(32)")
+    apply (subgoal_tac "uint y = uint y mod 2  ^ LENGTH(32)")
+     apply (subgoal_tac "uint z = uint z mod 2  ^ LENGTH(64)")
+     apply (subgoal_tac "uint y = uint y mod 2  ^ LENGTH(64)")
+  apply (subgoal_tac "uint (y + z) = word_of_int (uint ?x + uint ?y"))
+           using [[show_types]]
+    thm uint_add_le
+        apply (simp add: ucast_def word_add_def uint_word_of_int)  
+   term "2^32"
+  thm ucast_up_ucast_id[where t = x, symmetric]
+  apply(subst ucast_down_add[symmetric]) 
+  unfolding is_down_def
   sorry
 (*
 proof -
