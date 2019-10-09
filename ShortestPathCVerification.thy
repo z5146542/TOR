@@ -1099,24 +1099,6 @@ lemma trian_64_reverse:
   by (metis (no_types, hide_lams) assms is_up len_of_word_comparisons(2) unat_leq_plus_64 
             uint_up_ucast unat_def)
 
-thm uint_up_ucast ucast_up_ucast_id ucast_down_add[no_vars] 
-
-find_theorems "_ + _" "uint" 
-thm abstract_val_def
-thm uint_bounded
-
-lemma ucast_up_add_32_64: 
-  "unat (UCAST(32 \<rightarrow> 64) a + UCAST(32 \<rightarrow> 64) b) = unat a + unat b" 
-  using [[show_types]]
-  
-  thm uint_bounded
-
-
-  thm uint_word_of_int
-  apply (subst long_ucast[symmetric])
-  apply (subst long_ucast[symmetric]) 
-  oops
-
 lemma unat_plus_less_two_power_length:
   assumes len: "len_of TYPE('a::len) < len_of TYPE('b::len)"
   shows "unat (C:: 'a word) + unat (D:: 'a word) < (2::nat) ^ LENGTH('b)"
@@ -1255,7 +1237,7 @@ proof -
     apply (subgoal_tac "\<And>e. \<not> PInfty \<le> e \<or> e = PInfty")
      apply (subgoal_tac "snd (d (snd (snd (snd G) ia))) = 0 \<or> 
                   ereal (real (unat (fst (d (fst (snd (snd G) ia))))) + real (unat (c ia))) = PInfty")
-      apply (simp add:trian_64)
+      apply (simp add:add_ucast_no_overflow_64)
      apply presburger
     apply (metis (full_types) ereal_infty_less_eq(1) infinity_ereal_def)
     done
@@ -1283,8 +1265,6 @@ proof -
       ?ad v = ?ad (tail ?aG e) + (?ac e) \<and>
       ?an v = ?an (tail ?aG e) + enat 1))"
 *)
- 
-  find_theorems "?x < ?y" "Some"
  have "just_inv G d c s n p (ivertex_cnt G) \<longleftrightarrow>(\<forall>v<fst G.
              v \<noteq> s \<longrightarrow>
              (\<exists>i. abs_INum n v = enat i) \<longrightarrow>
@@ -1304,9 +1284,9 @@ proof -
     apply (rule_tac x= "p v" in exI, clarsimp simp: abs_IPedge_def)
     apply (case_tac "snd (n v) = 0"; clarsimp simp: not_le word_msb_sint abs_INum_def) 
    apply (rule conjI)
-    apply (simp add: just_64 abs_IDist_def abs_ICost_def abs_IPedge_def)
+    apply (simp add: add_ucast_no_overflow_unat abs_IDist_def abs_ICost_def abs_IPedge_def)
    apply (metis (mono_tags, hide_lams) add.right_neutral add_Suc_right 
-          le_add_same_cancel1 long_ucast trian_64 unat_eq_1(2) 
+          le_add_same_cancel1 long_ucast add_ucast_no_overflow_64 unat_eq_1(2) 
           unat_plus_simple zero_le)
   (* maths implies program *)
    apply (clarsimp simp add: abs_IPedge_def)
@@ -1317,7 +1297,7 @@ proof -
    apply (case_tac "snd (n (fst (snd (snd G) (p v)))) = 0"; clarsimp) 
    apply (case_tac "snd (d v) = 0"; 
           case_tac "snd (d (fst (snd (snd G) (p v)))) = 0"; 
-          clarsimp simp: just_64)
+          clarsimp simp: add_ucast_no_overflow_unat)
   proof -
    fix v :: "32 word"
    assume a1: "unat (fst (n v)) = Suc (unat (fst (n (fst (snd (snd G) (p v))))))"
@@ -1329,7 +1309,7 @@ proof -
    fix v :: "32 word"
    assume "unat (fst (n v)) = Suc (unat (fst (n (fst (snd (snd G) (p v))))))"
    then have "unat (UCAST(32 \<rightarrow> 64) (fst (n v))::64 word) = Suc (unat (UCAST(32 \<rightarrow> 64) (fst (n (fst (snd (snd G) (p v)))))::64 word))"
-     using shortest_path_checker.long_ucast by presburger
+     using long_ucast by presburger
    then show "UCAST(32 \<rightarrow> 64) (fst (n v)) = UCAST(32 \<rightarrow> 64) (fst (n (fst (snd (snd G) (p v))))) + (1::64 word)"
      by (metis (no_types) add.commute of_nat_Suc word_unat.Rep_inverse)
  qed
@@ -1383,7 +1363,8 @@ ultimately
       apply (simp add: fin_digraph_is_wellformed_inv)
      apply (simp add: abs_IDist_def abs_ICost_def trian_inv_def)
      apply (metis real_unat_leq_plus_64 long_ucast)
-    apply (rule_tac x = "p v" in bexI; clarsimp simp: just_inv_def) prefer 2
+    apply (rule_tac x = "p v" in bexI; clarsimp simp: just_inv_def) 
+    prefer 2
      apply (metis PInfty_eq_infinity no_path_assms abs_IDist_def)
     apply (clarsimp simp: abs_IPedge_def just_inv_def abs_INum_def) 
     apply (rule conjI, metis enat.distinct(2))
@@ -1393,7 +1374,7 @@ ultimately
     apply (rule conjI, metis enat.distinct(2))
     apply (rule conjI) 
      apply (subgoal_tac "isInf_C (to_eint (n v)) = 0")
-      apply (simp add: abs_IPedge_def abs_IDist_def abs_ICost_def just_64)
+      apply (simp add: abs_IPedge_def abs_IDist_def abs_ICost_def add_ucast_no_overflow_unat)
      apply (metis (full_types) enat.distinct(2) isInf_C_pte)
     apply (subgoal_tac "i = 
             Suc (unat (UCAST(32 \<rightarrow> 64) (fst (n (fst (snd (snd G) (p v)))))::64 word))")
@@ -1403,8 +1384,8 @@ ultimately
       apply (subgoal_tac "enat i = enat (unat (UCAST(32 \<rightarrow> 64) (fst (n v))::64 word))")
        apply (metis (no_types, hide_lams) add.commute enat.distinct(2) 
                     enat.inject not_le unat_plus_simple)
-      apply (metis (no_types) enat.distinct(2) shortest_path_checker.long_ucast)
-     apply (metis le_add_same_cancel1 not_le shortest_path_checker.trian_64 ucast_1 zero_le)
+      apply (metis (no_types) enat.distinct(2) long_ucast)
+     apply (metis le_add_same_cancel1 not_le add_ucast_no_overflow_64 ucast_1 zero_le)
     apply simp
    apply (simp add: no_path_inv_def abs_IDist_def abs_INum_def, force)
   apply (simp add: no_path_inv_def abs_IDist_def abs_INum_def, force)
