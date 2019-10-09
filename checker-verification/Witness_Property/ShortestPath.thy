@@ -45,7 +45,7 @@ locale basic_just_sp_pred =
   assumes just:
     "\<And>v. \<lbrakk>v \<in> verts G; v \<noteq> s; num v \<noteq> \<infinity>\<rbrakk> \<Longrightarrow>
       \<exists> e \<in> arcs G. 
-        e = the (pred v) \<and> 
+        pred v = Some e \<and> 
         v = head G e \<and>
         dist v = dist (tail G e) + c e  \<and>
         num v = num (tail G e) + (enat 1)"

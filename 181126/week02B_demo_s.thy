@@ -23,7 +23,7 @@ subsection{* Examples *}
 
 text{* a simple backward step: *}
 lemma "A \<and> B" thm conjI
-  apply(rule conjI)
+apply(rule conjI)
 oops
 
 text{* a simple backward proof: *}
@@ -171,94 +171,15 @@ text {* Exercises *}
 
 
 lemma "A \<and> B \<longrightarrow> A \<longrightarrow> B"
-  apply(rule impI)
-  apply(erule conjE)
-  apply(case_tac A)
-   apply(rule impI)
-   apply assumption
-  apply(rule impI)
-  apply assumption
-  done
-  -- "oops"           
+  oops
 
 lemma "A \<longrightarrow> (B \<or> C) \<longrightarrow> (\<not> A \<or> \<not> B) \<longrightarrow> C"
-  apply (rule impI)
-  apply (rule impI)
-  apply (erule disjE)
-   apply (rule impI)
-   apply (erule disjE)
-    apply (erule notE)
-    apply assumption
-   apply (erule notE)
-   apply assumption
-  apply (rule impI)
-  apply (erule disjE)
-   apply (erule notE)
-   apply assumption
-  apply (rule classical)
-  apply (erule notE)
-  apply (erule notE)
-  apply assumption
-  done
-  -- "oops"
+  oops
 
-lemma "((A \<longrightarrow> B) \<and> (B \<longrightarrow> A)) = (A = B)"
-(*
-  apply (rule iffI)
-   apply (rule iffI)
-    apply (erule conjE)
-    apply (erule impE)
-     apply assumption
-    apply (erule impE)
-     apply assumption
-    apply assumption
-   apply (erule conjE)
-   apply (erule impE)
-    apply (erule impE)
-     apply assumption
-    apply assumption
-   apply (erule impE)
-    apply assumption
-   apply assumption
-  apply (rule conjI)
-   apply (rule impI)
-   apply (erule iffD1)
-   apply assumption
-  apply (rule impI)
-  apply (erule iffD2)
-  apply assumption
-  done
-*)
-  apply (rule iffI)
-   apply (erule conjE)
-   apply (rule iffI)
-    apply (erule impE)
-     apply assumption
-    apply assumption
-   apply (erule impE)
-    apply (erule impE)
-     apply assumption
-    apply assumption
-  apply(erule impE)
-    apply assumption
-   apply assumption
-  apply (rule conjI)
-   apply (rule impI)
-   apply (erule iffD1)
-   apply assumption
-  apply (rule impI)
-  apply (erule iffD2)
-  apply assumption
-  done
-  -- "oops"
+lemma"((A \<longrightarrow> B) \<and> (B \<longrightarrow> A)) = (A = B)"
+  oops 
 
 lemma "(A \<longrightarrow> (B \<and> C)) \<longrightarrow> (A \<longrightarrow> C)"
-  apply (rule impI)
-  apply (rule impI)
-  apply (erule impE)
-   apply assumption
-  apply (erule conjE)
-  apply assumption
   oops
 
 end

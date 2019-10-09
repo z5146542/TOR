@@ -3,14 +3,15 @@ theory ShortestPathCVerification
   imports 
   "checker-verification/Library/Autocorres_Misc"
   "checker-verification/Witness_Property/ShortestPath"
+  "HOL-Library.Option_ord"
 begin
+
 (* Parse the input file. *)
 install_C_file "shortest_path_checker.c"
 
 autocorres "shortest_path_checker.c"
 
 context shortest_path_checker begin
-
 thm "is_wellformed_body_def"
 thm "trian_body_def"
 thm "just_body_def"
@@ -230,16 +231,16 @@ where
 definition 
   abs_IPedge :: "(32 word \<Rightarrow> 32 word) \<Rightarrow> 32 word \<Rightarrow> 32 word option" 
 where
-  "abs_IPedge p v \<equiv> if sint (p v) < 0 then None else Some (p v)"
+  "abs_IPedge p v \<equiv> if msb (p v) then None else Some (p v)"
 
 lemma None_abs_pedgeI[simp]: 
-  "(abs_IPedge p v = None) = (sint (p v) < 0)"
+  "(abs_IPedge p v = None) = msb (p v)"
   using abs_IPedge_def by auto
 
 lemma Some_abs_pedgeI[simp]: 
-  "(\<exists>e. abs_IPedge p v = Some e) = (sint (p v) \<ge> 0)"
+  "(\<exists>e. abs_IPedge p v = Some e) =  (~ (msb (p v)))"
   using None_not_eq None_abs_pedgeI 
-  by (metis abs_IPedge_def linorder_not_le option.simps(3))
+  by (metis abs_IPedge_def)
     
 (*Helper Lemmas*)
 
@@ -498,9 +499,17 @@ lemma trian_spc':
          apply (metis wellformed_iGraph)
         apply (subst tail_heap, fastforce, fastforce)
         apply blast
-       apply (subgoal_tac "UCAST(32 \<rightarrow> 64) (fst (iD (snd (snd (snd iG) ee)))) = UCAST(32 \<rightarrow> 64) (val_C (heap_EInt_C s (d +\<^sub>p uint (second_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p uint ee))))))")
-        apply (subgoal_tac "UCAST(32 \<rightarrow> 64) (fst (iD (fst (snd (snd iG) ee)))) + UCAST(32 \<rightarrow> 64) (iC ee) = 
-                            UCAST(32 \<rightarrow> 64) (val_C (heap_EInt_C s (d +\<^sub>p uint (first_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p uint ee)))))) + UCAST(32 \<rightarrow> 64) (heap_w32 s (c +\<^sub>p uint ee))")
+       apply (subgoal_tac "UCAST(32 \<rightarrow> 64) (fst (iD (snd (snd (snd iG) ee)))) = 
+                           UCAST(32 \<rightarrow> 64) 
+                             (val_C (heap_EInt_C s 
+                                (d +\<^sub>p uint (second_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p 
+                              uint ee))))))")
+        apply (subgoal_tac "UCAST(32 \<rightarrow> 64) (fst (iD (fst (snd (snd iG) ee)))) + 
+                            UCAST(32 \<rightarrow> 64) (iC ee) = 
+                            UCAST(32 \<rightarrow> 64) 
+                              (val_C (heap_EInt_C s 
+                                (d +\<^sub>p uint (first_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p 
+                              uint ee)))))) + UCAST(32 \<rightarrow> 64) (heap_w32 s (c +\<^sub>p uint ee))")
          apply fastforce
         apply (subst tail_heap, fastforce, fastforce)
         apply (subst val_heap, fastforce)
@@ -598,13 +607,14 @@ lemma trian_spc':
 definition just_inv :: 
   "IGraph \<Rightarrow> IEInt \<Rightarrow> ICost \<Rightarrow> IVertex \<Rightarrow> IEInt \<Rightarrow> IPEdge \<Rightarrow> 32 word \<Rightarrow> bool" where
   "just_inv G d c s n p k \<equiv>
-    \<forall>v < k. v \<noteq> s \<and> is_inf n v = 0 \<longrightarrow> 0 \<le> sint (p v) \<and>
+    \<forall>v < k. v \<noteq> s \<and> is_inf n v = 0 \<longrightarrow> 
+      sint (p v) \<ge> 0 \<and>
       (\<exists> e. e = p v \<and> e < iedge_cnt G \<and>
         v = snd (iedges G e) \<and>
-        is_inf d v = 0 \<and>
-        is_inf d (fst (iedges G e)) = 0 \<and>
+        (is_inf d v = 0 \<longleftrightarrow> is_inf d (fst (iedges G e)) = 0) \<and>
         (* val d (fst (iedges G e)) \<le> val d (fst (iedges G e)) + c e \<and> *)
-        cast_long (val d v) = cast_long (val d (fst (iedges G e))) + cast_long (c e) \<and>
+        (is_inf d v = 0 \<longrightarrow> 
+          cast_long (val d v) = cast_long (val d (fst (iedges G e))) + cast_long (c e)) \<and>
         is_inf n (fst (iedges G e)) = 0 \<and>
         (* val n (fst (iedges G e)) \<le> val n (fst (iedges G e)) + 1 \<and> *)
         (*val n v < ivertex_cnt G \<and> *)
@@ -613,18 +623,19 @@ definition just_inv ::
 lemma just_inv_step:
   assumes v_less_max: "v < (max_word::32 word)"
   shows "just_inv G d c s n p (v + 1) \<longleftrightarrow> just_inv G d c s n p v
-    \<and> (v \<noteq> s \<and> is_inf n v = 0 \<longrightarrow> 0 \<le> sint (p v) \<and>
+    \<and> (v \<noteq> s \<and> is_inf n v = 0 \<longrightarrow> 
+      sint (p v) \<ge> 0 \<and>
       (\<exists> e. e = p v \<and> e < iedge_cnt G \<and> 
         v = snd (iedges G e) \<and>
-        is_inf d v = 0 \<and>
-        is_inf d (fst (iedges G e)) = 0 \<and>
+        (is_inf d v = 0 \<longleftrightarrow> is_inf d (fst (iedges G e)) = 0) \<and>
         (* val d (fst (iedges G e)) \<le> val d (fst (iedges G e)) + c e \<and> *)
-        cast_long (val d v) = cast_long (val d (fst (iedges G e))) + cast_long (c e) \<and>
+        (is_inf d v = 0 \<longrightarrow>
+          cast_long (val d v) = cast_long (val d (fst (iedges G e))) + cast_long (c e)) \<and>
         is_inf n (fst (iedges G e)) = 0 \<and>
         (* val n (fst (iedges G e)) \<le> val n (fst (iedges G e)) + 1 \<and> *)
         (* val n v < ivertex_cnt G \<and> *)
         cast_long (val n v) = cast_long (val n (fst (iedges G e))) + 1))"
-  unfolding just_inv_def using v_less_max  
+  unfolding just_inv_def using v_less_max 
   by (force simp: less_x_plus_1)
   
 lemma just_inv_le:
@@ -660,7 +671,6 @@ lemma just_spc':
    just' g d c sc n p
    \<lbrace> (\<lambda>_ s. P s) And 
      (\<lambda>rr s. rr \<noteq> 0 \<longleftrightarrow> just_inv iG iD iC sc iN iP (ivertex_cnt iG)) \<rbrace>!"
-  sorry
   apply (clarsimp simp: just'_def)
   apply (subst whileLoopE_add_inv [where 
         M="\<lambda>(vv, s). unat (ivertex_cnt iG - vv)" and
@@ -677,11 +687,11 @@ lemma just_spc':
     apply (subst if_bool_eq_conj)+
     apply (simp split: if_split_asm, simp_all add: arrlist_nth)
     apply (rule conjI, rule impI, rule conjI, rule impI, rule conjI, rule impI)
-       apply (unfold just_inv_def is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+       apply (simp add: just_inv_def is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
        apply (clarsimp, rule_tac x=vv in exI, simp add: uint_nat)
        apply (metis isInf_C_pte sint_ucast two_comp_to_eint_arrlist_heap not_le heap_ptr_coerce word_zero_le)
       apply (rule impI, rule conjI)
-       apply (unfold just_inv_def is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+       apply (simp add: just_inv_def is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
        apply (clarsimp, rule_tac x=vv in exI, simp add: uint_nat)
        apply (metis isInf_C_pte two_comp_to_eint_arrlist_heap not_le heap_ptr_coerce word_zero_le)
       apply (rule conjI, rule impI, rule conjI)
@@ -689,15 +699,24 @@ lemma just_spc':
         apply (clarsimp, rule_tac x=vv in exI, simp add: uint_nat)
         apply (metis (no_types) isInf_C_pte two_comp_to_eint_arrlist_heap heap_ptr_coerce word_zero_le two_comp_to_edge_arrlist_heap t_C_pte)
        apply (rule conjI, rule impI, rule conjI, rule impI, rule conjI)
-          apply (unfold just_inv_def is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+          apply (simp add: just_inv_def is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
           apply meson
-         apply (unfold just_inv_def is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+         apply (simp add: just_inv_def is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
          apply (clarsimp, rule_tac x=vv in exI, simp add: uint_nat)
-         apply (metis (no_types) isInf_C_pte two_comp_to_eint_arrlist_heap)
-        apply (rule conjI, rule impI, rule conjI)
-          apply (unfold just_inv_def is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
-          apply (clarsimp, rule_tac x=vv in exI, simp add: uint_nat)
-          apply (metis (no_types) isInf_C_pte two_comp_to_eint_arrlist_heap heap_ptr_coerce word_zero_le two_comp_to_edge_arrlist_heap s_C_pte)
+         apply (subgoal_tac "heap_w32 s (ptr_coerce (p +\<^sub>p int (unat vv))) = iP vv")
+          apply (subgoal_tac 
+                  "heap_EInt_C s (d +\<^sub>p int (unat (val_C (to_eint (snd (snd iG) (iP vv)))))) \<noteq> 
+                   to_eint (iD (val_C (to_eint (snd (snd iG) (iP vv))))) \<longrightarrow> 
+                  \<not> iP vv < num_edges_C (heap_Graph_C s g)")
+           apply (metis (no_types) isInf_C_pte s_C_pte two_comp_to_edge_arrlist_heap 
+                        two_comp_to_eint_arrlist_heap val_C_pte)
+          apply (metis two_comp_to_eint_arrlist_heap val_C_pte) 
+         apply (metis heap_ptr_coerce word_zero_le)
+        apply (rule conjI, rule impI, rule conjI, clarsimp)
+          apply (simp add: just_inv_def) 
+          apply (rule_tac x=vv in allE, simp add: uint_nat) 
+          apply clarsimp 
+      (*    apply (metis (no_types) isInf_C_pte two_comp_to_eint_arrlist_heap heap_ptr_coerce word_zero_le two_comp_to_edge_arrlist_heap s_C_pte)
          apply (rule conjI, rule impI, rule conjI)
            apply (unfold just_inv_def is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
            apply (clarsimp, rule_tac x=vv in exI, simp add: uint_nat)
@@ -708,9 +727,10 @@ lemma just_spc':
            apply (simp add: enat_abs_C_equiv)
            apply (simp add: cost_abs_C_equiv)
 
-  apply (subst val_heap, blast, blast) sledgehammer
+  apply (subst val_heap, blast, blast) 
   apply (metis two_comp_to_eint_arrlist_heap val_C_pte)
-
+*)
+(*
           apply (rule conjI, rule impI, rule conjI)
             apply (unfold just_inv_def is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
             apply (clarsimp, rule_tac x=vv in exI, simp add: uint_nat)
@@ -936,7 +956,7 @@ lemma just_spc':
   apply (unfold just_inv_def is_graph_def)[1] 
   apply wp
   apply fastforce
-  done
+  done *) sorry
 
 definition no_path_inv :: "IGraph \<Rightarrow> IEInt \<Rightarrow> IEInt \<Rightarrow> 32 word \<Rightarrow> bool" where
   "no_path_inv G d n k \<equiv>  \<forall>v < k. (is_inf d v \<noteq> 0 \<longleftrightarrow> is_inf n v \<noteq> 0)"
@@ -1085,8 +1105,6 @@ find_theorems "_ + _" "uint"
 thm abstract_val_def
 thm uint_bounded
 
-
-
 lemma ucast_up_add_32_64: 
   "unat (UCAST(32 \<rightarrow> 64) a + UCAST(32 \<rightarrow> 64) b) = unat a + unat b" 
   using [[show_types]]
@@ -1099,94 +1117,76 @@ lemma ucast_up_add_32_64:
   apply (subst long_ucast[symmetric]) 
   oops
 
-lemma trian_64:
+lemma unat_plus_less_two_power_length:
+  assumes len: "len_of TYPE('a::len) < len_of TYPE('b::len)"
+  shows "unat (C:: 'a word) + unat (D:: 'a word) < (2::nat) ^ LENGTH('b)"
+proof -
+  have bounded: "uint C < 2 ^ LENGTH('a)" "uint D < (2 :: int) ^ LENGTH('a)"
+    by (insert uint_bounded)
+have unat_bounded: "unat C < 2 ^ LENGTH('a)" "unat D < (2 :: nat) ^ LENGTH('a)"
+  by simp+
+  have suc_leq: "Suc (len_of (TYPE('a)::'a itself)) \<le> len_of (TYPE('b)::'b itself)"
+    using len Suc_leI by blast
+  then have two_power_suc_leq: "(2::nat) ^ (len_of (TYPE('a)::'a itself) + 1) \<le> 
+        2 ^ len_of (TYPE('b)::'b itself)"
+    by (metis (no_types) One_nat_def add.right_neutral add_Suc_right 
+             power_increasing_iff rel_simps(49) rel_simps(9))
+  have "(2::nat) ^ (LENGTH ('a) + 1) = (2 ^ LENGTH ('a)) + (2 ^ LENGTH ('a))" 
+    by auto
+  then have "unat (C:: 'a word) + unat (D:: 'a word) < (2::nat) ^ (LENGTH ('a) + 1)"
+    using unat_bounded by linarith  
+  thus ?thesis using two_power_suc_leq 
+    by linarith
+qed
+
+lemma abstract_val_ucast_add_strict_upcast:
+    "\<lbrakk> len_of TYPE('a::len) < len_of TYPE('b::len);
+       abstract_val P C' unat C; abstract_val P D' unat D \<rbrakk>
+            \<Longrightarrow>  abstract_val P (C' + D') unat 
+                    ((ucast (C :: 'a word) :: 'b word) +
+                      ucast (D :: 'a word) :: 'b word)"
+  apply (clarsimp simp: is_up unat_ucast_upcast ucast_def )
+  apply (clarsimp simp:  word_of_int_def unat_word_ariths(1))
+  apply (frule unat_plus_less_two_power_length[where C=C and D=D]) 
+  by (metis Divides.mod_less add.right_neutral 
+        unat_plus_less_two_power_length uint_inverse 
+        uint_mod_same uint_nat unat_of_nat zero_less_numeral 
+        zero_less_power)
+
+lemmas word_add_strict_up_cast_no_overflow_32_64 = 
+      abstract_val_ucast_add_strict_upcast
+        [unfolded abstract_val_def,
+          OF word_abs_base(18) impI, where P=True, simplified]
+lemma word_add_cast_up_no_overflow: 
+  "unat y + unat z = unat (UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z)"
+  using word_add_strict_up_cast_no_overflow_32_64 by blast
+  
+lemma add_ucast_no_overflow_64: (* add_ucast_no_overflow *)
   fixes x y z :: "word32"
   assumes a1: "unat x \<le> unat y + unat z"
   shows "(UCAST(32 \<rightarrow> 64) x) \<le> (UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z)"
+  apply (insert a1) 
+  apply (subgoal_tac "unat (UCAST(32 \<rightarrow> 64) x) \<le> 
+                      unat (UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z)")
+   using word_le_nat_alt apply blast
+  apply (subst word_add_cast_up_no_overflow[symmetric])
+  using long_ucast by auto
 
-  apply (insert a1)
-  apply (subgoal_tac "unat (UCAST(32 \<rightarrow> 64) x) \<le> unat (UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z)")
-  using word_le_nat_alt apply blast
-apply (subgoal_tac "uint x < 2 ^ LENGTH(32)")
-    apply (subgoal_tac "uint y < 2 ^ LENGTH(32)")
-   apply (subgoal_tac "uint z < 2 ^  LENGTH(32)")
-    apply (subgoal_tac "uint y = uint y mod 2  ^ LENGTH(32)")
-     apply (subgoal_tac "uint z = uint z mod 2  ^ LENGTH(64)")
-     apply (subgoal_tac "uint y = uint y mod 2  ^ LENGTH(64)")
-  apply (subgoal_tac "uint (y + z) = word_of_int (uint ?x + uint ?y"))
-           using [[show_types]]
-    thm uint_add_le
-        apply (simp add: ucast_def word_add_def uint_word_of_int)  
-   term "2^32"
-  thm ucast_up_ucast_id[where t = x, symmetric]
-  apply(subst ucast_down_add[symmetric]) 
-  unfolding is_down_def
-  sorry
-(*
-proof -
-  have "UCAST(32 \<rightarrow> 64) y \<le> UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z"
-  proof -
-    {
-      have "y \<le> (max_word :: word32)" by simp
-      then have "UCAST(32 \<rightarrow> 64) y \<le> UCAST (32 \<rightarrow> 64) (max_word :: word32)"
-        by (simp add: is_up uint_up_ucast unat_def word_le_nat_alt)
-      moreover have "z \<le> (max_word :: word32)" by simp
-      then have "UCAST(32 \<rightarrow> 64) z \<le> UCAST(32 \<rightarrow> 64) (max_word :: word32)" 
-        by (simp add: is_up uint_up_ucast unat_def word_le_nat_alt)
-      moreover have "UCAST(32 \<rightarrow> 64) (max_word :: word32) + UCAST(32 \<rightarrow> 64) (max_word :: word32) \<le> (max_word::word64)"
-        by blast
-      then have "UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z \<le> (max_word :: word64)"
-        by blast
-      then have "unat (UCAST(32 \<rightarrow> 64) y) + unat (UCAST(32 \<rightarrow> 64) z) \<le> unat (max_word :: word64)"
-        try0 sledgehammer
-      
-    }
-  qed
-qed sorry
-proof -
-  have f1: "UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z \<le> (max_word :: word64)"
-    by simp
-  have test32: "(max_word::word32) = (0xFFFFFFFF::word32)"
-    by (simp add: max_word_eq)
-  then have test32_unat: "unat (max_word::word32) = unat (0xFFFFFFFF::word32)"
-    by argo
-  have test64: "(max_word::word64) = (0xFFFFFFFFFFFFFFFF::word64)"
-    by (simp add: max_word_eq)
-  then have test64_unat: "unat (max_word::word64) = unat (0xFFFFFFFFFFFFFFFF::word64)"
-    by argo
-  have upcast: "unat (0xFFFFFFFF::word32) = unat (0xFFFFFFFF::word64)"
-    by fastforce
-  have upcast_high_val: "unat (max_word::word32) = unat (0x00000000FFFFFFFF::word64)"
-    using test32 test32_unat test64 test64_unat upcast
-    by argo
-  then have val: "unat (max_word::word32) + unat (max_word::word32) = unat (0x00000001FFFFFFFE::word64)"
-    by simp
-  have f2: "unat (max_word:: word32) \<le> unat (max_word:: word64)"
-    by (metis max_word_max long_ucast word_le_nat_alt)
-  have f3: "unat (a::word32) \<le> unat (max_word:: word32)"
-    using word_le_nat_alt by blast
-  then have f4: "unat (a::word32) \<le> unat (max_word:: word64)"
-    using f2 by linarith
-  have f5: "unat (max_word::word32) + unat (max_word::word32) \<le> unat (max_word::word64)"
-    using f1 f2 f3 f4 val
-    by (metis max_word_max word_le_nat_alt)
-  have eq: "unat (UCAST(32 \<rightarrow> 64) x) \<le> unat (UCAST(32 \<rightarrow> 64) y) + unat (UCAST(32 \<rightarrow> 64) z)"
-    using a1 long_ucast by simp
-  have cast: "unat (UCAST(32 \<rightarrow> 64) a) \<le> unat (max_word::word32)"
-    by (simp add: f3 long_ucast)
-  have final: "unat y + unat z \<le> unat (max_word :: word64)"
-    by (metis (no_types, hide_lams) add_mono_thms_linordered_semiring(1) f5 order_trans cast_long.elims cast_long_max long_ucast)
-  have ?thesis *)
-
-lemma just_64:
+lemma add_ucast_no_overflow_unat:
   fixes x y z :: "word32"
-  shows "(UCAST(32 \<rightarrow> 64) x = UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z) = (unat x = unat y + unat z)"
+  shows "(UCAST(32 \<rightarrow> 64) x = UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z) = 
+         (unat x = unat y + unat z)"
 proof -
-  have "(UCAST(32 \<rightarrow> 64) x = UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z) \<longrightarrow> unat x = unat y + unat z"
-    by (metis (mono_tags, hide_lams) is_up le_add_same_cancel1 len_of_word_comparisons(2) trian_64 uint_up_ucast unat_def unat_plus_simple zero_le)
+  have "(UCAST(32 \<rightarrow> 64) x = UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z) \<longrightarrow> 
+         unat x = unat y + unat z"
+    by (metis (mono_tags, hide_lams) is_up le_add_same_cancel1 
+              len_of_word_comparisons(2) add_ucast_no_overflow_64 uint_up_ucast unat_def 
+              unat_plus_simple zero_le)
   moreover 
-  have "unat x = unat y + unat z \<longrightarrow> (UCAST(32 \<rightarrow> 64) x = UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z)"
-    by (metis (mono_tags, hide_lams) is_up len_of_word_comparisons(2) uint_up_ucast unat_def word_arith_nat_add word_unat.Rep_inverse)
+  have "unat x = unat y + unat z \<longrightarrow> 
+        (UCAST(32 \<rightarrow> 64) x = UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z)"
+    by (metis (mono_tags, hide_lams) is_up len_of_word_comparisons(2) 
+              uint_up_ucast unat_def word_arith_nat_add word_unat.Rep_inverse)
   ultimately show ?thesis by blast
 qed
   
@@ -1197,8 +1197,9 @@ lemma fin_digraph_is_wellformed_inv:  "fin_digraph (abs_IGraph G) \<longleftrigh
 lemma basic_just_sp_eq_invariants_imp:
 "\<And>G d c s n p. 
     (is_wellformed_inv G (iedge_cnt G) \<and> 
+    s < ivertex_cnt G \<and>
     is_inf d s = 0 \<and>
-    val d s \<le> 0 \<and>
+    val d s = 0 \<and>
     trian_inv G d c (iedge_cnt G) \<and> 
     just_inv G d c s n p (ivertex_cnt G))
     \<longleftrightarrow>
@@ -1228,7 +1229,7 @@ proof -
     ?ad (head ?aG e) \<le> ?ad (tail ?aG e) + ?ac e)"
     apply safe
     (* program implies maths *)
-      apply (simp add: trian_inv_def abs_IDist_def abs_ICost_def)
+      apply (simp add: abs_IDist_def abs_ICost_def)
       apply clarsimp
       apply (metis real_unat_leq_plus_64 long_ucast)
     (* maths implies program *)
@@ -1241,33 +1242,39 @@ proof -
     apply safe
        apply fastforce
       apply fastforce
-     apply (subgoal_tac "(if snd (d (snd (snd (snd G) ia))) \<noteq> 0 then PInfty else ereal (real (unat (fst (d (snd (snd (snd G) ia))))))) \<le> 
-                         (if False then PInfty else ereal (real (unat (fst (d (fst (snd (snd G) ia))))))) + ereal (real (unat (c ia)))")
-      apply (subgoal_tac "\<not> True \<or> snd (d (snd (snd (snd G) ia))) = 0")
+     apply (subgoal_tac "(if snd (d (snd (snd (snd G) ia))) \<noteq> 0 
+                          then PInfty 
+                          else ereal (real (unat (fst (d (snd (snd (snd G) ia))))))) \<le> 
+                          ereal (real (unat (fst (d (fst (snd (snd G) ia)))))) + ereal (real (unat (c ia)))")
+      apply (subgoal_tac "False \<or> snd (d (snd (snd (snd G) ia))) = 0")
        apply meson
       apply force
      apply presburger
     apply (erule_tac x="ia" in allE)
-    apply clarsimp
+    apply clarsimp 
     apply (subgoal_tac "\<And>e. \<not> PInfty \<le> e \<or> e = PInfty")
-     apply (subgoal_tac "snd (d (snd (snd (snd G) ia))) = 0 \<or> ereal (real (unat (fst (d (fst (snd (snd G) ia))))) + real (unat (c ia))) = PInfty")
+     apply (subgoal_tac "snd (d (snd (snd (snd G) ia))) = 0 \<or> 
+                  ereal (real (unat (fst (d (fst (snd (snd G) ia))))) + real (unat (c ia))) = PInfty")
       apply (simp add:trian_64)
      apply presburger
     apply (metis (full_types) ereal_infty_less_eq(1) infinity_ereal_def)
     done
-  moreover have "just_inv G d c s n p (ivertex_cnt G) \<longleftrightarrow>
+  moreover have 
+   just1: "just_inv G d c s n p (ivertex_cnt G) \<longleftrightarrow>
     (\<forall>v. v \<in> verts ?aG \<and>
-      v \<noteq> s \<and> is_inf n v = 0 \<longrightarrow> 0 \<le> sint (p v) \<and>
+      v \<noteq> s \<and> is_inf n v = 0 \<longrightarrow> 
+    sint (p v) \<ge> 0 \<and>
     (\<exists>e. p v = e \<and> e \<in> arcs ?aG \<and>
       v = head ?aG e \<and>
-      is_inf d v = 0 \<and>
-      is_inf d (tail ?aG e) = 0 \<and>
-      cast_long (val d v) = cast_long (val d (tail ?aG e)) + cast_long (c e) \<and>
+      (is_inf d v = 0 \<longleftrightarrow> is_inf d (tail ?aG e) = 0) \<and>
+      (is_inf d v = 0 \<longrightarrow> 
+   cast_long (val d v) = cast_long (val d (tail ?aG e)) + cast_long (c e)) \<and>
       is_inf n (tail ?aG e) = 0 \<and>
       (* val n v < ivertex_cnt G \<and> *)
       cast_long (val n v) = cast_long (val n (tail ?aG e)) + 1))"
     using just_inv_def
     by auto
+(*
   then have "just_inv G d c s n p (ivertex_cnt G) \<longleftrightarrow>
     (\<forall>v. v \<in> verts ?aG \<and>
       v \<noteq> s \<and> ?an v \<noteq> \<infinity> \<longrightarrow> 
@@ -1275,56 +1282,58 @@ proof -
       v = head ?aG e \<and> 
       ?ad v = ?ad (tail ?aG e) + (?ac e) \<and>
       ?an v = ?an (tail ?aG e) + enat 1))"
-    apply safe
-    (* program implies maths *)
-    apply clarsimp
-      apply (unfold abs_IPedge_def abs_INum_def)[1]
-      apply (erule_tac x=v in allE)
-       apply clarsimp
-       apply (rule conjI)
-        apply (meson enat.distinct(2) not_le)
-      apply (rule impI)
-      apply (unfold abs_IDist_def abs_ICost_def)[1]
-      apply clarsimp
-      apply (safe, simp_all)
-    using just_64 apply force
-    apply (subgoal_tac "UCAST(32 \<rightarrow> 64) (fst (n v)) \<noteq> (0::64 word)")
-     apply (metis (no_types) add.commute enat.distinct(2) enat.inject long_ucast unatSuc)
-      apply (metis add.commute le_add_same_cancel1 lt1_neq0 trian_64 ucast_1 zero_le)
-    (* maths implies program *)
-     apply (unfold just_inv_def abs_IPedge_def)[1]
-     apply clarsimp
-     apply (erule_tac x=v in allE)
-     apply (simp add: shortest_path_checker.abs_INum_def)
-    apply safe
-          apply (unfold abs_INum_def abs_IPedge_def)[1]
-          apply (subgoal_tac "\<forall>na w. (((w = s \<or> enat (unat (fst (n w))) \<noteq> enat na) \<or> snd (n w) \<noteq> 0) \<or> \<not> w < fst G) \<or> \<not> sint (p w) < 0")
-           apply (subgoal_tac "\<forall>na w. (((Some (p w) = Some (esk1_1 w) \<or> w = s) \<or> enat (unat (fst (n w))) \<noteq> enat na) \<or> snd (n w) \<noteq> 0) \<or> \<not> w < fst G")
-            apply (subgoal_tac "\<forall>na. (if snd (n (fst (snd (snd G) (esk1_1 v)))) \<noteq> 0 
-                                      then \<infinity> else enat (unat (fst (n (fst (snd (snd G) (esk1_1 v))))))) + enat (Suc 0) = enat (unat (fst (n v))) \<or> enat (unat (fst (n v))) \<noteq> enat na")
-             apply (subgoal_tac "p v = esk1_1 v")
-              apply (subgoal_tac "snd (n (fst (snd (snd G) (esk1_1 v)))) = 0")
-               apply argo
-    using enat.distinct(2) plus_enat_simps(2)
-              apply force
-             apply blast
-            apply fastforce
-           apply fastforce
-          apply (metis (no_types) option.simps(3))
-         defer
-         defer
-         defer
-         apply (unfold abs_INum_def abs_IPedge_def)[1]
-         apply (metis option.sel option.simps(3))
-        apply (unfold abs_INum_def abs_IPedge_def)[1]
-        apply (metis option.sel option.simps(3))
-       apply (unfold abs_INum_def abs_IPedge_def)[1]
-       apply (erule_tac x=v in allE)
-       apply safe[1]
-        apply force
-       apply clarsimp
-  sorry
-  moreover have "(is_inf d s = 0 \<and> (is_inf d s = 0 \<longrightarrow> val d s \<le> 0)) \<longleftrightarrow> abs_IDist d s \<le> 0"
+*)
+ 
+  find_theorems "?x < ?y" "Some"
+ have "just_inv G d c s n p (ivertex_cnt G) \<longleftrightarrow>(\<forall>v<fst G.
+             v \<noteq> s \<longrightarrow>
+             (\<exists>i. abs_INum n v = enat i) \<longrightarrow>
+             (\<exists> e. (abs_IPedge p v) = Some e \<and>
+                e < (fst (snd G)) \<and>
+                v = snd (snd (snd G) e) \<and>
+               abs_IDist d v =
+               abs_IDist d (fst (snd (snd G) e)) +
+               ereal (abs_ICost c e) \<and>
+               abs_INum n v = 
+               abs_INum n (fst (snd (snd G) e)) + enat (Suc 0)))"
+  apply (simp add: just1)
+  apply (rule iffI; 
+        clarsimp; 
+        erule_tac x=v in allE)
+   (* program implies maths *)  
+    apply (rule_tac x= "p v" in exI, clarsimp simp: abs_IPedge_def)
+    apply (case_tac "snd (n v) = 0"; clarsimp simp: not_le word_msb_sint abs_INum_def) 
+   apply (rule conjI)
+    apply (simp add: just_64 abs_IDist_def abs_ICost_def abs_IPedge_def)
+   apply (metis (mono_tags, hide_lams) add.right_neutral add_Suc_right 
+          le_add_same_cancel1 long_ucast trian_64 unat_eq_1(2) 
+          unat_plus_simple zero_le)
+  (* maths implies program *)
+   apply (clarsimp simp add: abs_IPedge_def)
+   apply (subgoal_tac "\<exists>i. abs_INum n v = enat i"; simp add: abs_INum_def) 
+   apply (case_tac "msb (p v)"; 
+          clarsimp simp: not_le word_msb_sint 
+          abs_INum_def abs_IDist_def abs_ICost_def)  
+   apply (case_tac "snd (n (fst (snd (snd G) (p v)))) = 0"; clarsimp) 
+   apply (case_tac "snd (d v) = 0"; 
+          case_tac "snd (d (fst (snd (snd G) (p v)))) = 0"; 
+          clarsimp simp: just_64)
+  proof -
+   fix v :: "32 word"
+   assume a1: "unat (fst (n v)) = Suc (unat (fst (n (fst (snd (snd G) (p v))))))"
+   have "\<forall>w. of_nat (Suc (unat (w::64 word))) = 1 + w"
+    by simp
+   then show "UCAST(32 \<rightarrow> 64) (fst (n v)) = UCAST(32 \<rightarrow> 64) (fst (n (fst (snd (snd G) (p v))))) + (1::64 word)"
+    using a1 by (metis add.commute long_ucast word_unat.Rep_inverse)
+  next 
+   fix v :: "32 word"
+   assume "unat (fst (n v)) = Suc (unat (fst (n (fst (snd (snd G) (p v))))))"
+   then have "unat (UCAST(32 \<rightarrow> 64) (fst (n v))::64 word) = Suc (unat (UCAST(32 \<rightarrow> 64) (fst (n (fst (snd (snd G) (p v)))))::64 word))"
+     using shortest_path_checker.long_ucast by presburger
+   then show "UCAST(32 \<rightarrow> 64) (fst (n v)) = UCAST(32 \<rightarrow> 64) (fst (n (fst (snd (snd G) (p v))))) + (1::64 word)"
+     by (metis (no_types) add.commute of_nat_Suc word_unat.Rep_inverse)
+ qed
+  moreover have "(is_inf d s = 0 \<and> val d s = 0) \<longleftrightarrow> abs_IDist d s \<le> 0"
     unfolding abs_IDist_def
     by (simp add: unat_eq_zero)
 ultimately
@@ -1333,7 +1342,7 @@ ultimately
     basic_just_sp_pred_def 
     basic_just_sp_pred_axioms_def 
     basic_sp_def basic_sp_axioms_def
-   by meson
+   by auto
 qed
 
 lemma shortest_path_pos_cost_pred_eq_invariants':
@@ -1371,18 +1380,32 @@ ultimately
     shortest_path_pos_cost_pred_axioms_def
   using basic_just_sp_eq_invariants_imp
   apply (clarsimp, safe)
-         apply (simp add: fin_digraph_is_wellformed_inv)
-        apply (simp add: abs_IDist_def abs_ICost_def trian_inv_def, blast intro: real_unat_leq_plus_64)
-       apply (simp add: abs_IPedge_def abs_IDist_def just_inv_def, metis PInfty_eq_infinity less_le order.asym no_path_assms)
-      apply (simp add: abs_IPedge_def abs_IDist_def just_inv_def, metis (no_types) enat.distinct(2) not_le abs_INum_def)
-     apply (simp add: abs_IPedge_def abs_IDist_def abs_ICost_def just_inv_def, safe)
-          apply (metis no_path_assms not_le)
-         apply (simp add: no_path_inv_def abs_INum_def, (auto)[1])
-        apply (metis no_path_assms not_le)
-       apply (metis no_path_assms)
-      apply (simp add: no_path_inv_def abs_INum_def, (auto)[1])
-     apply (metis (no_types) no_path_assms of_nat_add unat_plus_simple)
-    apply (simp add: abs_IPedge_def abs_INum_def just_inv_def, metis (no_types, hide_lams) add.commute add.right_neutral enat.distinct(2) enat.inject not_le unatSuc word_le_0_iff word_less_1)
+      apply (simp add: fin_digraph_is_wellformed_inv)
+     apply (simp add: abs_IDist_def abs_ICost_def trian_inv_def)
+     apply (metis real_unat_leq_plus_64 long_ucast)
+    apply (rule_tac x = "p v" in bexI; clarsimp simp: just_inv_def) prefer 2
+     apply (metis PInfty_eq_infinity no_path_assms abs_IDist_def)
+    apply (clarsimp simp: abs_IPedge_def just_inv_def abs_INum_def) 
+    apply (rule conjI, metis enat.distinct(2))
+    apply (clarsimp)
+    apply (rule conjI, metis enat.distinct(2) not_le word_msb_sint)
+    apply clarsimp
+    apply (rule conjI, metis enat.distinct(2))
+    apply (rule conjI) 
+     apply (subgoal_tac "isInf_C (to_eint (n v)) = 0")
+      apply (simp add: abs_IPedge_def abs_IDist_def abs_ICost_def just_64)
+     apply (metis (full_types) enat.distinct(2) isInf_C_pte)
+    apply (subgoal_tac "i = 
+            Suc (unat (UCAST(32 \<rightarrow> 64) (fst (n (fst (snd (snd G) (p v)))))::64 word))")
+     apply (simp add: long_ucast)
+    apply (subgoal_tac "\<forall>n. Suc n = n + unat (1::64 word)")
+     apply (subgoal_tac "\<forall>w. \<not> (1::64 word) + UCAST(32 \<rightarrow> 64) (w::32 word) < 1")
+      apply (subgoal_tac "enat i = enat (unat (UCAST(32 \<rightarrow> 64) (fst (n v))::64 word))")
+       apply (metis (no_types, hide_lams) add.commute enat.distinct(2) 
+                    enat.inject not_le unat_plus_simple)
+      apply (metis (no_types) enat.distinct(2) shortest_path_checker.long_ucast)
+     apply (metis le_add_same_cancel1 not_le shortest_path_checker.trian_64 ucast_1 zero_le)
+    apply simp
    apply (simp add: no_path_inv_def abs_IDist_def abs_INum_def, force)
   apply (simp add: no_path_inv_def abs_IDist_def abs_INum_def, force)
   done
