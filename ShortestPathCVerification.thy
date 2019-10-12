@@ -675,7 +675,7 @@ lemma just_spc':
   apply (subst whileLoopE_add_inv [where 
         M="\<lambda>(vv, s). unat (ivertex_cnt iG - vv)" and
         I="\<lambda>vv s. P s \<and> just_inv iG iD iC sc iN iP vv \<and>
-                   vv \<le> ivertex_cnt iG \<and>
+                   vv < ivertex_cnt iG \<and>
                    wf_digraph (abs_IGraph iG) \<and>
                    is_graph s iG g \<and>
                    is_dist s iG iD d \<and>
@@ -713,9 +713,14 @@ lemma just_spc':
           apply (metis two_comp_to_eint_arrlist_heap val_C_pte) 
          apply (metis heap_ptr_coerce word_zero_le)
         apply (rule conjI, rule impI, rule conjI, clarsimp)
+
           apply (simp add: just_inv_def) 
-          apply (rule_tac x=vv in allE, simp add: uint_nat) 
-          apply clarsimp 
+          apply (erule_tac x=vv in allE, clarsimp simp add: uint_nat) 
+          apply (subgoal_tac "snd (iN vv) = 0", clarsimp)
+  apply (subgoal_tac "snd (iD (fst (snd (snd iG) (iP vv)))) = 0", clarsimp)
+      
+  apply (unfold just_inv_def is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+        
       (*    apply (metis (no_types) isInf_C_pte two_comp_to_eint_arrlist_heap heap_ptr_coerce word_zero_le two_comp_to_edge_arrlist_heap s_C_pte)
          apply (rule conjI, rule impI, rule conjI)
            apply (unfold just_inv_def is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
