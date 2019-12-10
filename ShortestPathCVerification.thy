@@ -276,6 +276,169 @@ next
   qed
 qed
 
+
+
+lemma unat_simp: 
+  "\<And>x y:: 32 word. unat (x + y) \<ge> unat x \<longleftrightarrow> 
+      unat (x + y) = unat x + unat y"
+  using unat_plus_simple word_le_nat_alt by blast
+
+lemma unat_simp_2:
+  "\<And>x y :: 32 word. unat (x + y) = unat x + unat y \<longrightarrow> unat x + unat y \<ge> unat x"
+  by simp
+
+lemma unat_leq_plus:
+  fixes x y z :: "32 word"
+  assumes a1: "x \<le> y + z"
+  shows "unat x \<le> unat y + unat z" 
+  by (simp add: assms word_unat_less_le)
+
+lemma unat_leq_plus_64:
+  fixes x y z :: "64 word"
+  assumes a1: "x \<le> y + z"
+  shows "unat x \<le> unat y + unat z" 
+  by (simp add: assms word_unat_less_le)
+
+lemma real_unat_leq_plus:
+  fixes x y z :: "32 word"
+  assumes a1: "x \<le> y + z"
+  shows "real (unat x) \<le> real (unat y) + real (unat z)" 
+  using assms unat_leq_plus by fastforce
+
+lemma real_unat_leq_plus_64:
+  fixes x y z :: "64 word"
+  assumes a1: "x \<le> y + z"
+  shows "real (unat x) \<le> real (unat y) + real (unat z)" 
+  using assms unat_leq_plus_64 by fastforce
+
+lemma real_nat:
+  fixes x y z :: "nat"
+  assumes a1: "real x \<le> real y + real z"
+  shows "x \<le> y + z"
+  using assms by linarith
+
+lemma unat_leq_trian_plus:
+  fixes x y z :: "32 word"
+  assumes a1: "unat x \<le> unat y + unat z"
+  assumes a2: "unat y + unat z \<ge> unat y"
+  assumes a3: "unat (y + z) \<ge> unat y"
+  shows "x \<le> y + z"
+  using a1 a3 unat_simp word_le_nat_alt by fastforce
+
+lemma unat_leq_plus_unats:
+  fixes x y z :: "32 word"
+  assumes a1: "unat x \<le> unat (y + z)"
+  shows "x \<le> y + z"
+proof -
+  have f1: "unat x \<le> unat y + unat z"
+    using a1 by (meson not_le unat_leq_plus word_less_nat_alt)
+  then show ?thesis
+    by (simp add: assms word_le_nat_alt)
+qed
+
+lemma unat_plus_leq_unats:
+  fixes y z :: "32 word"
+  assumes a1: "unat y + unat z \<le> unat (max_word :: 32 word)"
+  shows "unat y + unat z \<le> unat (y + z)"
+  using a1 
+  by unat_arith
+
+lemma trian_imp_valid:
+  fixes x y z :: "32 word"
+  assumes a1: "real (unat y) + real (unat z) \<le> real (unat (max_word :: 32 word)) \<and> real(unat x) \<le> real (unat y) + real (unat z)"
+  shows "unat y + unat z \<le> unat (max_word::32 word)"
+  using a1 by linarith
+
+lemma c: "UCAST(32 \<rightarrow> 64) (x::word32) = cast_long x"
+  by simp
+
+lemma cast_long_max: "unat (cast_long (x::32 word)) \<le> unat (max_word::word32)"
+  using word_le_nat_alt long_ucast by auto
+
+lemma cast_long_max_extend: "unat (cast_long (x::32 word)) \<le> unat (max_word::word64)"
+  using word_le_nat_alt by blast
+
+lemma trian_64_reverse:
+  fixes x y z :: "word32"
+  assumes a1: "UCAST(32 \<rightarrow> 64) x \<le> UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z"
+  shows "unat x \<le> unat y + unat z"
+  by (metis (no_types, hide_lams) assms is_up len_of_word_comparisons(2) unat_leq_plus_64 
+            uint_up_ucast unat_def)
+
+lemma unat_plus_less_two_power_length:
+  assumes len: "len_of TYPE('a::len) < len_of TYPE('b::len)"
+  shows "unat (C:: 'a word) + unat (D:: 'a word) < (2::nat) ^ LENGTH('b)"
+proof -
+  have bounded: "uint C < 2 ^ LENGTH('a)" "uint D < (2 :: int) ^ LENGTH('a)"
+    by (insert uint_bounded)
+have unat_bounded: "unat C < 2 ^ LENGTH('a)" "unat D < (2 :: nat) ^ LENGTH('a)"
+  by simp+
+  have suc_leq: "Suc (len_of (TYPE('a)::'a itself)) \<le> len_of (TYPE('b)::'b itself)"
+    using len Suc_leI by blast
+  then have two_power_suc_leq: "(2::nat) ^ (len_of (TYPE('a)::'a itself) + 1) \<le> 
+        2 ^ len_of (TYPE('b)::'b itself)"
+    by (metis (no_types) One_nat_def add.right_neutral add_Suc_right 
+             power_increasing_iff rel_simps(49) rel_simps(9))
+  have "(2::nat) ^ (LENGTH ('a) + 1) = (2 ^ LENGTH ('a)) + (2 ^ LENGTH ('a))" 
+    by auto
+  then have "unat (C:: 'a word) + unat (D:: 'a word) < (2::nat) ^ (LENGTH ('a) + 1)"
+    using unat_bounded by linarith  
+  thus ?thesis using two_power_suc_leq 
+    by linarith
+qed
+
+lemma abstract_val_ucast_add_strict_upcast:
+    "\<lbrakk> len_of TYPE('a::len) < len_of TYPE('b::len);
+       abstract_val P C' unat C; abstract_val P D' unat D \<rbrakk>
+            \<Longrightarrow>  abstract_val P (C' + D') unat 
+                    ((ucast (C :: 'a word) :: 'b word) +
+                      ucast (D :: 'a word) :: 'b word)"
+  apply (clarsimp simp: is_up unat_ucast_upcast ucast_def )
+  apply (clarsimp simp:  word_of_int_def unat_word_ariths(1))
+  apply (frule unat_plus_less_two_power_length[where C=C and D=D]) 
+  by (metis Divides.mod_less add.right_neutral 
+        unat_plus_less_two_power_length uint_inverse 
+        uint_mod_same uint_nat unat_of_nat zero_less_numeral 
+        zero_less_power)
+
+lemmas word_add_strict_up_cast_no_overflow_32_64 = 
+      abstract_val_ucast_add_strict_upcast
+        [unfolded abstract_val_def,
+          OF word_abs_base(18) impI, where P=True, simplified]
+lemma word_add_cast_up_no_overflow: 
+  "unat y + unat z = unat (UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z)"
+  using word_add_strict_up_cast_no_overflow_32_64 by blast
+  
+lemma add_ucast_no_overflow_64: (* add_ucast_no_overflow *)
+  fixes x y z :: "word32"
+  assumes a1: "unat x \<le> unat y + unat z"
+  shows "(UCAST(32 \<rightarrow> 64) x) \<le> (UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z)"
+  apply (insert a1) 
+  apply (subgoal_tac "unat (UCAST(32 \<rightarrow> 64) x) \<le> 
+                      unat (UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z)")
+   using word_le_nat_alt apply blast
+  apply (subst word_add_cast_up_no_overflow[symmetric])
+  using long_ucast by auto
+
+lemma add_ucast_no_overflow_unat:
+  fixes x y z :: "word32"
+  shows "(UCAST(32 \<rightarrow> 64) x = UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z) = 
+         (unat x = unat y + unat z)"
+proof -
+  have "(UCAST(32 \<rightarrow> 64) x = UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z) \<longrightarrow> 
+         unat x = unat y + unat z"
+    by (metis (mono_tags, hide_lams) is_up le_add_same_cancel1 
+              len_of_word_comparisons(2) add_ucast_no_overflow_64 uint_up_ucast unat_def 
+              unat_plus_simple zero_le)
+  moreover 
+  have "unat x = unat y + unat z \<longrightarrow> 
+        (UCAST(32 \<rightarrow> 64) x = UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z)"
+    by (metis (mono_tags, hide_lams) is_up len_of_word_comparisons(2) 
+              uint_up_ucast unat_def word_arith_nat_add word_unat.Rep_inverse)
+  ultimately show ?thesis by blast
+qed
+  
+
 lemma path_length:
   assumes "vpath p (abs_IGraph iG)"
   shows "vwalk_length p < unat (ivertex_cnt iG)" 
@@ -363,8 +526,6 @@ lemma is_inf_heap:
   "\<lbrakk>arrlist h v (map (to_eint \<circ> (f \<circ> of_nat)) [0..<unat m]) ep; e < m\<rbrakk> \<Longrightarrow>
   is_inf f e =  isInf_C (h (ep +\<^sub>p (uint e)))" 
   using two_comp_arrlist_heap to_eint.simps isInf_C_pte by (metis uint_nat)
-
-thm "is_wellformed'_def"
 
 definition is_wellformed_inv :: "IGraph \<Rightarrow> 32 word \<Rightarrow> bool" where
   "is_wellformed_inv G i \<equiv> \<forall>k < i. ivertex_cnt G > fst (iedges G k)
@@ -650,7 +811,7 @@ lemma pedge_abs_C_equiv:
   assumes a1: "arrlist (\<lambda>p. heap_w32 s (ptr_coerce p)) (\<lambda>p. is_valid_w32 s (ptr_coerce p)) (map (iP \<circ> of_nat) [0..<unat (num_vertices_C (heap_Graph_C s g))]) p"
   assumes a2: "fst iG = num_vertices_C (heap_Graph_C s g)"
   assumes a3: "vv < num_vertices_C (heap_Graph_C s g)"
-  shows "iP (vv) = heap_w32 s (ptr_coerce (p +\<^sub>p int (unat vv)))"
+  shows "iP vv = heap_w32 s (ptr_coerce (p +\<^sub>p int (unat vv)))"
 proof -
   have "\<forall>w. heap_w32 s (ptr_coerce (p +\<^sub>p int (unat w))) = iP w \<or> \<not> w < fst iG"
     using a2 a1 heap_ptr_coerce unat_0 by fastforce
@@ -659,6 +820,8 @@ proof -
 qed
 
 lemma  word32_minus_comm: "(x:: 32 word) - y - z = x - z - y" by simp
+
+
 
 lemma just_spc':
   "\<lbrace> P and 
@@ -671,6 +834,287 @@ lemma just_spc':
    just' g d c sc n p
    \<lbrace> (\<lambda>_ s. P s) And 
      (\<lambda>rr s. rr \<noteq> 0 \<longleftrightarrow> just_inv iG iD iC sc iN iP (ivertex_cnt iG)) \<rbrace>!"
+  oops
+
+lemma just_spc':
+  "\<lbrace> P and 
+     (\<lambda>s. wf_digraph (abs_IGraph iG) \<and>
+          is_graph s iG g \<and>
+          is_dist s iG iD d \<and>
+          is_cost s iG iC c \<and>
+          is_numm s iG iN n \<and>
+          is_pedge s iG iP p)\<rbrace>
+   just' g d c sc n p
+   \<lbrace> (\<lambda>_ s. P s) And 
+     (\<lambda>rr s. rr \<noteq> 0 \<longleftrightarrow> just_inv iG iD iC sc iN iP (ivertex_cnt iG)) \<rbrace>!"
+  apply (clarsimp simp: just'_def)
+  apply (subst whileLoopE_add_inv [where 
+        M="\<lambda>(vv, s). unat (ivertex_cnt iG - vv)" and
+        I="\<lambda>vv s. P s \<and> just_inv iG iD iC sc iN iP vv \<and>
+                   vv \<le> ivertex_cnt iG \<and>
+                   wf_digraph (abs_IGraph iG) \<and>
+                   is_graph s iG g \<and>
+                   is_dist s iG iD d \<and>
+                   is_cost s iG iC c \<and>
+                   is_numm s iG iN n \<and>
+                   is_pedge s iG iP p"])
+  apply (simp add: skipE_def)
+  apply wp
+    apply (subst if_bool_eq_conj)+
+    apply (simp split: if_split_asm, simp_all add: arrlist_nth)
+    apply (rule conjI, rule impI, rule conjI, rule impI, rule conjI, rule impI)
+       apply (unfold just_inv_def is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+       apply (clarsimp, rule_tac x=vv in exI, simp add: uint_nat)
+       apply (metis isInf_C_pte sint_ucast two_comp_to_eint_arrlist_heap not_le heap_ptr_coerce word_zero_le)
+      apply (rule impI, rule conjI)
+       apply (unfold just_inv_def is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+       apply (clarsimp, rule_tac x=vv in exI, simp add: uint_nat)
+       apply (metis isInf_C_pte two_comp_to_eint_arrlist_heap not_le heap_ptr_coerce word_zero_le)
+      apply (rule conjI, rule impI, rule conjI)
+        apply (unfold just_inv_def is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+        apply (clarsimp, rule_tac x=vv in exI, simp add: uint_nat)
+        apply (metis (no_types) isInf_C_pte two_comp_to_eint_arrlist_heap 
+      heap_ptr_coerce word_zero_le two_comp_to_edge_arrlist_heap t_C_pte)
+       apply (rule conjI, rule impI, rule conjI, rule impI, rule conjI)
+          apply (unfold just_inv_def is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+          apply meson
+         apply (unfold just_inv_def is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+         apply (clarsimp, rule_tac x=vv in exI, simp add: uint_nat)
+         apply (subgoal_tac "heap_w32 s (ptr_coerce (p +\<^sub>p int (unat vv))) = iP vv") 
+          apply (metis (no_types, hide_lams) is_inf_heap tail_heap uint_nat)
+         apply (metis heap_ptr_coerce word_zero_le)
+        apply (rule conjI, rule impI, rule conjI)
+          apply (unfold just_inv_def is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+          apply (clarsimp, rule_tac x=vv in exI, simp add: uint_nat)
+          apply (subgoal_tac "heap_w32 s (ptr_coerce (p +\<^sub>p int (unat vv))) = iP vv") 
+           apply (subgoal_tac "snd (iN vv) = 0")
+            apply (subgoal_tac "\<And>w. w < fst iG \<Longrightarrow> heap_EInt_C s (d +\<^sub>p int (unat w)) = to_eint (iD w)")
+             apply (metis (no_types, hide_lams) cost_abs_C_equiv isInf_C_pte tail_heap val_C_pte uint_nat)
+            apply (metis two_comp_to_eint_arrlist_heap) 
+           apply (metis isInf_C_pte two_comp_to_eint_arrlist_heap)
+          apply (metis (no_types) heap_ptr_coerce word_zero_le)
+         apply (rule conjI, rule impI, rule conjI)
+           apply (unfold just_inv_def is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+           apply (clarsimp, rule_tac x=vv in exI, simp add: uint_nat)
+           apply (rule conjI)
+            apply (metis isInf_C_pte two_comp_to_eint_arrlist_heap)
+           apply (rule impI)+
+           apply (simp add: pedge_abs_C_equiv)
+           apply (simp add: enat_abs_C_equiv)
+           apply (simp add: cost_abs_C_equiv) 
+           apply (subgoal_tac "isInf_C 
+                                 (heap_EInt_C s (n +\<^sub>p int (unat (fst (snd (snd iG) 
+                                 (heap_w32 s (ptr_coerce (p +\<^sub>p int (unat vv))))))))) \<noteq> 0")
+            apply (metis isInf_C_pte two_comp_to_eint_arrlist_heap)
+           apply (metis tail_heap uint_nat)
+          apply (rule conjI, rule impI, rule conjI)
+            apply (unfold just_inv_def is_graph_def is_dist_def is_cost_def 
+                          is_numm_def is_pedge_def wf_digraph_def)[1]
+            apply (clarsimp, rule_tac x=vv in exI, simp add: uint_nat)
+            apply (rule conjI)
+             apply (subst is_inf_heap, blast, blast)
+             apply (simp add: pedge_abs_C_equiv)
+             apply (simp add: uint_nat)
+            apply (rule impI)+
+            apply (simp add: pedge_abs_C_equiv enat_abs_C_equiv cost_abs_C_equiv)
+            apply (subst val_heap, blast, blast, simp add: uint_nat)
+            apply (metis two_comp_to_eint_arrlist_heap val_C_pte)
+           apply (rule conjI, rule impI, rule conjI) 
+             apply blast 
+            apply clarsimp
+            apply (unfold is_graph_def)[1]
+            apply (rule conjI)
+             apply (subst just_inv_step)
+              apply (metis max_word_max not_le word_le_less_eq)
+             apply clarsimp
+             apply (unfold is_graph_def is_dist_def is_cost_def 
+                           is_numm_def is_pedge_def wf_digraph_def)[1]
+             apply clarsimp
+             apply (frule_tac e="iP vv" in head_heap;
+                    simp add: pedge_abs_C_equiv sint_ucast 
+                              enat_abs_C_equiv uint_nat cost_abs_C_equiv)
+             apply (frule_tac e="iP vv" in tail_heap;
+                    simp add: pedge_abs_C_equiv)
+             apply (rule conjI, simp) 
+             apply (rule conjI) 
+              apply (metis (no_types, hide_lams) not_le isInf_C_pte 
+                     two_comp_to_eint_arrlist_heap uint_nat)
+             apply (rule conjI, clarsimp) 
+              apply (subst val_heap, fastforce, fast)
+              apply (subst val_heap, fastforce, metis not_le) 
+              apply (simp add: uint_nat)
+             apply (rule conjI) 
+              apply (metis (no_types, hide_lams) not_le isInf_C_pte 
+                     two_comp_to_eint_arrlist_heap uint_nat)
+             apply (subst val_heap, fastforce, fast)
+             apply (subst val_heap, fastforce, metis not_le) 
+             apply (simp add: uint_nat)
+            apply (metis le_step not_le unat_minus_plus1_less)
+           apply (rule conjI)
+            apply (unfold is_graph_def just_inv_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+            apply (clarsimp simp: if_bool_eq_conj)+
+            apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+) 
+           apply (rule conjI)
+            apply (unfold is_graph_def just_inv_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+            apply (clarsimp simp: if_bool_eq_conj)+
+            apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+            apply (metis s_C_pte two_comp_to_edge_arrlist_heap word_less_nat_alt not_le)
+           apply (rule conjI)
+            apply (unfold is_graph_def just_inv_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+            apply (clarsimp simp: if_bool_eq_conj)+
+            apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+           apply (simp add: is_graph_def word_less_nat_alt not_le, blast+)
+          apply (rule conjI)
+           apply (unfold is_graph_def just_inv_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+           apply (clarsimp simp: if_bool_eq_conj)+
+           apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+           apply (metis s_C_pte two_comp_to_edge_arrlist_heap word_less_nat_alt not_le)
+          apply (rule conjI)
+           apply (unfold is_pedge_def is_graph_def)[1]
+           apply (clarsimp simp: if_bool_eq_conj)+
+           apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+          apply (simp add: is_graph_def word_less_nat_alt not_le, blast+)
+         apply (rule conjI)
+          apply (unfold is_dist_def is_pedge_def is_graph_def)[1]
+          apply (clarsimp simp: if_bool_eq_conj)+
+          apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+          apply (metis (no_types, hide_lams) not_le s_C_pte two_comp_to_edge_arrlist_heap wellformed_iGraph word_less_nat_alt)
+         apply (rule conjI)
+          apply (unfold is_cost_def is_pedge_def is_graph_def)[1]
+          apply (clarsimp simp: if_bool_eq_conj)+
+          apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+         apply (unfold is_graph_def just_inv_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+         apply (clarsimp simp: if_bool_eq_conj)+
+         apply (rule conjI; rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+        apply clarsimp
+        apply (subgoal_tac " vv + 1 \<le> fst iG")
+         apply (subgoal_tac "vv < (max_word::32 word)")
+          apply (rule conjI, rule impI)
+           apply (rule conjI, rule impI, clarsimp)
+            apply (drule_tac j="vv + 1" in just_inv_le, assumption)
+            apply (clarsimp simp: is_graph_def) 
+            apply (simp add: just_inv_step)
+            apply (subgoal_tac "snd (iN vv) = 0")
+             apply clarsimp
+             apply (subgoal_tac "snd (iN (fst (snd (snd iG) (iP vv)))) \<noteq> 0")
+              apply simp
+             apply (subst is_inf_heap, force simp: is_numm_def, metis wellformed_iGraph) 
+             apply (subst tail_heap, fastforce, fastforce)
+             apply (unfold is_pedge_def enat_abs_C_equiv)[] 
+             apply (subst pedge_abs_C_equiv[where iP=iP], fastforce+)
+             apply (simp add: uint_nat)
+            apply (subst is_inf_heap, force simp: is_numm_def, fast+)
+           prefer 3 apply (metis max_word_max not_le word_le_less_eq) 
+          prefer 3 apply (clarsimp simp: is_graph_def, metis not_le plus_one_helper)
+         apply (rule conjI; clarsimp)
+          apply (rule conjI, clarsimp)  
+           apply (drule_tac j="vv + 1" in just_inv_le, assumption)
+           apply (clarsimp simp: is_graph_def)
+           apply (simp add: just_inv_step)
+           apply (subgoal_tac "snd (iN vv) = 0")
+            apply (clarsimp simp: 
+                      add_ucast_no_overflow_unat[where z=1, simplified ucast_1 unat_1])
+            apply (unfold is_numm_def)[] 
+            apply clarsimp
+            apply (simp add: val_heap)
+            apply (subst notE[where P = " fst x = val_C y " for x y], assumption)
+             apply (subst val_heap, fast, metis wellformed_iGraph)
+             apply (subst tail_heap, fastforce, fastforce)
+             apply (unfold is_pedge_def enat_abs_C_equiv)[] 
+             apply (subst pedge_abs_C_equiv[where iP=iP], fastforce+)
+             apply (simp add: uint_nat)
+            apply simp
+           apply (subst is_inf_heap, force simp: is_numm_def, fast+)
+          apply (rule conjI, clarsimp) 
+           apply (rule conjI) 
+
+            prefer 2 apply (rule conjI) 
+             apply (metis not_le unat_minus_plus1_less word_add_no_overflow word_le_less_eq)
+            apply (simp add: is_graph_def)
+           apply (rule_tac just_inv_le, assumption)  
+
+            apply (clarsimp simp: is_graph_def) 
+  
+
+  thm ccontr atomize_not notE
+  find_theorems " (\<not> ?x) \<Longrightarrow> ?x \<Longrightarrow> ?B"
+  thm val_heap[]
+(*
+          apply (drule_tac j="vv + 1" in just_inv_le, assumption)
+          apply (clarsimp simp: is_graph_def)
+           apply (simp add: just_inv_step)
+           apply (subgoal_tac "snd (iN vv) = 0")
+            apply clarsimp 
+            apply (simp add: add_ucast_no_overflow_unat[where z=1, simplified])
+            apply (unfold is_numm_def)[] 
+            apply (simp add: val_heap)
+
+            apply (simp add: val_heap)
+      *)     
+       (*
+        apply (simp add:less_le not_le, meson less_le max_word_max not_le)*)
+  (*
+  using is_inf_heap 
+        apply (rule conjI, rule impI, rule conjI, rule impI)
+          apply clarsimp  
+          apply (unfold is_pedge_def is_graph_def)[1]
+          apply (clarsimp simp: if_bool_eq_conj)+
+          apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+         apply (simp add: is_graph_def word_less_nat_alt not_le, blast+)
+        apply (unfold is_dist_def is_pedge_def is_graph_def)[1]
+        apply (clarsimp simp: if_bool_eq_conj)+
+        apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+
+
+        apply (rule conjI)
+        apply (unfold is_dist_def is_pedge_def is_graph_def)[1]
+        apply (clarsimp simp: if_bool_eq_conj)+
+        apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+       apply (simp add: is_graph_def word_less_nat_alt not_le, blast+)+
+*)(*
+     apply (rule conjI, rule impI, rule conjI, rule impI) 
+       apply meson
+      apply (rule conjI)
+       apply (subgoal_tac " vv + 1 \<le> fst iG")
+        apply (subgoal_tac "vv < (max_word::32 word)") 
+         apply (drule just_inv_step[where d=iD and G=iG and c=iC and p=iP and n=iN and s=sc])
+         apply (unfold just_inv_def is_graph_def is_cost_def is_dist_def is_numm_def is_pedge_def)[1]
+         apply clarsimp
+         apply (metis is_inf_heap)
+        apply (simp add:less_le not_le, meson less_le max_word_max not_le)
+       apply (simp add: inc_le is_graph_def)
+       apply (unfold just_inv_def is_graph_def is_cost_def is_dist_def is_numm_def is_pedge_def)[1]
+       apply (blast intro: inc_le)
+      apply (metis (no_types, hide_lams) inc_le is_graph_def unat_minus_plus1_less)
+     apply (rule conjI)
+      apply (unfold is_numm_def is_pedge_def is_graph_def)[1]
+      apply (clarsimp simp: if_bool_eq_conj)+
+      apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+     apply clarsimp
+     apply (unfold is_pedge_def is_graph_def)[1]
+     apply (clarsimp simp: if_bool_eq_conj)+
+     apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+    apply safe[1]
+        apply (subgoal_tac " sc + 1 \<le> fst iG")
+         apply (subgoal_tac "sc < (max_word::32 word)") 
+          apply (drule just_inv_step[where d=iD and G=iG and c=iC and p=iP and n=iN and s=sc])
+          apply (unfold just_inv_def is_graph_def is_cost_def is_dist_def is_numm_def is_pedge_def)[1]
+          apply clarsimp
+         apply (simp add:less_le not_le, meson less_le max_word_max not_le)
+        apply (simp add: inc_le is_graph_def) 
+       apply (simp add: inc_le is_graph_def) 
+      apply (simp add: unat_minus_plus1_less is_graph_def)
+     apply (unfold is_graph_def)[1]
+     apply blast
+    apply (unfold is_graph_def is_pedge_def)[1]
+    apply (clarsimp simp: if_bool_eq_conj)+
+    apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+   apply (metis is_graph_def word_le_less_eq)
+  apply (unfold just_inv_def is_graph_def)[1]
+  apply wp
+  apply fastforce
+  done *)
+(*
   apply (clarsimp simp: just'_def)
   apply (subst whileLoopE_add_inv [where 
         M="\<lambda>(vv, s). unat (ivertex_cnt iG - vv)" and
@@ -720,7 +1164,7 @@ lemma just_spc':
   apply (subgoal_tac "snd (iD (fst (snd (snd iG) (iP vv)))) = 0", clarsimp)
       
   apply (unfold just_inv_def is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
-        
+   *)     
       (*    apply (metis (no_types) isInf_C_pte two_comp_to_eint_arrlist_heap heap_ptr_coerce word_zero_le two_comp_to_edge_arrlist_heap s_C_pte)
          apply (rule conjI, rule impI, rule conjI)
            apply (unfold just_inv_def is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
@@ -1017,166 +1461,6 @@ lemma wf_inv_is_fin_digraph:
       wf_digraph_def no_loops_def 
     by auto
 
-lemma unat_simp: 
-  "\<And>x y:: 32 word. unat (x + y) \<ge> unat x \<longleftrightarrow> 
-      unat (x + y) = unat x + unat y"
-  using unat_plus_simple word_le_nat_alt by blast
-
-lemma unat_simp_2:
-  "\<And>x y :: 32 word. unat (x + y) = unat x + unat y \<longrightarrow> unat x + unat y \<ge> unat x"
-  by simp
-
-lemma unat_leq_plus:
-  fixes x y z :: "32 word"
-  assumes a1: "x \<le> y + z"
-  shows "unat x \<le> unat y + unat z" 
-  by (simp add: assms word_unat_less_le)
-
-lemma unat_leq_plus_64:
-  fixes x y z :: "64 word"
-  assumes a1: "x \<le> y + z"
-  shows "unat x \<le> unat y + unat z" 
-  by (simp add: assms word_unat_less_le)
-
-lemma real_unat_leq_plus:
-  fixes x y z :: "32 word"
-  assumes a1: "x \<le> y + z"
-  shows "real (unat x) \<le> real (unat y) + real (unat z)" 
-  using assms unat_leq_plus by fastforce
-
-lemma real_unat_leq_plus_64:
-  fixes x y z :: "64 word"
-  assumes a1: "x \<le> y + z"
-  shows "real (unat x) \<le> real (unat y) + real (unat z)" 
-  using assms unat_leq_plus_64 by fastforce
-
-lemma real_nat:
-  fixes x y z :: "nat"
-  assumes a1: "real x \<le> real y + real z"
-  shows "x \<le> y + z"
-  using assms by linarith
-
-lemma unat_leq_trian_plus:
-  fixes x y z :: "32 word"
-  assumes a1: "unat x \<le> unat y + unat z"
-  assumes a2: "unat y + unat z \<ge> unat y"
-  assumes a3: "unat (y + z) \<ge> unat y"
-  shows "x \<le> y + z"
-  using a1 a3 unat_simp word_le_nat_alt by fastforce
-
-lemma unat_leq_plus_unats:
-  fixes x y z :: "32 word"
-  assumes a1: "unat x \<le> unat (y + z)"
-  shows "x \<le> y + z"
-proof -
-  have f1: "unat x \<le> unat y + unat z"
-    using a1 by (meson not_le unat_leq_plus word_less_nat_alt)
-  then show ?thesis
-    by (simp add: assms word_le_nat_alt)
-qed
-
-lemma unat_plus_leq_unats:
-  fixes y z :: "32 word"
-  assumes a1: "unat y + unat z \<le> unat (max_word :: 32 word)"
-  shows "unat y + unat z \<le> unat (y + z)"
-  using a1 
-  by unat_arith
-
-lemma trian_imp_valid:
-  fixes x y z :: "32 word"
-  assumes a1: "real (unat y) + real (unat z) \<le> real (unat (max_word :: 32 word)) \<and> real(unat x) \<le> real (unat y) + real (unat z)"
-  shows "unat y + unat z \<le> unat (max_word::32 word)"
-  using a1 by linarith
-
-lemma c: "UCAST(32 \<rightarrow> 64) (x::word32) = cast_long x"
-  by simp
-
-lemma cast_long_max: "unat (cast_long (x::32 word)) \<le> unat (max_word::word32)"
-  using word_le_nat_alt long_ucast by auto
-
-lemma cast_long_max_extend: "unat (cast_long (x::32 word)) \<le> unat (max_word::word64)"
-  using word_le_nat_alt by blast
-
-lemma trian_64_reverse:
-  fixes x y z :: "word32"
-  assumes a1: "UCAST(32 \<rightarrow> 64) x \<le> UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z"
-  shows "unat x \<le> unat y + unat z"
-  by (metis (no_types, hide_lams) assms is_up len_of_word_comparisons(2) unat_leq_plus_64 
-            uint_up_ucast unat_def)
-
-lemma unat_plus_less_two_power_length:
-  assumes len: "len_of TYPE('a::len) < len_of TYPE('b::len)"
-  shows "unat (C:: 'a word) + unat (D:: 'a word) < (2::nat) ^ LENGTH('b)"
-proof -
-  have bounded: "uint C < 2 ^ LENGTH('a)" "uint D < (2 :: int) ^ LENGTH('a)"
-    by (insert uint_bounded)
-have unat_bounded: "unat C < 2 ^ LENGTH('a)" "unat D < (2 :: nat) ^ LENGTH('a)"
-  by simp+
-  have suc_leq: "Suc (len_of (TYPE('a)::'a itself)) \<le> len_of (TYPE('b)::'b itself)"
-    using len Suc_leI by blast
-  then have two_power_suc_leq: "(2::nat) ^ (len_of (TYPE('a)::'a itself) + 1) \<le> 
-        2 ^ len_of (TYPE('b)::'b itself)"
-    by (metis (no_types) One_nat_def add.right_neutral add_Suc_right 
-             power_increasing_iff rel_simps(49) rel_simps(9))
-  have "(2::nat) ^ (LENGTH ('a) + 1) = (2 ^ LENGTH ('a)) + (2 ^ LENGTH ('a))" 
-    by auto
-  then have "unat (C:: 'a word) + unat (D:: 'a word) < (2::nat) ^ (LENGTH ('a) + 1)"
-    using unat_bounded by linarith  
-  thus ?thesis using two_power_suc_leq 
-    by linarith
-qed
-
-lemma abstract_val_ucast_add_strict_upcast:
-    "\<lbrakk> len_of TYPE('a::len) < len_of TYPE('b::len);
-       abstract_val P C' unat C; abstract_val P D' unat D \<rbrakk>
-            \<Longrightarrow>  abstract_val P (C' + D') unat 
-                    ((ucast (C :: 'a word) :: 'b word) +
-                      ucast (D :: 'a word) :: 'b word)"
-  apply (clarsimp simp: is_up unat_ucast_upcast ucast_def )
-  apply (clarsimp simp:  word_of_int_def unat_word_ariths(1))
-  apply (frule unat_plus_less_two_power_length[where C=C and D=D]) 
-  by (metis Divides.mod_less add.right_neutral 
-        unat_plus_less_two_power_length uint_inverse 
-        uint_mod_same uint_nat unat_of_nat zero_less_numeral 
-        zero_less_power)
-
-lemmas word_add_strict_up_cast_no_overflow_32_64 = 
-      abstract_val_ucast_add_strict_upcast
-        [unfolded abstract_val_def,
-          OF word_abs_base(18) impI, where P=True, simplified]
-lemma word_add_cast_up_no_overflow: 
-  "unat y + unat z = unat (UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z)"
-  using word_add_strict_up_cast_no_overflow_32_64 by blast
-  
-lemma add_ucast_no_overflow_64: (* add_ucast_no_overflow *)
-  fixes x y z :: "word32"
-  assumes a1: "unat x \<le> unat y + unat z"
-  shows "(UCAST(32 \<rightarrow> 64) x) \<le> (UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z)"
-  apply (insert a1) 
-  apply (subgoal_tac "unat (UCAST(32 \<rightarrow> 64) x) \<le> 
-                      unat (UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z)")
-   using word_le_nat_alt apply blast
-  apply (subst word_add_cast_up_no_overflow[symmetric])
-  using long_ucast by auto
-
-lemma add_ucast_no_overflow_unat:
-  fixes x y z :: "word32"
-  shows "(UCAST(32 \<rightarrow> 64) x = UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z) = 
-         (unat x = unat y + unat z)"
-proof -
-  have "(UCAST(32 \<rightarrow> 64) x = UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z) \<longrightarrow> 
-         unat x = unat y + unat z"
-    by (metis (mono_tags, hide_lams) is_up le_add_same_cancel1 
-              len_of_word_comparisons(2) add_ucast_no_overflow_64 uint_up_ucast unat_def 
-              unat_plus_simple zero_le)
-  moreover 
-  have "unat x = unat y + unat z \<longrightarrow> 
-        (UCAST(32 \<rightarrow> 64) x = UCAST(32 \<rightarrow> 64) y + UCAST(32 \<rightarrow> 64) z)"
-    by (metis (mono_tags, hide_lams) is_up len_of_word_comparisons(2) 
-              uint_up_ucast unat_def word_arith_nat_add word_unat.Rep_inverse)
-  ultimately show ?thesis by blast
-qed
-  
 lemma fin_digraph_is_wellformed_inv:  "fin_digraph (abs_IGraph G) \<longleftrightarrow> is_wellformed_inv G (iedge_cnt G)" 
   unfolding is_wellformed_inv_def fin_digraph_def fin_digraph_axioms_def wf_digraph_def no_loops_def 
   by auto
@@ -1411,7 +1695,7 @@ lemma check_basic_just_sp_spc_intermediate:
      (\<lambda>s. is_graph s iG g \<and>
           is_dist s iG iD d \<and>
           is_cost s iG iC c \<and>
-          (* sc < ivertex_cnt iG \<and> *)
+          sc < ivertex_cnt iG \<and> 
           is_numm s iG iN n \<and>
           is_pedge s iG iP p)\<rbrace>
    check_basic_just_sp' g d c sc n p
@@ -1424,7 +1708,7 @@ lemma check_basic_just_sp_spc_intermediate:
     (\<lambda>s. is_graph s iG g \<and>
           is_dist s iG iD d \<and>
           is_cost s iG iC c \<and>
-          (* sc < ivertex_cnt iG \<and> *)
+          sc < ivertex_cnt iG \<and> 
           is_numm s iG iN n \<and>
           is_pedge s iG iP p \<and>
           is_wellformed_inv iG (iedge_cnt iG) \<and>
@@ -1437,7 +1721,7 @@ lemma check_basic_just_sp_spc_intermediate:
     (\<lambda>s.  is_graph s iG g \<and>
           is_dist s iG iD d \<and>
           is_cost s iG iC c \<and>
-          (* sc < ivertex_cnt iG \<and> *)
+          sc < ivertex_cnt iG \<and> 
           is_numm s iG iN n \<and>
           is_pedge s iG iP p \<and>
           is_wellformed_inv iG (iedge_cnt iG) \<and>
@@ -1451,20 +1735,20 @@ lemma check_basic_just_sp_spc_intermediate:
     (\<lambda>s.  is_graph s iG g \<and>
           is_dist s iG iD d \<and>
           is_cost s iG iC c \<and>
-          (* sc < ivertex_cnt iG \<and> *)
+          sc < ivertex_cnt iG \<and> 
           is_numm s iG iN n \<and>
           is_pedge s iG iP p) " and 
          P1 = " P and (\<lambda>s.  is_graph s iG g \<and>
           is_dist s iG iD d \<and>
           is_cost s iG iC c \<and>
-          (* sc < ivertex_cnt iG \<and> *)
+          sc < ivertex_cnt iG \<and> 
           is_numm s iG iN n \<and>
           is_pedge s iG iP p) " and 
 Q' = "\<lambda>ret' s. if ret' = 0 then ((\<lambda>_. P) And (\<lambda>rr s. (rr \<noteq> 0) = (is_wellformed_inv iG (fst (snd iG)) \<and> fst (iD sc) = 0 \<and> snd (iD sc) = 0 \<and> trian_inv iG iD iC (fst (snd iG)) \<and> just_inv iG iD iC sc iN iP (fst iG)))) 0 s
                else (\<lambda> r s. P s \<and> is_graph s iG g \<and>
           is_dist s iG iD d \<and>
           is_cost s iG iC c \<and>
-          (* sc < ivertex_cnt iG \<and> *)
+          sc < ivertex_cnt iG \<and> 
           is_numm s iG iN n \<and>
           is_pedge s iG iP p \<and>
           is_wellformed_inv iG (iedge_cnt iG) ) ret' s "
@@ -1505,8 +1789,8 @@ Q' = "\<lambda>ret' s. if ret' = 0 then ((\<lambda>_. P) And (\<lambda>rr s. (rr
       apply (metis fin_digraph_is_wellformed_inv fin_digraph_def)
      apply (unfold is_dist_def is_graph_def is_wellformed_inv_def)[1]
      apply (clarsimp simp: if_bool_eq_conj)+
-     apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
-   sorry
+         apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+  done
 
 definition basic_sp_inv :: 
   "IGraph \<Rightarrow> IEInt \<Rightarrow> ICost \<Rightarrow> IVertex \<Rightarrow> IEInt \<Rightarrow> IPEdge \<Rightarrow> bool" where
@@ -1522,7 +1806,7 @@ lemma shortest_path_pos_cost_spc:
      (\<lambda>s. is_graph s iG g \<and>
           is_dist s iG iD d \<and>
           is_cost s iG iC c \<and>
-          (* sc < ivertex_cnt iG \<and> *)
+          sc < ivertex_cnt iG \<and> 
           is_numm s iG iN n \<and>
           is_pedge s iG iP p)\<rbrace>
    check_sp' g d c sc n p
@@ -1535,7 +1819,7 @@ lemma shortest_path_pos_cost_spc:
     (\<lambda>s.  is_graph s iG g \<and>
           is_dist s iG iD d \<and>
           is_cost s iG iC c \<and>
-          (* sc < ivertex_cnt iG \<and> *)
+          sc < ivertex_cnt iG \<and> 
           is_numm s iG iN n \<and>
           is_pedge s iG iP p \<and>
           basic_just_sp_inv iG iD iC sc iN iP \<and>
@@ -1547,7 +1831,7 @@ lemma shortest_path_pos_cost_spc:
     (\<lambda>s.  is_graph s iG g \<and>
           is_dist s iG iD d \<and>
           is_cost s iG iC c \<and>
-          (* sc < ivertex_cnt iG \<and> *)
+          sc < ivertex_cnt iG \<and> 
           is_numm s iG iN n \<and>
           is_pedge s iG iP p \<and>
           basic_just_sp_inv iG iD iC sc iN iP \<and>
@@ -1562,15 +1846,16 @@ lemma shortest_path_pos_cost_spc:
        apply argo
       apply (unfold is_dist_def)[1]
       apply (subst val_heap, simp+)
-  apply (unfold is_dist_def)[1]
+     apply (unfold is_dist_def)[1]
      apply (subst val_heap, simp+)
     apply (unfold is_graph_def is_dist_def)[1]
     apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
-   defer
+   defer 
   apply (rule_tac P' = " P and
     (\<lambda>s.  is_graph s iG g \<and>
           is_dist s iG iD d \<and>
           is_cost s iG iC c \<and>
+          sc < ivertex_cnt iG \<and> 
           is_numm s iG iN n \<and>
           is_pedge s iG iP p) " and 
          P1 = " P and 
