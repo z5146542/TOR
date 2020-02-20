@@ -533,8 +533,7 @@ definition is_wellformed_inv :: "IGraph \<Rightarrow> 32 word \<Rightarrow> bool
 
 lemma is_wellformed_spc':
   "\<lbrace> P and 
-     (\<lambda>s. (*wf_digraph (abs_IGraph iG) \<and>*) (* really? :) *)
-          is_graph s iG g) \<rbrace>
+     (\<lambda>s. is_graph s iG g) \<rbrace>
    is_wellformed' g
    \<lbrace> (\<lambda>_ s. P s) And 
      (\<lambda>rr s. rr \<noteq> 0 \<longleftrightarrow> is_wellformed_inv iG (iedge_cnt iG)) \<rbrace>!"
