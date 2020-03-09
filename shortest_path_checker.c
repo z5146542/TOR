@@ -59,11 +59,11 @@ int just(Graph *g, EInt *dist, unsigned int *c, unsigned int s, EInt *enu, int *
                 if(edge_id >= edge_cnt(g)) return 0;
                 if(arcs(g, edge_id).second != v) return 0;
                 if((dist[v].isInf == 0) != (dist[arcs(g, edge_id).first].isInf == 0)) return 0;
-		if(dist[v].isInf == 0)
+                if(dist[v].isInf == 0)
                     if((unsigned long) dist[v].val != (unsigned long) dist[arcs(g, edge_id).first].val + (unsigned long) c[edge_id]) return 0;
                 if(enu[arcs(g, edge_id).first].isInf != 0) return 0;
                 // if(enu[arcs(g, edge_id).first].val > enu[arcs(g, edge_id).first].val + 1) return 0;
-		// if(enu[v].val >= vertex_cnt(g)) return 0;
+                // if(enu[v].val >= vertex_cnt(g)) return 0;
                 if((unsigned long) enu[v].val != (unsigned long) enu[arcs(g, edge_id).first].val + 1) return 0;
             }
         }
