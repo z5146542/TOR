@@ -1686,7 +1686,21 @@ definition basic_sp_inv ::
         no_path_inv G d n (ivertex_cnt G)\<and>
         (\<forall>e < ivertex_cnt G. 0 \<le> c e))"
 
-lemma shortest_path_pos_cost_spc:
+lemma shortest_path_pos_cost_pred_eq_invariants:
+"\<And>G d c s n p.
+    basic_sp_inv G d c s n p
+    =
+    shortest_path_pos_cost_pred (abs_IGraph G) (abs_IDist d) (abs_ICost c) s (abs_INum n) (abs_IPedge p)"
+  unfolding basic_sp_inv_def basic_just_sp_inv_def 
+  apply (simp add: shortest_path_pos_cost_pred_eq_invariants'[symmetric])
+  unfolding abs_IDist_def apply clarsimp
+  apply safe 
+  apply simp
+
+  using unat_eq_zero apply blast  
+using unat_eq_zero by blast
+
+lemma shortest_path_pos_cost_spc':
   "\<lbrace> P and 
      (\<lambda>s. is_graph s iG g \<and>
           is_dist s iG iD d \<and>
@@ -1772,6 +1786,40 @@ lemma shortest_path_pos_cost_imp_correct:
    d v = wf_digraph.\<mu> (abs_IGraph G) c s v)"
   using shortest_path_pos_cost_pred.correct_shortest_path_pred by fast
 
+theorem shortest_path_pos_cost_ax_char:
+  "\<lbrace> P and 
+     (\<lambda>s. is_graph s iG g \<and>
+          is_dist s iG iD d \<and>
+          is_cost s iG iC c \<and>
+          sc < ivertex_cnt iG \<and> 
+          is_numm s iG iN n \<and>
+          is_pedge s iG iP p)\<rbrace>
+   check_sp' g d c sc n p
+   \<lbrace> (\<lambda>_ s. P s) And 
+     (\<lambda>rr s. rr \<noteq> 0 \<longleftrightarrow>
+           shortest_path_pos_cost_pred 
+                (abs_IGraph iG) (abs_IDist iD) (abs_ICost iC) sc 
+                (abs_INum iN) (abs_IPedge iP))\<rbrace>!"
+  using validNF_post_imp[OF _ shortest_path_pos_cost_spc'] 
+        shortest_path_pos_cost_pred_eq_invariants 
+  by simp
+
+corollary shortest_path_checker_is_correct:
+ "\<lbrace> P and 
+     (\<lambda>s. is_graph s iG g \<and>
+          is_dist s iG iD d \<and>
+          is_cost s iG iC c \<and>
+          sc < ivertex_cnt iG \<and> 
+          is_numm s iG iN n \<and>
+          is_pedge s iG iP p)\<rbrace>
+   check_sp' g d c sc n p
+   \<lbrace> (\<lambda>_ s. P s) And 
+     (\<lambda>rr s. rr \<noteq> 0 \<longrightarrow> 
+  (\<forall>v \<in> verts (abs_IGraph iG).
+   (abs_IDist iD) v = wf_digraph.\<mu> (abs_IGraph iG) (abs_ICost iC) sc v))\<rbrace>!"
+  using validNF_post_imp[OF _ shortest_path_pos_cost_ax_char] 
+        shortest_path_pos_cost_imp_correct 
+  by simp
 
 end
 
