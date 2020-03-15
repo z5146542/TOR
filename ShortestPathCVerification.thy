@@ -820,21 +820,6 @@ qed
 
 lemma  word32_minus_comm: "(x:: 32 word) - y - z = x - z - y" by simp
 
-
-
-lemma just_spc':
-  "\<lbrace> P and 
-     (\<lambda>s. wf_digraph (abs_IGraph iG) \<and>
-          is_graph s iG g \<and>
-          is_dist s iG iD d \<and>
-          is_cost s iG iC c \<and>
-          is_numm s iG iN n \<and>
-          is_pedge s iG iP p)\<rbrace>
-   just' g d c sc n p
-   \<lbrace> (\<lambda>_ s. P s) And 
-     (\<lambda>rr s. rr \<noteq> 0 \<longleftrightarrow> just_inv iG iD iC sc iN iP (ivertex_cnt iG)) \<rbrace>!"
-  oops
-
 lemma just_spc':
   "\<lbrace> P and 
      (\<lambda>s. wf_digraph (abs_IGraph iG) \<and>
@@ -1184,15 +1169,101 @@ lemma no_path_spc':
   apply fast
   done
 
-lemma wf_inv_is_fin_digraph: 
-   "fin_digraph (abs_IGraph G) \<longleftrightarrow> is_wellformed_inv G (iedge_cnt G)"
+lemma wf_inv_is_fin_digraph:
+   "is_wellformed_inv G (iedge_cnt G) \<longleftrightarrow> fin_digraph (abs_IGraph G)"
     unfolding is_wellformed_inv_def fin_digraph_def fin_digraph_axioms_def
       wf_digraph_def no_loops_def 
     by auto
 
-lemma fin_digraph_is_wellformed_inv:  "fin_digraph (abs_IGraph G) \<longleftrightarrow> is_wellformed_inv G (iedge_cnt G)" 
-  unfolding is_wellformed_inv_def fin_digraph_def fin_digraph_axioms_def wf_digraph_def no_loops_def 
-  by auto
+lemma trian_inv_eq_math:
+  "trian_inv G d c (fst (snd G)) \<longleftrightarrow> 
+   (\<forall>e. e \<in> arcs (abs_IGraph G) \<longrightarrow> 
+    abs_IDist d (head (abs_IGraph G) e) \<le> abs_IDist d (tail (abs_IGraph G) e) + ereal (abs_ICost c e))"
+  apply safe
+    (* program implies maths *)
+   apply (simp add: abs_IDist_def abs_ICost_def)
+   apply clarsimp 
+  using real_unat_leq_plus_64 long_ucast
+   apply (metis cast_long.simps trian_inv_def)
+    (* maths implies program *)
+  apply (simp add: trian_inv_def abs_IDist_def abs_ICost_def)
+  apply clarsimp
+proof -
+  fix i :: "32 word"
+  assume a1: "i < fst (snd G)"
+  assume a2: "snd (d (fst (snd (snd G) i))) = 0"
+  assume a3: "\<forall>e<fst (snd G). (if snd (d (snd (snd (snd G) e))) \<noteq> 0 then PInfty else ereal (real (unat (fst (d (snd (snd (snd G) e))))))) \<le> (if snd (d (fst (snd (snd G) e))) \<noteq> 0 then PInfty else ereal (real (unat (fst (d (fst (snd (snd G) e))))))) + ereal (real (unat (c e)))"
+  then have f4: "\<not> True \<or> snd (d (snd (snd (snd G) i))) = 0"
+    using a2 a1 by fastforce
+  then have "\<not> True \<or> unat (fst (d (snd (snd (snd G) i)))) \<le> unat (fst (d (fst (snd (snd G) i)))) + unat (c i)"
+    using a3 a2 a1 by fastforce
+  then show "snd (d (snd (snd (snd G) i))) = 0 \<and> UCAST(32 \<rightarrow> 64) (fst (d (snd (snd (snd G) i)))) \<le> UCAST(32 \<rightarrow> 64) (fst (d (fst (snd (snd G) i)))) + (UCAST(32 \<rightarrow> 64) (c i)::64 word)"
+    using f4 by (simp add: shortest_path_checker.long_ucast shortest_path_checker.word_add_cast_up_no_overflow word_le_nat_alt)
+qed
+
+lemma just_inv_eq_math: 
+  "just_inv G d c s n p (ivertex_cnt G) \<longleftrightarrow> 
+    (\<forall>v<fst G. v \<noteq> s \<longrightarrow>
+    (\<exists>i. abs_INum n v = enat i) \<longrightarrow>
+    (\<exists> e. (abs_IPedge p v) = Some e \<and>
+     e < (fst (snd G)) \<and>
+     v = snd (snd (snd G) e) \<and>
+     abs_IDist d v =
+     abs_IDist d (fst (snd (snd G) e)) +
+     ereal (abs_ICost c e) \<and>
+     abs_INum n v = 
+     abs_INum n (fst (snd (snd G) e)) + enat (Suc 0)))"
+  apply (simp add: just_inv_def)
+  apply (rule iffI; 
+         clarsimp; 
+         erule_tac x=v in allE)
+   (* program implies maths *)  
+   apply (rule_tac x= "p v" in exI, clarsimp simp: abs_IPedge_def)
+   apply (case_tac "snd (n v) = 0"; clarsimp simp: not_le word_msb_sint abs_INum_def) 
+   apply (rule conjI)
+    apply (simp add: add_ucast_no_overflow_unat abs_IDist_def abs_ICost_def abs_IPedge_def)
+   apply (metis (mono_tags, hide_lams) add.right_neutral add_Suc_right 
+          le_add_same_cancel1 long_ucast add_ucast_no_overflow_64 unat_eq_1(2) 
+          unat_plus_simple zero_le)
+  (* maths implies program *)
+  apply (clarsimp simp add: abs_IPedge_def)
+  apply (subgoal_tac "\<exists>i. abs_INum n v = enat i"; simp add: abs_INum_def) 
+  apply (case_tac "msb (p v)"; 
+         clarsimp simp: not_le word_msb_sint 
+         abs_INum_def abs_IDist_def abs_ICost_def)  
+  apply (case_tac "snd (n (fst (snd (snd G) (p v)))) = 0"; clarsimp) 
+  apply (case_tac "snd (d v) = 0"; 
+         case_tac "snd (d (fst (snd (snd G) (p v)))) = 0"; 
+         clarsimp simp: add_ucast_no_overflow_unat)
+  proof -
+   fix v :: "32 word"
+   assume a1: "unat (fst (n v)) = Suc (unat (fst (n (fst (snd (snd G) (p v))))))"
+   have "\<forall>w. of_nat (Suc (unat (w::64 word))) = 1 + w"
+    by simp
+   then show "UCAST(32 \<rightarrow> 64) (fst (n v)) = UCAST(32 \<rightarrow> 64) (fst (n (fst (snd (snd G) (p v))))) + (1::64 word)"
+    using a1 by (metis add.commute long_ucast word_unat.Rep_inverse)
+  next 
+   fix v :: "32 word"
+   assume "unat (fst (n v)) = Suc (unat (fst (n (fst (snd (snd G) (p v))))))"
+   then have "unat (UCAST(32 \<rightarrow> 64) (fst (n v))::64 word) = Suc (unat (UCAST(32 \<rightarrow> 64) (fst (n (fst (snd (snd G) (p v)))))::64 word))"
+     using long_ucast by presburger
+   then show "UCAST(32 \<rightarrow> 64) (fst (n v)) = UCAST(32 \<rightarrow> 64) (fst (n (fst (snd (snd G) (p v))))) + (1::64 word)"
+     by (metis (no_types) add.commute of_nat_Suc word_unat.Rep_inverse)
+ qed
+
+lemma src_dist_nonneg_valid: 
+  "(is_inf d s = 0 \<and> val d s = 0) \<longleftrightarrow> abs_IDist d s \<le> 0"
+  unfolding abs_IDist_def
+  by (simp add: unat_eq_zero)
+
+lemma no_path_inv_eq_math:
+  "no_path_inv G d n (ivertex_cnt G) \<longleftrightarrow>
+   (\<forall>v. v \<in> verts (abs_IGraph G) \<longrightarrow> (abs_IDist d v \<noteq> PInfty \<longleftrightarrow> abs_INum n v \<noteq> PInfty))"
+  unfolding no_path_inv_def abs_IDist_def abs_INum_def by fastforce+
+
+lemma nonneg_cost_edge_valid:
+  "(\<forall>e. e \<in> arcs (abs_IGraph G) \<longrightarrow> 0 \<le> abs_ICost c e)"
+  unfolding abs_ICost_def by force
 
 lemma basic_just_sp_eq_invariants_imp:
 "\<And>G d c s n p. 
@@ -1214,144 +1285,29 @@ proof -
   let ?ac = "abs_ICost c"
   let ?an = "abs_INum n"  
   let ?ap = "abs_IPedge p"
-  have "fin_digraph (abs_IGraph G) \<longleftrightarrow> is_wellformed_inv G (iedge_cnt G)"
-    by (rule fin_digraph_is_wellformed_inv)
-  moreover
-  have trian1: "trian_inv G d c (iedge_cnt G) \<longleftrightarrow>
-   (\<forall>e. e \<in> arcs ?aG \<longrightarrow> 
-    is_inf d (tail ?aG e) = 0 \<longrightarrow>
-    is_inf d (head ?aG e) = 0 \<and> 
-   (*(val d (tail ?aG e) \<le> val d (tail ?aG e) + (c e)) \<and>*)
-   (cast_long (val d (head ?aG e)) \<le> cast_long (val d (tail ?aG e)) + cast_long (c e)))"
-    by (simp add: trian_inv_def)
-  then have trian_main: "trian_inv G d c (iedge_cnt G) \<longleftrightarrow>
-   (\<forall>e. e \<in> arcs ?aG \<longrightarrow>
-    ?ad (head ?aG e) \<le> ?ad (tail ?aG e) + ?ac e)"
-    apply safe
-    (* program implies maths *)
-      apply (simp add: abs_IDist_def abs_ICost_def)
-      apply clarsimp
-      apply (metis real_unat_leq_plus_64 long_ucast)
-    (* maths implies program *)
-     apply (simp add: trian_inv_def abs_IDist_def abs_ICost_def)
-     apply clarsimp
-     apply (erule_tac x=e in allE)
-     apply (simp add: real_unat_leq_plus_64 long_ucast)
-    apply (simp add: trian_inv_def abs_IDist_def abs_ICost_def)
-    apply clarsimp
-    apply safe
-       apply fastforce
-      apply fastforce
-     apply (subgoal_tac "(if snd (d (snd (snd (snd G) ia))) \<noteq> 0 
-                          then PInfty 
-                          else ereal (real (unat (fst (d (snd (snd (snd G) ia))))))) \<le> 
-                          ereal (real (unat (fst (d (fst (snd (snd G) ia)))))) + ereal (real (unat (c ia)))")
-      apply (subgoal_tac "False \<or> snd (d (snd (snd (snd G) ia))) = 0")
-       apply meson
-      apply force
-     apply presburger
-    apply (erule_tac x="ia" in allE)
-    apply clarsimp 
-    apply (subgoal_tac "\<And>e. \<not> PInfty \<le> e \<or> e = PInfty")
-     apply (subgoal_tac "snd (d (snd (snd (snd G) ia))) = 0 \<or> 
-                  ereal (real (unat (fst (d (fst (snd (snd G) ia))))) + real (unat (c ia))) = PInfty")
-      apply (simp add:add_ucast_no_overflow_64)
-     apply presburger
-    apply (metis (full_types) ereal_infty_less_eq(1) infinity_ereal_def)
-    done
-  moreover have 
-   just1: "just_inv G d c s n p (ivertex_cnt G) \<longleftrightarrow>
-    (\<forall>v. v \<in> verts ?aG \<and>
-      v \<noteq> s \<and> is_inf n v = 0 \<longrightarrow> 
-    sint (p v) \<ge> 0 \<and>
-    (\<exists>e. p v = e \<and> e \<in> arcs ?aG \<and>
-      v = head ?aG e \<and>
-      (is_inf d v = 0 \<longleftrightarrow> is_inf d (tail ?aG e) = 0) \<and>
-      (is_inf d v = 0 \<longrightarrow> 
-   cast_long (val d v) = cast_long (val d (tail ?aG e)) + cast_long (c e)) \<and>
-      is_inf n (tail ?aG e) = 0 \<and>
-      (* val n v < ivertex_cnt G \<and> *)
-      cast_long (val n v) = cast_long (val n (tail ?aG e)) + 1))"
-    using just_inv_def
-    by auto
-(*
-  then have "just_inv G d c s n p (ivertex_cnt G) \<longleftrightarrow>
-    (\<forall>v. v \<in> verts ?aG \<and>
-      v \<noteq> s \<and> ?an v \<noteq> \<infinity> \<longrightarrow> 
-    (\<exists>e. ?ap v = Some e \<and> e \<in> arcs ?aG \<and>
-      v = head ?aG e \<and> 
-      ?ad v = ?ad (tail ?aG e) + (?ac e) \<and>
-      ?an v = ?an (tail ?aG e) + enat 1))"
-*)
- have just_main: "just_inv G d c s n p (ivertex_cnt G) \<longleftrightarrow>(\<forall>v<fst G.
-             v \<noteq> s \<longrightarrow>
-             (\<exists>i. abs_INum n v = enat i) \<longrightarrow>
-             (\<exists> e. (abs_IPedge p v) = Some e \<and>
-                e < (fst (snd G)) \<and>
-                v = snd (snd (snd G) e) \<and>
-               abs_IDist d v =
-               abs_IDist d (fst (snd (snd G) e)) +
-               ereal (abs_ICost c e) \<and>
-               abs_INum n v = 
-               abs_INum n (fst (snd (snd G) e)) + enat (Suc 0)))"
-  apply (simp add: just1)
-  apply (rule iffI; 
-        clarsimp; 
-        erule_tac x=v in allE)
-   (* program implies maths *)  
-    apply (rule_tac x= "p v" in exI, clarsimp simp: abs_IPedge_def)
-    apply (case_tac "snd (n v) = 0"; clarsimp simp: not_le word_msb_sint abs_INum_def) 
-   apply (rule conjI)
-    apply (simp add: add_ucast_no_overflow_unat abs_IDist_def abs_ICost_def abs_IPedge_def)
-   apply (metis (mono_tags, hide_lams) add.right_neutral add_Suc_right 
-          le_add_same_cancel1 long_ucast add_ucast_no_overflow_64 unat_eq_1(2) 
-          unat_plus_simple zero_le)
-  (* maths implies program *)
-   apply (clarsimp simp add: abs_IPedge_def)
-   apply (subgoal_tac "\<exists>i. abs_INum n v = enat i"; simp add: abs_INum_def) 
-   apply (case_tac "msb (p v)"; 
-          clarsimp simp: not_le word_msb_sint 
-          abs_INum_def abs_IDist_def abs_ICost_def)  
-   apply (case_tac "snd (n (fst (snd (snd G) (p v)))) = 0"; clarsimp) 
-   apply (case_tac "snd (d v) = 0"; 
-          case_tac "snd (d (fst (snd (snd G) (p v)))) = 0"; 
-          clarsimp simp: add_ucast_no_overflow_unat)
-  proof -
-   fix v :: "32 word"
-   assume a1: "unat (fst (n v)) = Suc (unat (fst (n (fst (snd (snd G) (p v))))))"
-   have "\<forall>w. of_nat (Suc (unat (w::64 word))) = 1 + w"
-    by simp
-   then show "UCAST(32 \<rightarrow> 64) (fst (n v)) = UCAST(32 \<rightarrow> 64) (fst (n (fst (snd (snd G) (p v))))) + (1::64 word)"
-    using a1 by (metis add.commute long_ucast word_unat.Rep_inverse)
-  next 
-   fix v :: "32 word"
-   assume "unat (fst (n v)) = Suc (unat (fst (n (fst (snd (snd G) (p v))))))"
-   then have "unat (UCAST(32 \<rightarrow> 64) (fst (n v))::64 word) = Suc (unat (UCAST(32 \<rightarrow> 64) (fst (n (fst (snd (snd G) (p v)))))::64 word))"
-     using long_ucast by presburger
-   then show "UCAST(32 \<rightarrow> 64) (fst (n v)) = UCAST(32 \<rightarrow> 64) (fst (n (fst (snd (snd G) (p v))))) + (1::64 word)"
-     by (metis (no_types) add.commute of_nat_Suc word_unat.Rep_inverse)
- qed
-  moreover have "(is_inf d s = 0 \<and> val d s = 0) \<longleftrightarrow> abs_IDist d s \<le> 0"
-    unfolding abs_IDist_def
-    by (simp add: unat_eq_zero)
-ultimately
    show "?thesis G d c s n p"
    unfolding 
     basic_just_sp_pred_def 
     basic_just_sp_pred_axioms_def 
     basic_sp_def basic_sp_axioms_def
+   using wf_inv_is_fin_digraph[where ?G=G]
+     src_dist_nonneg_valid[where ?d=d and ?s=s] 
+     trian_inv_eq_math[where ?G=G and ?d=d and ?c=c]
+     just_inv_eq_math[where ?G=G and ?d=d and ?c=c and ?s=s and ?n=n and ?p=p]
    by auto
 qed
 
-lemma shortest_path_pos_cost_pred_left_invariants':
+lemma shortest_path_pos_cost_pred_eq_invariants':
 "\<And>G d c s n p.
-    ((abs_IDist d) s = 0 \<and>
-    s < ivertex_cnt G \<and>
     (is_wellformed_inv G (iedge_cnt G) \<and> 
+    s < ivertex_cnt G \<and>
+    is_inf d s = 0 \<and>
+    val d s = 0 \<and>
     trian_inv G d c (iedge_cnt G) \<and> 
-    just_inv G d c s n p (ivertex_cnt G) \<and> 
-    no_path_inv G d n (ivertex_cnt G)))
-    \<longrightarrow>
+    just_inv G d c s n p (ivertex_cnt G) \<and>
+    no_path_inv G d n (ivertex_cnt G) \<and>
+    (\<forall>e < ivertex_cnt G. 0 \<le> c e))
+    =
     shortest_path_pos_cost_pred (abs_IGraph G) (abs_IDist d) (abs_ICost c) s (abs_INum n) (abs_IPedge p)"
 proof -
   fix G d c s n p 
@@ -1360,16 +1316,78 @@ proof -
   let ?ac = "abs_ICost c"
   let ?an = "abs_INum n"  
   let ?ap = "abs_IPedge p"
-  have no_path_assms: "no_path_inv G d n (ivertex_cnt G) \<longrightarrow> 
-    (\<forall>v < fst G. (is_inf d v \<noteq> 0 \<longleftrightarrow> is_inf n v \<noteq> 0))"
-    by (simp add:no_path_inv_def)
-  then have "no_path_inv G d n (ivertex_cnt G) \<longrightarrow> 
-    (\<forall>v. v \<in> verts ?aG \<longrightarrow> (?ad v \<noteq> PInfty \<longleftrightarrow> ?an v \<noteq> PInfty))"
-    unfolding no_path_inv_def abs_IDist_def abs_INum_def by simp
-  moreover have "(\<forall>e. e \<in> arcs ?aG \<longrightarrow> 0 \<le> ?ac e)"
-    unfolding abs_ICost_def by force
-ultimately 
   show "?thesis G d c s n p"
+  unfolding 
+    basic_just_sp_pred_def 
+    basic_just_sp_pred_axioms_def 
+    basic_sp_def basic_sp_axioms_def
+    shortest_path_pos_cost_pred_def
+    shortest_path_pos_cost_pred_axioms_def
+  using wf_inv_is_fin_digraph [where ?G=G]
+        src_dist_nonneg_valid[where ?d=d and ?s=s] 
+        trian_inv_eq_math[where ?G=G and ?d=d and ?c=c]
+        just_inv_eq_math[where ?G=G and ?d=d and ?c=c and ?s=s and ?n=n and ?p=p]
+        no_path_inv_eq_math[where ?G=G and ?d=d and ?n=n]
+        nonneg_cost_edge_valid[where ?G=G and ?c=c]
+  apply clarsimp 
+  apply (safe, simp_all) 
+                  apply auto[1]
+                 apply (simp add:abs_IDist_def)
+                apply (meson abs_INum_def)
+               apply (force simp:abs_IDist_def)
+              apply meson+
+          apply (metis (no_types, hide_lams))
+         apply (force simp: abs_IDist_def)
+        apply (meson abs_INum_def)
+       apply metis
+      apply auto[1]
+     apply meson
+    apply meson
+   apply (meson abs_IDist_def)
+  apply meson
+  done
+qed
+(*
+lemma shortest_path_pos_cost_pred_eq_invariants':
+"\<And>G d c s n p.
+    ((abs_IDist d) s = 0 \<and>
+    s < ivertex_cnt G \<and>
+    (is_wellformed_inv G (iedge_cnt G) \<and> 
+    trian_inv G d c (iedge_cnt G) \<and> 
+    just_inv G d c s n p (ivertex_cnt G) \<and> 
+    no_path_inv G d n (ivertex_cnt G)))
+    =
+    shortest_path_pos_cost_pred (abs_IGraph G) (abs_IDist d) (abs_ICost c) s (abs_INum n) (abs_IPedge p)"
+proof -
+  fix G d c s n p 
+  let ?aG = "abs_IGraph G"
+  let ?ad = "abs_IDist d"
+  let ?ac = "abs_ICost c"
+  let ?an = "abs_INum n"  
+  let ?ap = "abs_IPedge p" (*
+  show "?thesis G d c s n p"
+  unfolding 
+    basic_just_sp_pred_def 
+    basic_just_sp_pred_axioms_def 
+    basic_sp_def basic_sp_axioms_def
+    shortest_path_pos_cost_pred_def
+    shortest_path_pos_cost_pred_axioms_def
+  using basic_just_sp_eq_invariants_imp[where ?G=G and ?d=d and ?c=c and ?s=s and ?n=n and ?p=p]
+        wf_inv_is_fin_digraph [where ?G=G]
+        src_dist_nonneg_valid[where ?d=d and ?s=s] 
+        trian_inv_eq_math[where ?G=G and ?d=d and ?c=c]
+        just_inv_eq_math[where ?G=G and ?d=d and ?c=c and ?s=s and ?n=n and ?p=p]
+        no_path_inv_eq_math[where ?G=G and ?d=d and ?n=n]
+        nonneg_cost_edge_valid[where ?G=G and ?c=c] abs_IDist_def[where ?d=d and ?v=s] *)
+  have 
+  "((abs_IDist d) s = 0 \<and>
+    s < ivertex_cnt G \<and>
+    (is_wellformed_inv G (iedge_cnt G) \<and> 
+    trian_inv G d c (iedge_cnt G) \<and> 
+    just_inv G d c s n p (ivertex_cnt G) \<and> 
+    no_path_inv G d n (ivertex_cnt G)))
+    \<longrightarrow>
+    shortest_path_pos_cost_pred (abs_IGraph G) (abs_IDist d) (abs_ICost c) s (abs_INum n) (abs_IPedge p)"
   unfolding 
     basic_just_sp_pred_def 
     basic_just_sp_pred_axioms_def 
@@ -1378,12 +1396,12 @@ ultimately
     shortest_path_pos_cost_pred_axioms_def
   using basic_just_sp_eq_invariants_imp
   apply (clarsimp, safe)
-      apply (simp add: fin_digraph_is_wellformed_inv)
+      apply (simp add: wf_inv_is_fin_digraph)
      apply (simp add: abs_IDist_def abs_ICost_def trian_inv_def)
      apply (metis real_unat_leq_plus_64 long_ucast)
     apply (rule_tac x = "p v" in bexI; clarsimp simp: just_inv_def) 
-    prefer 2
-     apply (metis PInfty_eq_infinity no_path_assms abs_IDist_def)
+    prefer 2 
+  apply (metis enat.distinct(2) shortest_path_checker.abs_INum_def)
     apply (clarsimp simp: abs_IPedge_def just_inv_def abs_INum_def) 
     apply (rule conjI, metis enat.distinct(2))
     apply (clarsimp)
@@ -1406,13 +1424,11 @@ ultimately
      apply (metis le_add_same_cancel1 not_le add_ucast_no_overflow_64 ucast_1 zero_le)
     apply simp
    apply (simp add: no_path_inv_def abs_IDist_def abs_INum_def, force)
-  apply (simp add: no_path_inv_def abs_IDist_def abs_INum_def, force)
+  apply (simp add: no_path_inv_def abs_IDist_def abs_INum_def, force) 
+  apply (simp add: nonneg_cost_edge_valid)
   done
-qed
-
-lemma shortest_path_pos_cost_pred_right_invariants':
-"\<And>G d c s n p.
-    shortest_path_pos_cost_pred (abs_IGraph G) (abs_IDist d) (abs_ICost c) s (abs_INum n) (abs_IPedge p)
+  moreover have 
+   "shortest_path_pos_cost_pred (abs_IGraph G) (abs_IDist d) (abs_ICost c) s (abs_INum n) (abs_IPedge p)
     \<longrightarrow>
     ((abs_IDist d) s = 0 \<and>
     s < ivertex_cnt G \<and>
@@ -1421,150 +1437,18 @@ lemma shortest_path_pos_cost_pred_right_invariants':
     just_inv G d c s n p (ivertex_cnt G) \<and> 
     no_path_inv G d n (ivertex_cnt G)))
     "
-proof -
-  fix G d c s n p 
-  let ?aG = "abs_IGraph G"
-  let ?ad = "abs_IDist d"
-  let ?ac = "abs_ICost c"
-  let ?an = "abs_INum n"  
-  let ?ap = "abs_IPedge p"
-  have trian1: "trian_inv G d c (iedge_cnt G) \<longleftrightarrow>
-   (\<forall>e. e \<in> arcs ?aG \<longrightarrow> 
-    is_inf d (tail ?aG e) = 0 \<longrightarrow>
-    is_inf d (head ?aG e) = 0 \<and> 
-   (*(val d (tail ?aG e) \<le> val d (tail ?aG e) + (c e)) \<and>*)
-   (cast_long (val d (head ?aG e)) \<le> cast_long (val d (tail ?aG e)) + cast_long (c e)))"
-    by (simp add: trian_inv_def)
-  then have c2: "trian_inv G d c (iedge_cnt G) \<longleftrightarrow>
-   (\<forall>e. e \<in> arcs ?aG \<longrightarrow>
-    ?ad (head ?aG e) \<le> ?ad (tail ?aG e) + ?ac e)"
-    apply safe
-    (* program implies maths *)
-      apply (simp add: abs_IDist_def abs_ICost_def)
-      apply clarsimp
-      apply (metis real_unat_leq_plus_64 long_ucast)
-    (* maths implies program *)
-     apply (simp add: trian_inv_def abs_IDist_def abs_ICost_def)
-     apply clarsimp
-     apply (erule_tac x=e in allE)
-     apply (simp add: real_unat_leq_plus_64 long_ucast)
-    apply (simp add: trian_inv_def abs_IDist_def abs_ICost_def)
-    apply clarsimp
-    apply safe
-       apply fastforce
-      apply fastforce
-     apply (subgoal_tac "(if snd (d (snd (snd (snd G) ia))) \<noteq> 0 
-                          then PInfty 
-                          else ereal (real (unat (fst (d (snd (snd (snd G) ia))))))) \<le> 
-                          ereal (real (unat (fst (d (fst (snd (snd G) ia)))))) + ereal (real (unat (c ia)))")
-      apply (subgoal_tac "False \<or> snd (d (snd (snd (snd G) ia))) = 0")
-       apply meson
-      apply force
-     apply presburger
-    apply (erule_tac x="ia" in allE)
-    apply clarsimp 
-    apply (subgoal_tac "\<And>e. \<not> PInfty \<le> e \<or> e = PInfty")
-     apply (subgoal_tac "snd (d (snd (snd (snd G) ia))) = 0 \<or> 
-                  ereal (real (unat (fst (d (fst (snd (snd G) ia))))) + real (unat (c ia))) = PInfty")
-      apply (simp add:add_ucast_no_overflow_64)
-     apply presburger
-    apply (metis (full_types) ereal_infty_less_eq(1) infinity_ereal_def)
-    done
-  moreover
-  have 
-   just1: "just_inv G d c s n p (ivertex_cnt G) \<longleftrightarrow>
-    (\<forall>v. v \<in> verts ?aG \<and>
-      v \<noteq> s \<and> is_inf n v = 0 \<longrightarrow> 
-    sint (p v) \<ge> 0 \<and>
-    (\<exists>e. p v = e \<and> e \<in> arcs ?aG \<and>
-      v = head ?aG e \<and>
-      (is_inf d v = 0 \<longleftrightarrow> is_inf d (tail ?aG e) = 0) \<and>
-      (is_inf d v = 0 \<longrightarrow> 
-   cast_long (val d v) = cast_long (val d (tail ?aG e)) + cast_long (c e)) \<and>
-      is_inf n (tail ?aG e) = 0 \<and>
-      (* val n v < ivertex_cnt G \<and> *)
-      cast_long (val n v) = cast_long (val n (tail ?aG e)) + 1))"
-    using just_inv_def
+    unfolding 
+      basic_just_sp_pred_def 
+      basic_just_sp_pred_axioms_def 
+      basic_sp_def basic_sp_axioms_def
+      shortest_path_pos_cost_pred_def
+      shortest_path_pos_cost_pred_axioms_def
+    using basic_just_sp_eq_invariants_imp wf_inv_is_fin_digraph trian_inv_eq_math just_inv_eq_math no_path_inv_eq_math
     by auto
- have c3: "just_inv G d c s n p (ivertex_cnt G) \<longleftrightarrow>(\<forall>v<fst G.
-             v \<noteq> s \<longrightarrow>
-             (\<exists>i. abs_INum n v = enat i) \<longrightarrow>
-             (\<exists> e. (abs_IPedge p v) = Some e \<and>
-                e < (fst (snd G)) \<and>
-                v = snd (snd (snd G) e) \<and>
-               abs_IDist d v =
-               abs_IDist d (fst (snd (snd G) e)) +
-               ereal (abs_ICost c e) \<and>
-               abs_INum n v = 
-               abs_INum n (fst (snd (snd G) e)) + enat (Suc 0)))"
-  apply (simp add: just1)
-  apply (rule iffI; 
-        clarsimp; 
-        erule_tac x=v in allE)
-   (* program implies maths *)  
-    apply (rule_tac x= "p v" in exI, clarsimp simp: abs_IPedge_def)
-    apply (case_tac "snd (n v) = 0"; clarsimp simp: not_le word_msb_sint abs_INum_def) 
-   apply (rule conjI)
-    apply (simp add: add_ucast_no_overflow_unat abs_IDist_def abs_ICost_def abs_IPedge_def)
-   apply (metis (mono_tags, hide_lams) add.right_neutral add_Suc_right 
-          le_add_same_cancel1 long_ucast add_ucast_no_overflow_64 unat_eq_1(2) 
-          unat_plus_simple zero_le)
-  (* maths implies program *)
-   apply (clarsimp simp add: abs_IPedge_def)
-   apply (subgoal_tac "\<exists>i. abs_INum n v = enat i"; simp add: abs_INum_def) 
-   apply (case_tac "msb (p v)"; 
-          clarsimp simp: not_le word_msb_sint 
-          abs_INum_def abs_IDist_def abs_ICost_def)  
-   apply (case_tac "snd (n (fst (snd (snd G) (p v)))) = 0"; clarsimp) 
-   apply (case_tac "snd (d v) = 0"; 
-          case_tac "snd (d (fst (snd (snd G) (p v)))) = 0"; 
-          clarsimp simp: add_ucast_no_overflow_unat)
-  proof -
-   fix v :: "32 word"
-   assume a1: "unat (fst (n v)) = Suc (unat (fst (n (fst (snd (snd G) (p v))))))"
-   have "\<forall>w. of_nat (Suc (unat (w::64 word))) = 1 + w"
-    by simp
-   then show "UCAST(32 \<rightarrow> 64) (fst (n v)) = UCAST(32 \<rightarrow> 64) (fst (n (fst (snd (snd G) (p v))))) + (1::64 word)"
-    using a1 by (metis add.commute long_ucast word_unat.Rep_inverse)
-  next 
-   fix v :: "32 word"
-   assume "unat (fst (n v)) = Suc (unat (fst (n (fst (snd (snd G) (p v))))))"
-   then have "unat (UCAST(32 \<rightarrow> 64) (fst (n v))::64 word) = Suc (unat (UCAST(32 \<rightarrow> 64) (fst (n (fst (snd (snd G) (p v)))))::64 word))"
-     using long_ucast by presburger
-   then show "UCAST(32 \<rightarrow> 64) (fst (n v)) = UCAST(32 \<rightarrow> 64) (fst (n (fst (snd (snd G) (p v))))) + (1::64 word)"
-     by (metis (no_types) add.commute of_nat_Suc word_unat.Rep_inverse)
- qed
-  moreover have no_path_assms: "no_path_inv G d n (ivertex_cnt G) \<longleftrightarrow> 
-    (\<forall>v < fst G. (is_inf d v \<noteq> 0 \<longleftrightarrow> is_inf n v \<noteq> 0))"
-    by (simp add:no_path_inv_def)
-  then have c4: "no_path_inv G d n (ivertex_cnt G) \<longleftrightarrow>
-    (\<forall>v. v \<in> verts ?aG \<longrightarrow> (?ad v \<noteq> PInfty \<longleftrightarrow> ?an v \<noteq> PInfty))"
-    unfolding no_path_inv_def abs_IDist_def abs_INum_def by fastforce+
-  moreover have "(\<forall>e. e \<in> arcs ?aG \<longrightarrow> 0 \<le> ?ac e)"
-    unfolding abs_ICost_def by force
+  ultimately
   show "?thesis G d c s n p"
-  unfolding 
-    basic_just_sp_pred_def 
-    basic_just_sp_pred_axioms_def 
-    basic_sp_def basic_sp_axioms_def
-    shortest_path_pos_cost_pred_def
-    shortest_path_pos_cost_pred_axioms_def
-  using basic_just_sp_eq_invariants_imp fin_digraph_is_wellformed_inv c2 c3 c4
-  by (metis (no_types, hide_lams) One_nat_def abs_IGraph_def atLeastLessThan_iff enat.distinct(2) ereal_of_enat_inf 
-            infinity_ereal_def pre_digraph.select_convs(1) edges_absI start_absI target_absI word_zero_le)
-qed
-
-lemma shortest_path_pos_cost_pred_eq_invariants':
-"\<And>G d c s n p.
-    ((abs_IDist d) s = 0 \<and>
-    s < ivertex_cnt G \<and>
-    (is_wellformed_inv G (iedge_cnt G) \<and> 
-    trian_inv G d c (iedge_cnt G) \<and> 
-    just_inv G d c s n p (ivertex_cnt G) \<and> 
-    no_path_inv G d n (ivertex_cnt G)))
-    =
-    shortest_path_pos_cost_pred (abs_IGraph G) (abs_IDist d) (abs_ICost c) s (abs_INum n) (abs_IPedge p)"
-  using shortest_path_pos_cost_pred_left_invariants' shortest_path_pos_cost_pred_right_invariants' by metis
+    by meson
+qed*)
 
 definition basic_just_sp_inv :: 
   "IGraph \<Rightarrow> IEInt \<Rightarrow> ICost \<Rightarrow> IVertex \<Rightarrow> IEInt \<Rightarrow> IPEdge \<Rightarrow> bool" where
@@ -1671,7 +1555,7 @@ Q' = "\<lambda>ret' s. if ret' = 0 then ((\<lambda>_. P) And (\<lambda>rr s. (rr
          apply (subst is_inf_heap, force) defer
        apply clarsimp
       apply (simp add: less_le)
-      apply (metis fin_digraph_is_wellformed_inv fin_digraph_def)
+      apply (metis wf_inv_is_fin_digraph fin_digraph_def)
      apply (unfold is_dist_def is_graph_def is_wellformed_inv_def)[1]
      apply (clarsimp simp: if_bool_eq_conj)+
          apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
@@ -1691,14 +1575,8 @@ lemma shortest_path_pos_cost_pred_eq_invariants:
     basic_sp_inv G d c s n p
     =
     shortest_path_pos_cost_pred (abs_IGraph G) (abs_IDist d) (abs_ICost c) s (abs_INum n) (abs_IPedge p)"
-  unfolding basic_sp_inv_def basic_just_sp_inv_def 
-  apply (simp add: shortest_path_pos_cost_pred_eq_invariants'[symmetric])
-  unfolding abs_IDist_def apply clarsimp
-  apply safe 
-  apply simp
-
-  using unat_eq_zero apply blast  
-using unat_eq_zero by blast
+  unfolding basic_sp_inv_def basic_just_sp_inv_def shortest_path_pos_cost_pred_eq_invariants'[symmetric]
+  by force
 
 lemma shortest_path_pos_cost_spc':
   "\<lbrace> P and 
