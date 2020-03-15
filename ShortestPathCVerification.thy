@@ -12,19 +12,6 @@ install_C_file "shortest_path_checker.c"
 autocorres "shortest_path_checker.c"
 
 context shortest_path_checker begin
-thm "is_wellformed_body_def"
-thm "trian_body_def"
-thm "just_body_def"
-thm "no_path_body_def"
-thm "check_basic_just_sp_body_def"
-thm "check_sp_body_def"
-
-thm "is_wellformed'_def"
-thm "trian'_def"
-thm "just'_def"
-thm "no_path'_def"
-thm "check_basic_just_sp'_def"
-thm "check_sp'_def"
 
 (*Implementation Graph Types*)
 
@@ -36,72 +23,72 @@ type_synonym IEInt = "IVertex \<Rightarrow> (32 word \<times> 32 word)"
 type_synonym ICost = "IVertex \<Rightarrow> 32 word"
 type_synonym IGraph = "32 word \<times> 32 word \<times> (IEdge_Id \<Rightarrow> IEdge)"
 
-abbreviation 
-  ivertex_cnt :: "IGraph \<Rightarrow> 32 word"
+abbreviation ivertex_cnt :: 
+  "IGraph \<Rightarrow> 32 word"
 where 
   "ivertex_cnt G \<equiv> fst G"
 
-abbreviation 
-  iedge_cnt :: "IGraph \<Rightarrow> 32 word"
+abbreviation iedge_cnt :: 
+"IGraph \<Rightarrow> 32 word"
 where 
   "iedge_cnt G \<equiv> fst (snd G)"
 
-abbreviation 
-  iedges :: "IGraph \<Rightarrow> IEdge_Id \<Rightarrow> IEdge"
+abbreviation iedges :: 
+  "IGraph \<Rightarrow> IEdge_Id \<Rightarrow> IEdge"
 where 
   "iedges G \<equiv> snd (snd G)"
 
-abbreviation 
-  val :: "IEInt \<Rightarrow> IVertex \<Rightarrow> 32 word"
+abbreviation val :: 
+  "IEInt \<Rightarrow> IVertex \<Rightarrow> 32 word"
 where 
   "val f v \<equiv> fst (f v)"
 
-fun 
-  bool::"32 word \<Rightarrow> bool" 
+fun bool :: 
+  "32 word \<Rightarrow> bool" 
 where 
   "bool b = (if b=0 then False else True)"
 
-abbreviation 
-  is_inf ::  "IEInt \<Rightarrow> IVertex \<Rightarrow> 32 word"
+abbreviation is_inf :: 
+  "IEInt \<Rightarrow> IVertex \<Rightarrow> 32 word"
 where 
   "is_inf f v \<equiv>  (snd (f v))"
 
 (* Make List - makes a list containing the result of a function *)
 
-fun 
-  mk_list' :: "nat \<Rightarrow> (32 word \<Rightarrow> 'b) \<Rightarrow> 'b list" 
+fun mk_list' :: 
+  "nat \<Rightarrow> (32 word \<Rightarrow> 'b) \<Rightarrow> 'b list" 
 where 
   "mk_list' n f = map f  (map of_nat [0..<n])"
 
-fun 
-  mk_list'_temp :: "nat \<Rightarrow> (32 word \<Rightarrow> 'b) \<Rightarrow> nat \<Rightarrow> 'b list" 
+fun mk_list'_temp :: 
+  "nat \<Rightarrow> (32 word \<Rightarrow> 'b) \<Rightarrow> nat \<Rightarrow> 'b list" 
 where 
   "mk_list'_temp 0 _ _ = []" |
   "mk_list'_temp (Suc x) f i = (f (of_nat i)) # mk_list'_temp x f (Suc i)"
 
 (* Make graph lists *)
-fun
-  mk_iedge_list :: "IGraph \<Rightarrow> IEdge list"
+fun mk_iedge_list :: 
+  "IGraph \<Rightarrow> IEdge list"
 where 
   "mk_iedge_list G = mk_list' (unat (iedge_cnt G)) (iedges G)"
 
-fun 
-  mk_inum_list :: "IGraph \<Rightarrow> IEInt \<Rightarrow> (32 word \<times> 32 word) list"
+fun mk_inum_list :: 
+  "IGraph \<Rightarrow> IEInt \<Rightarrow> (32 word \<times> 32 word) list"
 where 
   "mk_inum_list G num = mk_list' (unat (ivertex_cnt G)) num"
   
-fun 
-  mk_ipedge_list :: "IGraph \<Rightarrow> IPEdge \<Rightarrow> 32 word list"
+fun mk_ipedge_list :: 
+  "IGraph \<Rightarrow> IPEdge \<Rightarrow> 32 word list"
 where
   "mk_ipedge_list G pedge = mk_list' (unat (ivertex_cnt G)) pedge"
 
-fun
-  mk_idist_list :: "IGraph \<Rightarrow> IEInt \<Rightarrow> (32 word \<times> 32 word) list"
+fun mk_idist_list :: 
+  "IGraph \<Rightarrow> IEInt \<Rightarrow> (32 word \<times> 32 word) list"
 where
   "mk_idist_list G dis = mk_list' (unat (ivertex_cnt G)) dis"
 
-fun
-  mk_icost_list :: "IGraph \<Rightarrow> ICost \<Rightarrow> 32 word list"
+fun mk_icost_list :: 
+  "IGraph \<Rightarrow> ICost \<Rightarrow> 32 word list"
 where
   "mk_icost_list G cost = mk_list' (unat (iedge_cnt G)) cost"
 
@@ -116,8 +103,8 @@ lemma long_ucast:
   by (simp add: is_up uint_up_ucast unat_def)
 
 
-fun
-  to_edge :: "IEdge \<Rightarrow> Edge_C"
+fun to_edge :: 
+  "IEdge \<Rightarrow> Edge_C"
 where
   "to_edge (u,v) = Edge_C u v"
 
@@ -129,12 +116,13 @@ lemma t_C_pte[simp]:
   "second_C (to_edge e) = snd e"
   by (cases e) auto
 
-fun cast_long :: "32 word \<Rightarrow> 64 word"
-  where 
+fun cast_long :: 
+  "32 word \<Rightarrow> 64 word"
+where 
   "cast_long x = ucast x"
 
-fun
-  to_eint :: "(32 word \<times> 32 word) \<Rightarrow> EInt_C"
+fun to_eint :: 
+  "(32 word \<times> 32 word) \<Rightarrow> EInt_C"
 where
   "to_eint p = EInt_C (fst p) (snd p)"
 
@@ -146,7 +134,8 @@ lemma isInf_C_pte[simp]:
   "isInf_C (to_eint p) = snd p"
   by (cases p) auto
 
-definition is_graph where
+definition is_graph
+where
   "is_graph h iG p \<equiv>
     is_valid_Graph_C h p \<and> 
     ivertex_cnt iG = num_vertices_C (heap_Graph_C h p) \<and> 
@@ -154,22 +143,26 @@ definition is_graph where
     arrlist (heap_Edge_C h) (is_valid_Edge_C h)
       (map to_edge (mk_iedge_list iG)) (arcs_C (heap_Graph_C h p))"
 
-definition 
+definition is_numm
+where
   "is_numm h iG iN p \<equiv> 
         arrlist (\<lambda>p. heap_EInt_C h p) (\<lambda>p. is_valid_EInt_C h p) 
         (map to_eint (mk_inum_list iG iN)) p"
 
-definition
+definition is_pedge
+where
   "is_pedge h iG iP  (p:: 32 signed word ptr) \<equiv> arrlist (\<lambda>p. heap_w32 h (ptr_coerce p))
         (\<lambda>p. is_valid_w32 h (ptr_coerce p)) (mk_ipedge_list iG iP) p"
 
-definition
+definition is_dist
+where
   "is_dist h iG iD p \<equiv> 
         arrlist (\<lambda>p. heap_EInt_C h p) (\<lambda>p. is_valid_EInt_C h p) 
         (map to_eint (mk_idist_list iG iD)) p"
 
 
-definition 
+definition is_cost
+where
   "is_cost h iG iC p \<equiv> arrlist (heap_w32 h) (is_valid_w32 h) (mk_icost_list iG iC) p"
 
 (* Lemmas for unat and of_nat *)
@@ -195,13 +188,13 @@ lemma unat_minus_plus1_less:
 
 (* Abstract Graph *)
 
-definition 
-  no_loops :: "('a, 'b) pre_digraph \<Rightarrow> bool" 
+definition no_loops :: 
+  "('a, 'b) pre_digraph \<Rightarrow> bool" 
 where
   "no_loops G \<equiv> \<forall>e \<in> arcs G. tail G e \<noteq> head G e"
 
-definition 
-  abs_IGraph :: "IGraph \<Rightarrow> (32 word, 32 word) pre_digraph" 
+definition abs_IGraph :: 
+  "IGraph \<Rightarrow> (32 word, 32 word) pre_digraph" 
 where
   "abs_IGraph G \<equiv> \<lparr> verts = {0..<ivertex_cnt G}, arcs = {0..<iedge_cnt G},
     tail = fst o iedges G, head = snd o iedges G \<rparr>"
@@ -212,24 +205,24 @@ lemma verts_absI[simp]: "verts (abs_IGraph G) = {0..<ivertex_cnt G}"
   and target_absI[simp]: "head (abs_IGraph G) e = snd (iedges G e)"
   by (auto simp: abs_IGraph_def)
 
-definition
-  abs_ICost :: "(IEdge_Id \<Rightarrow> 32 word) \<Rightarrow> IEdge_Id \<Rightarrow> real"
+definition abs_ICost :: 
+  "(IEdge_Id \<Rightarrow> 32 word) \<Rightarrow> IEdge_Id \<Rightarrow> real"
 where
   "abs_ICost c e \<equiv> real (unat (c e))"
 
-definition
-  abs_IDist :: "(32 word \<Rightarrow> (32 word \<times> 32 word)) \<Rightarrow> 32 word \<Rightarrow> ereal"
+definition abs_IDist :: 
+  "(32 word \<Rightarrow> (32 word \<times> 32 word)) \<Rightarrow> 32 word \<Rightarrow> ereal"
 where
   "abs_IDist d v \<equiv> if snd (d v) \<noteq> 0 then PInfty else 
          real (unat (fst (d v)))"
 
-definition
-  abs_INum :: "(32 word \<Rightarrow> (32 word \<times> 32 word)) \<Rightarrow> 32 word \<Rightarrow> enat"
+definition abs_INum :: 
+  "(32 word \<Rightarrow> (32 word \<times> 32 word)) \<Rightarrow> 32 word \<Rightarrow> enat"
 where
   "abs_INum n v \<equiv> if snd (n v) \<noteq> 0 then \<infinity> else unat (fst (n v))"
 
-definition 
-  abs_IPedge :: "(32 word \<Rightarrow> 32 word) \<Rightarrow> 32 word \<Rightarrow> 32 word option" 
+definition abs_IPedge :: 
+  "(32 word \<Rightarrow> 32 word) \<Rightarrow> 32 word \<Rightarrow> 32 word option" 
 where
   "abs_IPedge p v \<equiv> if msb (p v) then None else Some (p v)"
 
