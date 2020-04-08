@@ -4,19 +4,19 @@
 // Type Synonyms
 
 typedef struct Edge {
-	unsigned int first;
-	unsigned int second;
+    unsigned int first;
+    unsigned int second;
 } Edge;
 
 typedef struct Graph {
-	unsigned int num_edges;
-	unsigned int num_vertices;
-	Edge *arcs;
+    unsigned int num_edges;
+    unsigned int num_vertices;
+    Edge *arcs;
 } Graph;
 
 typedef struct EInt {
-	unsigned int val;
-	unsigned int isInf;
+    unsigned int val;
+    unsigned int isInf;
 } EInt;
 // Abbreviations
 
@@ -29,17 +29,17 @@ typedef struct EInt {
 // Procedures
 
 int is_wellformed(Graph *g) {
-	  Edge e;
-	  for(unsigned int i = 0; i < edge_cnt(g); i++) {
-  	    e = arcs(g, i);
-  	    if(vertex_cnt(g) <= e.first) return 0;
-  	    if(vertex_cnt(g) <= e.second) return 0;
-	}
-	return 1;
+    Edge e;
+     for(unsigned int i = 0; i < edge_cnt(g); i++) {
+         e = arcs(g, i);
+        if(vertex_cnt(g) <= e.first) return 0;
+        if(vertex_cnt(g) <= e.second) return 0;
+    }
+    return 1;
 }
 
 int trian(Graph *g, EInt *dist, unsigned int *c) {
-	  for(unsigned int edge_id = 0; edge_id < edge_cnt(g); edge_id++) {
+    for(unsigned int edge_id = 0; edge_id < edge_cnt(g); edge_id++) {
         if(dist[arcs(g, edge_id).first].isInf == 0) {
             if(dist[arcs(g, edge_id).second].isInf != 0) return 0;
             // if(dist[arcs(g, edge_id).first].val > dist[arcs(g, edge_id).first].val + c[edge_id]) return 0; // check there is no overflow
@@ -50,8 +50,8 @@ int trian(Graph *g, EInt *dist, unsigned int *c) {
 }
 
 int just(Graph *g, EInt *dist, unsigned int *c, unsigned int s, EInt *enu, int *pred) {
-	  unsigned int edge_id;
-	  for(unsigned int v = 0; v < vertex_cnt(g); v++) {
+    unsigned int edge_id;
+    for(unsigned int v = 0; v < vertex_cnt(g); v++) {
         edge_id = (unsigned int) pred[v];
         if(v != s) {
             if(enu[v].isInf == 0) {
@@ -67,8 +67,8 @@ int just(Graph *g, EInt *dist, unsigned int *c, unsigned int s, EInt *enu, int *
                 if((unsigned long) enu[v].val != (unsigned long) enu[arcs(g, edge_id).first].val + 1) return 0;
             }
         }
-	  }
-	  return 1;
+    }
+    return 1;
 }
 
 int no_path(Graph *g, EInt *dist, EInt *enu) {

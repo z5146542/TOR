@@ -18,9 +18,9 @@ context shortest_path_checker begin
 type_synonym IVertex = "32 word"
 type_synonym IEdge_Id = "32 word"
 type_synonym IEdge = "IVertex \<times> IVertex"
-type_synonym IPEdge = "IVertex \<Rightarrow> 32 word" 
+type_synonym IPEdge = "IVertex \<Rightarrow> IEdge_Id" 
 type_synonym IEInt = "IVertex \<Rightarrow> (32 word \<times> 32 word)"
-type_synonym ICost = "IVertex \<Rightarrow> 32 word"
+type_synonym ICost = "IEdge_Id \<Rightarrow> 32 word"
 type_synonym IGraph = "32 word \<times> 32 word \<times> (IEdge_Id \<Rightarrow> IEdge)"
 
 abbreviation ivertex_cnt :: 
@@ -736,7 +736,7 @@ lemma trian_spc':
          apply (subst head_heap, fastforce, fastforce)
          apply (subst val_heap, fastforce) 
           apply (metis s_C_pte two_comp_to_edge_arrlist_heap uint_nat wellformed_iGraph)
-         apply (rule conjI) 
+         apply (rule conjI)
           apply (metis uint_nat s_C_pte two_comp_to_edge_arrlist_heap 
       is_inf_heap wellformed_iGraph)
          apply (metis (no_types, hide_lams)  isInf_C_pte tail_heap 
@@ -840,7 +840,7 @@ lemma just_spc':
        apply (unfold just_inv_def is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
        apply (clarsimp, rule_tac x=vv in exI, simp add: uint_nat)
        apply (metis isInf_C_pte sint_ucast two_comp_to_eint_arrlist_heap not_le heap_ptr_coerce word_zero_le)
-      apply (rule impI, rule conjI)
+      apply (rule impI, rule conjI)                   
        apply (unfold just_inv_def is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
        apply (clarsimp, rule_tac x=vv in exI, simp add: uint_nat)
        apply (metis isInf_C_pte two_comp_to_eint_arrlist_heap not_le heap_ptr_coerce word_zero_le)
