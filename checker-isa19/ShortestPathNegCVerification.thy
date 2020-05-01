@@ -825,6 +825,11 @@ lemma trian_spc':
     apply (clarsimp simp: if_bool_eq_conj)+
     apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
    apply (rule conjI, rule impI)
+    apply (rule conjI)
+     apply (subst trian_inv_step)
+  defer
+      apply simp
+  apply (rule impI, rule conjI)
     (*apply (subgoal_tac "0 \<ge> sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p int (unat (second_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p int (unat ee))))))))")*)
 
 
