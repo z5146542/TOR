@@ -34,8 +34,8 @@ locale shortest_paths_locale_step1 =
     (\<exists>e \<in> arcs G. parent_edge v = Some e \<and> 
     head G e = v \<and> dist (tail G e) \<noteq> \<infinity> \<and>
     num v  = num (tail G e) + 1)"
-  assumes noPedge: "\<And>e. e\<in>arcs G \<Longrightarrow> 
-    dist (tail G e) \<noteq> \<infinity> \<Longrightarrow> dist (head G e) \<noteq> \<infinity>"
+ (* assumes noPedge: "\<And>e. e\<in>arcs G \<Longrightarrow> 
+    dist (tail G e) \<noteq> \<infinity> \<Longrightarrow> dist (head G e) \<noteq> \<infinity>"*)
 
 sublocale shortest_paths_locale_step1 \<subseteq> fin_digraph G
   using graphG by auto
@@ -50,6 +50,12 @@ locale shortest_paths_locale_step2 =
   assumes no_edge_Vm_Vf: 
     "\<And>e. e \<in> arcs G \<Longrightarrow> dist (tail G e) = - \<infinity> \<Longrightarrow> \<forall> r. dist (head G e) \<noteq> ereal r"
 
+lemma (in basic_sp) noPedge: 
+  "\<And>e. e\<in>arcs G \<Longrightarrow> 
+    dist (tail G e) \<noteq> \<infinity> \<Longrightarrow> dist (head G e) \<noteq> \<infinity>"
+  by (case_tac "dist (head G e)") (fastforce dest: trian)+
+
+ 
 function (in shortest_paths_locale_step1) pwalk :: "'a \<Rightarrow> 'b list" 
 where
   "pwalk v = 
