@@ -237,15 +237,15 @@ lemma verts_absI[simp]: "verts (abs_IGraph G) = {0..<ivertex_cnt G}"
   by (auto simp: abs_IGraph_def)
 
 definition abs_ICost :: 
-  "(IEdge_Id \<Rightarrow> 32 word) \<Rightarrow> IEdge_Id \<Rightarrow> real"
+  "(IEdge_Id \<Rightarrow> 32 signed word) \<Rightarrow> IEdge_Id \<Rightarrow> real"
 where
   "abs_ICost c e \<equiv> real_of_int (sint (c e))"
 
 definition abs_IDist :: 
   "IENInt \<Rightarrow> IVertex \<Rightarrow> ereal"
 where
-  "abs_IDist d v \<equiv> if snd (d v) > 0 then PInfty
-         else if snd (d v) < 0 then MInfty else
+  "abs_IDist d v \<equiv> if sint (snd (d v)) > 0 then PInfty
+         else if sint (snd (d v)) < 0 then MInfty else
          real_of_int (sint (fst (d v)))"
 
 definition abs_INum :: 
@@ -928,18 +928,18 @@ lemma trian_spc':
        apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
        apply (clarsimp simp: if_bool_eq_conj)+
        apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
-  apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
-  apply (clarsimp simp: if_bool_eq_conj)+
-  apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
-  apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
-  apply (clarsimp simp: if_bool_eq_conj)+
-  apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
-  apply (subgoal_tac  "\<not> ee < fst (snd iG)")
-  apply (subgoal_tac "fst (snd iG) = ee")
-  apply simp
-  apply (metis word_le_less_eq)
-  apply (metis is_graph_def)
-  apply wp
+      apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+      apply (clarsimp simp: if_bool_eq_conj)+
+      apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+     apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+     apply (clarsimp simp: if_bool_eq_conj)+
+     apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+    apply (subgoal_tac  "\<not> ee < fst (snd iG)")
+     apply (subgoal_tac "fst (snd iG) = ee")
+      apply simp
+     apply (metis word_le_less_eq)
+    apply (metis is_graph_def)
+   apply wp
   apply (unfold trian_inv_def is_graph_def is_cost_def is_dist_def)[1]
   apply force
   done
@@ -956,6 +956,19 @@ lemma wf_inv_is_fin_digraph:
     unfolding is_wellformed_inv_def fin_digraph_def fin_digraph_axioms_def
       wf_digraph_def no_loops_def 
     by auto
+
+lemma trian_inv_eq_math:
+  "trian_inv G d c (fst (snd G)) \<longleftrightarrow> 
+   (\<forall>e. e \<in> arcs (abs_IGraph G) \<longrightarrow> 
+    abs_IDist d (head (abs_IGraph G) e) \<le> 
+    abs_IDist d (tail (abs_IGraph G) e) + ereal (abs_ICost c e))"
+  apply safe
+   apply (unfold abs_IDist_def abs_ICost_def abs_IGraph_def trian_inv_def)[1]
+   apply (erule_tac x=e in allE)
+   apply force
+   apply (unfold abs_IDist_def abs_ICost_def abs_IGraph_def trian_inv_def)[1]
+  apply (rule allI, clarsimp, force)
+  done
 
 end
 
