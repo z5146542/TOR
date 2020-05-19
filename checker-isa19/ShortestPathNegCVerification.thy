@@ -1032,6 +1032,20 @@ lemma  valid_pedge:
   shows "iP vv < num_edges_C (heap_Graph_C s g)"
   by (metis (no_types, hide_lams) a1 a2 a3 a4 a5 a6 is_graph_def is_inf_n_heap)
 
+lemma is_inf_distance_eq:
+  fixes vv :: "32 word" and s :: lifted_globals
+  assumes a1: "\<not> num_edges_C (heap_Graph_C s g) \<le> heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint vv))"
+  assumes a2: "iP vv = heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint vv))"
+  assumes a3: "arrlist (heap_ENInt_C s) (is_valid_ENInt_C s) (map (to_enint \<circ> (iD \<circ> of_nat)) [0..<unat (num_vertices_C (heap_Graph_C s g))]) d"
+  assumes b1: "fst iG = num_vertices_C (heap_Graph_C s g)"
+  assumes a4: "arrlist (heap_Edge_C s) (is_valid_Edge_C s) (map (to_edge \<circ> (snd (snd iG) \<circ> of_nat)) [0..<unat (num_edges_C (heap_Graph_C s g))]) (arcs_C (heap_Graph_C s g))"
+  assumes b2:"\<forall>e<num_edges_C (heap_Graph_C s g). fst (snd (snd iG) e) < num_vertices_C (heap_Graph_C s g)"
+  shows "ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p uint (first_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p uint (heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint vv)))))))) = snd (iD (first_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p uint (heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint vv)))))))"
+proof -
+  show ?thesis
+    using a4 a3 a2 a1 b2 by (metis not_le is_inf_d_heap s_C_pte two_comp_to_edge_arrlist_heap uint_nat word_sint.Rep_inject)
+qed
+
 lemma  word32_minus_comm: "(x:: 32 word) - y - z = x - z - y" by simp
 
 lemma just_spc':
@@ -1181,8 +1195,76 @@ apply (subgoal_tac "snd (snd (snd iG) (iP vv)) = second_C (heap_Edge_C s
                   apply (subst head_heap[where iG=iG], fastforce, force)
                   apply argo
                  apply (fastforce intro: pedge_abs_C_equiv_2)
-                
-                (*apply (metis max_word_max not_le word_le_less_eq)
+                apply rule+
+                  apply (subgoal_tac "iP vv = heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint vv))")
+                   apply (subgoal_tac "sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p uint (first_C (heap_Edge_C s (arcs_C 
+                                       (heap_Graph_C s g) +\<^sub>p uint (heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) 
+                                       (p +\<^sub>p uint vv))))))))) = sint (snd (iD (fst (snd (snd iG) (iP vv)))))")
+                    apply argo
+                   apply (unfold is_graph_def is_dist_def is_pedge_def wf_digraph_def)[1]
+                   apply (subst tail_heap, force, simp)
+                   apply (subst is_inf_d_heap, simp)
+                    apply (simp add:uint_nat)
+                    apply (metis not_le s_C_pte two_comp_to_edge_arrlist_heap)
+                   apply argo
+                  apply (unfold is_pedge_def is_graph_def)[1] 
+                  apply (fastforce intro: pedge_abs_C_equiv_2)
+                 apply (unfold is_dist_def is_graph_def)[1]
+                 apply (subst is_inf_d_heap, fastforce, blast)
+                 apply blast
+                apply rule
+                 apply (unfold is_graph_def is_dist_def is_pedge_def wf_digraph_def)[1]
+                 apply (subgoal_tac "iP vv = heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint vv))")
+                  apply (subgoal_tac "sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p uint (first_C (heap_Edge_C s (arcs_C 
+                                       (heap_Graph_C s g) +\<^sub>p uint (heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) 
+                                       (p +\<^sub>p uint vv))))))))) = sint (snd (iD (fst (snd (snd iG) (iP vv)))))")
+                   apply (subgoal_tac "sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p uint vv))) = sint (snd (iD vv))")
+                    apply linarith
+                  apply (subst is_inf_d_heap, simp, blast)
+                   apply blast
+                  apply clarsimp
+                  apply (subst tail_heap, blast, simp)
+                  apply (metis (mono_tags, hide_lams) not_le is_inf_d_heap s_C_pte two_comp_to_edge_arrlist_heap 
+                         uint_nat word_sint.Rep_inject)
+                 apply (fastforce intro: pedge_abs_C_equiv_2)
+                apply rule
+                 apply (subgoal_tac "sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p uint vv))) = sint (snd (iD vv))")
+                  apply fastforce
+                 apply (unfold is_graph_def is_dist_def is_pedge_def wf_digraph_def)[1]
+                 apply (subst is_inf_d_heap, simp, blast)
+                 apply blast
+                apply rule
+                 apply (subgoal_tac "iP vv = heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint vv))")
+                  apply (subgoal_tac "EInt_C.isInf_C (heap_EInt_C s (n +\<^sub>p uint (first_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p 
+                                      uint (heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint vv)))))))) = 
+                                      snd (iN (fst (snd (snd iG) (iP vv))))")
+                   apply simp
+                  apply (unfold is_graph_def is_numm_def is_pedge_def wf_digraph_def)[1]
+                  apply (subst tail_heap, force, simp)
+                  apply (subst is_inf_n_heap, simp) 
+                   apply clarsimp
+                   apply (metis (no_types, hide_lams) not_le s_C_pte two_comp_to_edge_arrlist_heap uint_nat)
+                  apply argo
+                 apply (unfold is_graph_def is_numm_def is_pedge_def wf_digraph_def)[1]
+                 apply (fastforce intro: pedge_abs_C_equiv_2)
+                 apply (subgoal_tac "iP vv = heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint vv))")
+                  apply (subgoal_tac "EInt_C.val_C (heap_EInt_C s (n +\<^sub>p uint (first_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p 
+                                      uint (heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint vv)))))))) = 
+                                      fst (iN (fst (snd (snd iG) (iP vv))))")
+                  apply (subgoal_tac "EInt_C.val_C (heap_EInt_C s (n +\<^sub>p uint vv)) = fst (iN vv)")
+                   apply argo
+                  apply (unfold is_graph_def is_numm_def is_pedge_def wf_digraph_def)[1]
+                  apply (subst val_n_heap, simp, blast, blast)
+                 apply clarsimp
+                 apply (unfold is_graph_def is_numm_def is_pedge_def wf_digraph_def)[1]
+                 apply (subst tail_heap, force, simp)
+                 apply (subst val_n_heap, simp)
+                  apply clarsimp
+                  apply (metis (no_types, hide_lams) not_le s_C_pte two_comp_to_edge_arrlist_heap uint_nat)
+                 apply blast
+                apply (unfold is_graph_def is_numm_def is_pedge_def wf_digraph_def)[1]
+                apply (fastforce intro: pedge_abs_C_equiv_2)
+                apply (metis max_word_max not_le word_le_less_eq)
                apply (metis inc_le is_graph_def)
               apply (metis (no_types, hide_lams) inc_le is_graph_def unat_minus_plus1_less)
              apply rule
@@ -1223,12 +1305,449 @@ apply (subgoal_tac "snd (snd (snd iG) (iP vv)) = second_C (heap_Edge_C s
             apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
            apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
            apply (clarsimp simp: if_bool_eq_conj)+
+         apply rule+
+           apply (unfold just_inv_def is_graph_def is_numm_def is_dist_def is_pedge_def wf_digraph_def)[1]
+           apply clarsimp
+           apply (erule_tac x=vv in allE)
+           apply (subgoal_tac "iP vv = heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint vv))")
+            apply (subgoal_tac "sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p uint (first_C (heap_Edge_C s (arcs_C 
+                                       (heap_Graph_C s g) +\<^sub>p uint (heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) 
+                                       (p +\<^sub>p uint vv))))))))) = sint (snd (iD (fst (snd (snd iG) (iP vv)))))")
+             apply (subgoal_tac "sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p uint vv))) = sint (snd (iD vv))")
+              apply (subgoal_tac "EInt_C.isInf_C (heap_EInt_C s (n +\<^sub>p uint vv)) = snd (iN vv)")
+               apply (metis Word.sint_0 less_le not_le word_sint.Rep_inject)
+              apply (subst is_inf_n_heap, blast, blast, blast)
+             apply (subst is_inf_d_heap, blast, blast, blast)
+            apply clarsimp
+            apply (subst tail_heap, blast, simp)
+            apply (blast intro: is_inf_distance_eq)
+           apply (blast intro: pedge_abs_C_equiv_2)
           apply rule+
-            apply clarsimp*)
-  
-
-  sorry
-
+             apply simp+
+           apply rule+
+             apply (unfold just_inv_def is_graph_def is_numm_def is_dist_def is_pedge_def wf_digraph_def)[1]
+             apply clarsimp
+             apply (erule_tac x=vv in allE)
+             apply (subgoal_tac "iP vv = heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint vv))")
+              apply (subgoal_tac "EInt_C.isInf_C (heap_EInt_C s (n +\<^sub>p uint vv)) = snd (iN vv)")
+               apply (subgoal_tac "EInt_C.isInf_C (heap_EInt_C s (n +\<^sub>p uint (first_C (heap_Edge_C s (arcs_C 
+                                  (heap_Graph_C s g) +\<^sub>p uint (heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) 
+                                  (p +\<^sub>p uint vv)))))))) = snd (iN (fst (snd (snd iG) (iP vv))))")
+                apply argo
+               apply (metis (no_types, hide_lams) EInt_isInf_C_pte tail_heap two_comp_to_eint_arrlist_heap uint_nat)
+              apply (subst is_inf_n_heap, blast, blast, blast)
+             apply (blast intro: pedge_abs_C_equiv_2)
+            apply rule+
+              apply (unfold just_inv_def is_graph_def is_numm_def is_dist_def is_pedge_def wf_digraph_def)[1]
+             apply clarsimp
+              apply (erule_tac x=vv in allE)
+              apply (subgoal_tac "iP vv = heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint vv))")
+               apply (subgoal_tac "EInt_C.isInf_C (heap_EInt_C s (n +\<^sub>p uint vv)) = snd (iN vv)")
+               apply (subgoal_tac "EInt_C.val_C (heap_EInt_C s (n +\<^sub>p uint vv)) = fst (iN vv)")
+                apply (subgoal_tac "EInt_C.val_C (heap_EInt_C s (n +\<^sub>p uint (first_C (heap_Edge_C s (arcs_C 
+                                    (heap_Graph_C s g) +\<^sub>p uint (heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) 
+                                    (p +\<^sub>p uint vv)))))))) = fst (iN (fst (snd (snd iG) (iP vv))))")
+                  apply argo
+                 apply (metis (no_types, hide_lams) EInt_val_C_pte tail_heap two_comp_to_eint_arrlist_heap uint_nat)
+                apply (metis EInt_val_C_pte two_comp_to_eint_arrlist_heap uint_nat)
+               apply (metis EInt_isInf_C_pte two_comp_to_eint_arrlist_heap uint_nat)
+              apply (blast intro: pedge_abs_C_equiv_2)
+             apply rule+
+               apply (subgoal_tac " vv + 1 \<le> fst iG")
+                apply (subgoal_tac "vv < (max_word::32 word)")
+                 apply (subst just_inv_step, blast)
+                 apply (rule conjI, blast)
+                 apply clarsimp
+                 apply rule
+                  apply (subgoal_tac "sint (UCAST(32 \<rightarrow> 32 signed) (heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) 
+                      (p +\<^sub>p uint vv)))) = sint (iP vv)")
+                   apply linarith
+                  apply (simp add: is_pedge_def pedge_abs_C_equiv_sint)
+                 apply rule
+                  apply (unfold is_pedge_def is_graph_def)[1]
+                  apply (subgoal_tac "iP vv = heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint vv))")
+                   apply simp
+                  apply (fastforce intro: pedge_abs_C_equiv_2)
+                 apply rule
+                  apply (unfold is_pedge_def is_graph_def)[1]
+                  apply (subgoal_tac "snd (snd (snd iG) (iP vv)) = second_C (heap_Edge_C s
+                              (arcs_C (heap_Graph_C s g) +\<^sub>p uint (heap_w32 s 
+                              (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint vv)))))")
+                   apply argo
+                  apply (subgoal_tac "iP vv = heap_w32 s (ptr_coerce (p +\<^sub>p uint vv))")
+                   apply (subst head_heap[where iG=iG], fastforce, force)
+                   apply argo
+                  apply (fastforce intro: pedge_abs_C_equiv_2)
+                 apply rule
+                  apply (unfold just_inv_def is_graph_def is_numm_def is_dist_def is_pedge_def wf_digraph_def)[1]
+                  apply (subgoal_tac "iP vv = heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint vv))")
+                   apply (subgoal_tac "sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p uint (first_C (heap_Edge_C s (arcs_C 
+                                       (heap_Graph_C s g) +\<^sub>p uint (heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) 
+                                       (p +\<^sub>p uint vv))))))))) = sint (snd (iD (fst (snd (snd iG) (iP vv)))))")
+                    apply (subgoal_tac "sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p uint vv))) = sint (snd (iD vv))")
+                     apply (subgoal_tac "EInt_C.isInf_C (heap_EInt_C s (n +\<^sub>p uint vv)) = snd (iN vv)")
+                      apply linarith
+                     apply argo
+                    apply (subst is_inf_d_heap, simp, blast, blast)
+                   apply clarsimp
+                   apply (subst tail_heap, blast, simp)
+                   apply (metis not_le is_inf_d_heap s_C_pte two_comp_to_edge_arrlist_heap uint_nat word_sint.Rep_inject)
+                  apply (force intro: pedge_abs_C_equiv_2)
+                 apply rule
+                  apply (unfold just_inv_def is_graph_def is_numm_def is_dist_def is_pedge_def wf_digraph_def)[1]
+                  apply (subgoal_tac "iP vv = heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint vv))")
+                   apply (subgoal_tac "sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p uint (first_C (heap_Edge_C s (arcs_C 
+                                       (heap_Graph_C s g) +\<^sub>p uint (heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) 
+                                       (p +\<^sub>p uint vv))))))))) = sint (snd (iD (fst (snd (snd iG) (iP vv)))))")
+                    apply (subgoal_tac "sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p uint vv))) = sint (snd (iD vv))")
+                     apply (subgoal_tac "EInt_C.isInf_C (heap_EInt_C s (n +\<^sub>p uint vv)) = snd (iN vv)")
+                      apply linarith
+                     apply argo
+                    apply (subst is_inf_d_heap, simp, blast, blast)
+                   apply clarsimp
+                   apply (subst tail_heap, blast, simp)
+                   apply (metis not_le is_inf_d_heap s_C_pte two_comp_to_edge_arrlist_heap uint_nat word_sint.Rep_inject)
+                  apply (force intro: pedge_abs_C_equiv_2)
+                 apply rule+
+                  apply (unfold just_inv_def is_graph_def is_numm_def is_dist_def is_pedge_def wf_digraph_def)[1]
+                  apply (subgoal_tac "iP vv = heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint vv))")
+                   apply clarsimp
+                   apply (subst tail_heap, fastforce, simp)
+                   apply (subst val_d_heap, blast, blast)
+                   apply (subst val_d_heap, blast)
+                    apply (metis Word.sint_0 shortest_path_neg_checker.is_inf_d_heap uint_eq_0 uint_lt_0)
+                   apply (metis Word.sint_0 is_inf_d_heap uint_eq_0 uint_lt_0)
+                  apply (force intro: pedge_abs_C_equiv_2)
+                 apply rule
+                  apply (unfold just_inv_def is_graph_def is_numm_def is_dist_def is_pedge_def wf_digraph_def)[1]
+                  apply (subgoal_tac "iP vv = heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint vv))")
+                   apply clarsimp
+                   apply (subst tail_heap, fastforce, simp)
+                   apply (subst is_inf_n_heap, simp)
+                    apply (metis not_le tail_heap)
+                   apply blast
+                  apply (force intro: pedge_abs_C_equiv_2)
+                 apply (unfold just_inv_def is_graph_def is_numm_def is_dist_def is_pedge_def wf_digraph_def)[1]
+                 apply (subgoal_tac "iP vv = heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint vv))")
+                  apply clarsimp
+                  apply (subst tail_heap, force, simp)
+                  apply (subst val_n_heap, simp, blast)
+                  apply (subst val_n_heap, simp)
+                   apply (metis not_le tail_heap)
+                  apply blast
+                 apply (force intro: pedge_abs_C_equiv_2)
+                apply (metis max_word_max not_le word_le_less_eq)
+               apply (simp add: inc_le is_graph_def)
+              apply (simp add: inc_le is_graph_def unat_minus_plus1_less)
+             apply rule
+              apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+              apply (clarsimp simp: if_bool_eq_conj)+
+              apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+             apply rule
+              apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+              apply (clarsimp simp: if_bool_eq_conj)+
+              apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+             apply rule
+              apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+              apply (clarsimp simp: if_bool_eq_conj)+
+              apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+             apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+             apply (clarsimp simp: if_bool_eq_conj)+
+            apply rule
+             apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+             apply (clarsimp simp: if_bool_eq_conj)+
+             apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+            apply rule
+             apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+             apply (clarsimp simp: if_bool_eq_conj)+
+             apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+            apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+            apply (clarsimp simp: if_bool_eq_conj)+
+           apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+           apply (clarsimp simp: if_bool_eq_conj)+
+           apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+          apply rule+
+             apply (unfold just_inv_def is_graph_def is_dist_def is_cost_def is_pedge_def is_numm_def)[1]
+             apply (subgoal_tac "iP vv = heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint vv))")
+              apply (subgoal_tac "snd (iN vv) = EInt_C.isInf_C (heap_EInt_C s (n +\<^sub>p int (unat vv)))")
+               apply (subgoal_tac "sint (snd (iD vv)) = sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p int (unat vv))))")
+                apply (subgoal_tac "sint (fst (iD vv)) = sint (ENInt_C.val_C (heap_ENInt_C s (d +\<^sub>p int (unat vv))))")
+                 apply (subgoal_tac "sint (fst (iD (fst (snd (snd iG) (iP vv))))) = 
+                                    sint (ENInt_C.val_C (heap_ENInt_C s (d +\<^sub>p int (unat (first_C (heap_Edge_C s 
+                                      (arcs_C (heap_Graph_C s g) +\<^sub>p int (unat (heap_w32 s 
+                                      (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p int (unat vv))))))))))))") 
+                  apply (subgoal_tac "sint (iC (iP vv)) = sint (UCAST(32 \<rightarrow> 32 signed) (heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) 
+                                       (c +\<^sub>p int (unat (heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) 
+                                       (p +\<^sub>p int (unat vv)))))))))") 
+                   apply simp
+                   apply clarsimp
+                  apply (metis cost_abs_C_equiv int_unat)
+                 apply (subst tail_heap, force, metis)
+                 apply (subst val_d_heap, simp)
+                  apply (clarsimp, metis tail_heap wellformed_iGraph) 
+                 apply (simp add: int_unat)
+                apply (subst val_d_heap, simp, blast)
+                apply (simp add: int_unat)  
+               apply (subst is_inf_d_heap, simp, blast)
+               apply (metis uint_nat)
+              apply (subst is_inf_n_heap, simp, blast)
+              apply (metis uint_nat)
+             apply (force intro: pedge_abs_C_equiv_2)
+            apply rule+
+              apply (unfold just_inv_def is_graph_def is_dist_def is_cost_def is_pedge_def is_numm_def)[1]
+              apply (subgoal_tac "iP vv = heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint vv))")
+               apply (subgoal_tac "snd (iN vv) = EInt_C.isInf_C (heap_EInt_C s (n +\<^sub>p int (unat vv)))")
+                apply (subgoal_tac "sint (snd (iD vv)) = sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p int (unat vv))))")
+                 apply (subgoal_tac "snd (iN (fst (snd (snd iG) (iP vv)))) = 
+                                    EInt_C.isInf_C (heap_EInt_C s (n +\<^sub>p int (unat (first_C (heap_Edge_C s (arcs_C 
+                                      (heap_Graph_C s g) +\<^sub>p int (unat (heap_w32 s 
+                                      (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p int (unat vv)))))))))))")
+                  apply metis
+                 apply clarsimp
+                 apply (subst tail_heap, blast, metis)
+                 apply (subst is_inf_n_heap, blast)
+                  apply (metis tail_heap wellformed_iGraph)
+                 apply (simp add: uint_nat)
+                apply (subst is_inf_d_heap, simp, force)
+                apply (simp add: uint_nat)
+               apply (subst is_inf_n_heap, simp, fast) 
+               apply (simp add: uint_nat)
+              apply (force intro: pedge_abs_C_equiv_2)
+             apply rule+
+               apply (unfold just_inv_def is_graph_def is_dist_def is_cost_def is_pedge_def is_numm_def)[1]
+               apply (subgoal_tac "iP vv = heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint vv))") 
+                apply (subgoal_tac "snd (iN vv) = EInt_C.isInf_C (heap_EInt_C s (n +\<^sub>p int (unat vv)))")
+                 apply (subgoal_tac "sint (snd (iD vv)) = sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p int (unat vv))))")
+                  apply (subgoal_tac "cast_long (fst (iN vv)) = UCAST(32 \<rightarrow> 64) (EInt_C.val_C (heap_EInt_C s (n +\<^sub>p int (unat vv))))")
+                   apply (subgoal_tac "cast_long (fst (iN (fst (snd (snd iG) (iP vv))))) = UCAST(32 \<rightarrow> 64) 
+                                       (EInt_C.val_C (heap_EInt_C s (n +\<^sub>p int (unat (first_C (heap_Edge_C s (arcs_C 
+                                       (heap_Graph_C s g) +\<^sub>p int (unat (heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) 
+                                       (p +\<^sub>p int (unat vv))))))))))))") 
+                    apply metis
+                   apply clarsimp
+                   apply (subst tail_heap, blast, metis)
+                   apply (subst val_n_heap, blast) 
+                    apply (metis (no_types, hide_lams) s_C_pte two_comp_to_edge_arrlist_heap wellformed_iGraph uint_nat) 
+                   apply (simp add:uint_nat)
+                  apply (subst val_n_heap, simp, force)
+                  apply (metis cast_long.simps uint_nat)
+                 apply (subst is_inf_d_heap, simp, blast)
+                 apply (simp add: uint_nat)
+                apply (subst is_inf_n_heap, simp, blast)
+                apply (simp add: uint_nat)
+               apply (force intro: pedge_abs_C_equiv_2)
+              apply rule+
+                apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+                apply (subgoal_tac " vv + 1 \<le> fst iG")
+                 apply (subgoal_tac "vv < (max_word::32 word)")
+                  apply (subst just_inv_step, blast)
+                  apply (rule conjI, blast)
+                  apply clarsimp
+                  apply rule+
+                   apply (unfold just_inv_def)[1]
+                   apply (subgoal_tac "sint (UCAST(32 \<rightarrow> 32 signed) (heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) 
+                      (p +\<^sub>p uint vv)))) = sint (iP vv)")
+                    apply (metis not_le uint_nat)
+                   apply (metis (no_types) heap_ptr_coerce sint_ucast uint_nat word_zero_le) 
+                  apply rule
+                   apply (subgoal_tac "iP vv = heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint vv))")
+                    apply (metis not_le uint_nat)
+                   apply (fastforce intro: pedge_abs_C_equiv_2)
+                  apply rule
+                   apply (subgoal_tac "snd (snd (snd iG) (iP vv)) = second_C (heap_Edge_C s
+                              (arcs_C (heap_Graph_C s g) +\<^sub>p uint (heap_w32 s 
+                              (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint vv)))))")
+                    apply (metis uint_nat)
+                   apply (subgoal_tac "iP vv = heap_w32 s (ptr_coerce (p +\<^sub>p uint vv))")
+                    apply clarsimp 
+                    apply (subst head_heap, blast)
+                     apply (metis not_le uint_nat, fast)
+                   apply (fastforce intro: pedge_abs_C_equiv_2)
+                  apply rule
+                   apply (unfold just_inv_def is_graph_def is_numm_def is_dist_def is_pedge_def wf_digraph_def)[1]
+                   apply (subgoal_tac "iP vv = heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint vv))")
+                    apply (subgoal_tac "sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p uint (first_C (heap_Edge_C s (arcs_C 
+                                       (heap_Graph_C s g) +\<^sub>p uint (heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) 
+                                       (p +\<^sub>p uint vv))))))))) = sint (snd (iD (fst (snd (snd iG) (iP vv)))))")
+                     apply (subgoal_tac "sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p uint vv))) = sint (snd (iD vv))")
+                      apply (subgoal_tac "EInt_C.isInf_C (heap_EInt_C s (n +\<^sub>p uint vv)) = snd (iN vv)")
+                       apply (metis uint_nat)
+                      apply (subst is_inf_n_heap, simp, blast, blast)
+                     apply clarsimp
+                     apply (metis Word_Lemmas.sint_0 is_inf_d_heap uint_nat)
+                    apply (subst tail_heap, blast, simp) 
+                     apply (metis not_le uint_nat)
+                    apply (subst is_inf_d_heap, blast)
+                     apply (metis (no_types, hide_lams) not_le tail_heap uint_nat) 
+                    apply clarsimp
+                   apply (force intro: pedge_abs_C_equiv_2)
+                  apply rule
+                   apply (unfold just_inv_def is_graph_def is_numm_def is_dist_def is_pedge_def wf_digraph_def)[1]
+                   apply (subgoal_tac "iP vv = heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint vv))")
+                    apply (subgoal_tac "sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p uint (first_C (heap_Edge_C s (arcs_C 
+                                       (heap_Graph_C s g) +\<^sub>p uint (heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) 
+                                       (p +\<^sub>p uint vv))))))))) = sint (snd (iD (fst (snd (snd iG) (iP vv)))))")
+                     apply (subgoal_tac "sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p uint vv))) = sint (snd (iD vv))")
+                      apply (subgoal_tac "EInt_C.isInf_C (heap_EInt_C s (n +\<^sub>p uint vv)) = snd (iN vv)")
+                       apply (metis uint_nat) 
+                      apply (subst is_inf_n_heap, blast, blast)
+                      apply argo
+                     apply (subst is_inf_d_heap, simp, blast, blast)
+                    apply clarsimp
+                    apply (subst tail_heap, blast) 
+                     apply (metis not_le uint_nat)
+                    apply (metis not_le is_inf_d_heap s_C_pte two_comp_to_edge_arrlist_heap uint_nat word_sint.Rep_inject)
+                   apply (force intro: pedge_abs_C_equiv_2)
+                  apply rule+
+                   apply (unfold just_inv_def is_graph_def is_numm_def is_dist_def is_pedge_def wf_digraph_def)[1]
+                   apply (subgoal_tac "iP vv = heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint vv))")
+                    apply clarsimp
+                    apply (subst tail_heap, blast)
+                     apply (metis not_le uint_nat)
+                    apply (subst val_d_heap, blast, blast)
+                    apply (subst val_d_heap, blast)
+                     apply (metis (no_types, hide_lams) not_le tail_heap uint_nat)
+                    apply (subgoal_tac "UCAST(32 \<rightarrow> 32 signed) (heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) (c +\<^sub>p int (unat (iP vv))))) = iC (iP vv)")
+                     apply (simp add: uint_nat)
+                    apply (metis (no_types) cost_abs_C_equiv not_le uint_nat)
+                   apply (force intro: pedge_abs_C_equiv_2)
+                  apply rule
+                   apply (unfold just_inv_def is_graph_def is_numm_def is_dist_def is_pedge_def wf_digraph_def)[1]
+                   apply (subgoal_tac "iP vv = heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint vv))")
+                    apply clarsimp
+                    apply (subst tail_heap, blast)
+                     apply (metis not_le uint_nat) 
+                    apply (subst is_inf_n_heap, simp)
+                     apply (metis (no_types, hide_lams) not_le tail_heap uint_nat)
+                    apply (metis uint_nat)
+                   apply (force intro: pedge_abs_C_equiv_2)
+                  apply (unfold just_inv_def is_graph_def is_numm_def is_dist_def is_pedge_def wf_digraph_def)[1]
+                  apply (subgoal_tac "iP vv = heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint vv))")
+                   apply clarsimp
+                   apply (subst tail_heap, blast) 
+                    apply (metis not_le uint_nat)
+                   apply (subst val_n_heap, simp, blast)
+                   apply (subst val_n_heap, simp)
+                    apply (metis (no_types, hide_lams) not_le tail_heap uint_nat)
+                   apply (metis uint_nat) 
+                  apply (force intro: pedge_abs_C_equiv_2)
+                 apply (metis max_word_max not_le word_le_less_eq)
+                apply (simp add: inc_le is_graph_def)
+               apply (simp add: inc_le is_graph_def unat_minus_plus1_less)
+              apply rule
+               apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+               apply (clarsimp simp: if_bool_eq_conj)+
+               apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+              apply rule
+               apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+               apply (clarsimp simp: if_bool_eq_conj)+
+               apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+              apply rule
+               apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+               apply (clarsimp simp: if_bool_eq_conj)+
+               apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+              apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+              apply (clarsimp simp: if_bool_eq_conj)+
+             apply rule
+              apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+              apply (clarsimp simp: if_bool_eq_conj)+
+              apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+             apply rule
+              apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+              apply (clarsimp simp: if_bool_eq_conj)+
+              apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+             apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+             apply (clarsimp simp: if_bool_eq_conj)+
+            apply rule
+             apply (blast intro: signed_overflow)
+            apply rule
+             apply (blast intro: signed_underflow)
+            apply rule
+             apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+             apply (clarsimp simp: if_bool_eq_conj)+
+             apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+            apply rule
+             apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+             apply (clarsimp simp: if_bool_eq_conj)+
+             apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+            apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+            apply (clarsimp simp: if_bool_eq_conj)+
+            apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+           apply rule+
+             apply (unfold just_inv_def is_graph_def is_dist_def is_numm_def is_pedge_def)[1]
+             apply (subgoal_tac "snd (iN vv) = EInt_C.isInf_C (heap_EInt_C s (n +\<^sub>p int (unat vv)))")
+              apply (subgoal_tac "sint (snd (iD vv)) = sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p int (unat vv))))")
+               apply (subgoal_tac "snd (iN (fst (snd (snd iG) (iP vv)))) = EInt_C.isInf_C (heap_EInt_C s (n +\<^sub>p int 
+                                    (unat (first_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p int (unat (heap_w32 s 
+                                    (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p int (unat vv)))))))))))")
+                apply presburger
+               apply (subst tail_heap, force, presburger, force)
+              apply (subst is_inf_d_heap, simp, blast, force)
+             apply (subst is_inf_n_heap, simp, blast, force, force)
+           apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+           apply (clarsimp simp: if_bool_eq_conj)+
+           apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+          apply rule
+           apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+           apply (clarsimp simp: if_bool_eq_conj)+
+           apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+          apply rule
+           apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+           apply (clarsimp simp: if_bool_eq_conj)+
+           apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+          apply rule
+           apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+           apply (clarsimp simp: if_bool_eq_conj)+
+           apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+          apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+          apply (clarsimp simp: if_bool_eq_conj)+
+         apply rule
+          apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+          apply (clarsimp simp: if_bool_eq_conj)+
+          apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+         apply rule
+          apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+          apply (clarsimp simp: if_bool_eq_conj)+
+          apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+         apply rule
+          apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+          apply (clarsimp simp: if_bool_eq_conj)+
+          apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+         apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+         apply (clarsimp simp: if_bool_eq_conj)+
+        apply rule
+         apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+         apply (clarsimp simp: if_bool_eq_conj)+
+         apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+        apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+        apply (clarsimp simp: if_bool_eq_conj)+
+       apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+       apply (clarsimp simp: if_bool_eq_conj)+
+      apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+      apply (clarsimp simp: if_bool_eq_conj)+
+      apply rule+ 
+        apply (metis max_word_max not_le is_inf_n_heap just_inv_step word_le_less_eq)
+       apply (blast intro: inc_le shortest_path_neg_checker.unat_minus_plus1_less)
+      apply rule
+       apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+      apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+     apply safe[1]
+      apply (unfold just_inv_def, clarsimp)[1]
+      apply (metis less_le less_x_plus_1 max_word_max)
+        apply (simp add: inc_le is_graph_def just_inv_def)
+       apply (simp add: is_graph_def unat_minus_plus1_less)
+      apply (clarsimp simp: if_bool_eq_conj)+
+      apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+      apply (clarsimp simp: if_bool_eq_conj)+
+     apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+     apply (clarsimp simp: if_bool_eq_conj)+
+     apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+    apply (metis is_graph_def word_le_less_eq)
+   apply (unfold just_inv_def is_graph_def)[1] 
+   apply wp 
+  apply simp
+  apply (metis (no_types, hide_lams) map_map is_graph_def mk_iedge_list.simps mk_list'.simps)
+  done
 
 
 (* this should not be correct *)
@@ -1255,6 +1774,48 @@ lemma trian_inv_eq_math:
    apply force
    apply (unfold abs_IDist_def abs_ICost_def abs_IGraph_def trian_inv_def)[1]
   apply (rule allI, clarsimp, force)
+  done
+
+lemma just_inv_eq_math: 
+  "just_inv G d c s n p (ivertex_cnt G) \<longleftrightarrow> 
+    (\<forall>v<fst G. v \<noteq> s \<longrightarrow>
+    (\<exists>i. abs_INum n v = enat i) \<longrightarrow>
+    (\<exists> e. (abs_IPedge p v) = Some e \<and>
+     e < (fst (snd G)) \<and>
+     v = snd (snd (snd G) e) \<and>
+     abs_IDist d v =
+     abs_IDist d (fst (snd (snd G) e)) +
+     ereal (abs_ICost c e) \<and>
+     abs_INum n v = 
+     abs_INum n (fst (snd (snd G) e)) + enat (Suc 0)))"
+  apply (simp add: just_inv_def)
+  apply (rule iffI; clarsimp; erule_tac x=v in allE)
+   apply (rule_tac x= "p v" in exI, clarsimp simp: abs_IPedge_def)
+   apply (case_tac "snd (n v) = 0"; clarsimp simp: not_le word_msb_sint abs_INum_def) 
+   apply (rule conjI)
+    apply (simp add: add_ucast_no_overflow_unat abs_IDist_def abs_ICost_def abs_IPedge_def)
+    apply force
+   apply (metis (mono_tags, hide_lams) add.right_neutral add_Suc_right 
+      le_add_same_cancel1 long_ucast add_ucast_no_overflow_64 unat_eq_1(2) 
+      unat_plus_simple zero_le)
+  apply (clarsimp simp add: abs_IPedge_def)
+   apply (subgoal_tac "\<exists>i. abs_INum n v = enat i"; simp add: abs_INum_def) 
+  apply (case_tac "msb (p v)"; 
+      clarsimp simp: not_le word_msb_sint 
+      abs_INum_def abs_IDist_def abs_ICost_def)  
+    apply (case_tac "snd (n (fst (snd (snd G) (p v)))) = 0"; clarsimp) 
+    apply (case_tac "snd (d v) = 0"; 
+      case_tac "snd (d (fst (snd (snd G) (p v)))) = 0"; 
+      clarsimp simp: add_ucast_no_overflow_unat)
+    apply (metis add.commute of_nat_Suc ucast_nat_def) 
+   apply (subgoal_tac "UCAST(32 \<rightarrow> 64) (fst (n (fst (snd (snd G) (p v))))) + (1::64 word) = 
+                      UCAST(32 \<rightarrow> 64) (fst (n v))")
+    apply (simp add: add_ucast_no_overflow_unat)
+    apply (subgoal_tac "\<forall>w wa. (w::64 word) + wa = of_nat (nat (uint w) + nat (uint wa))")
+     apply (metis Word.sint_0 less_irrefl) 
+    apply simp
+   apply (metis (mono_tags, hide_lams) add.right_neutral add_Suc_right long_ucast word_add_cast_up_no_overflow unat_eq_1(2) word_unat.Rep_inject)
+  apply (metis (mono_tags, hide_lams) add.right_neutral add_Suc_right long_ucast word_add_cast_up_no_overflow unat_eq_1(2) word_unat.Rep_inject)
   done
 
 end
