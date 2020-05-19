@@ -1881,44 +1881,35 @@ lemma check_basic_just_sp_spc_intermediate:
    defer
    apply blast
   apply rule+
-      apply clarsimp
+      apply (unfold is_graph_def is_dist_def)[1]
+      apply force
      apply (unfold is_graph_def is_dist_def)[1]
-     apply (subgoal_tac "sint (snd (iD sc)) = 0", simp)
-     apply (subst is_inf_d_heap, fastforce, argo)
-     apply force
-    apply clarsimp
-    apply (unfold is_graph_def is_dist_def)[1] 
-    apply (subst val_d_heap, fastforce, argo)
-    apply simp
+     apply argo
     apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
     apply (clarsimp simp: if_bool_eq_conj)+
     apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
    apply rule+
       apply (unfold is_graph_def is_dist_def)[1]
-      apply (subgoal_tac "sint (snd (iD sc)) = 0", simp)
-      apply (subst is_inf_d_heap, fastforce, argo, argo)
-     apply clarsimp
+      apply argo
+     apply rule+
+     apply (unfold is_graph_def is_dist_def)[1]
+     apply argo
     apply rule+
       apply (unfold is_graph_def is_dist_def)[1]
-      apply (subgoal_tac "sint (snd (iD sc)) = 0", simp)
-      apply (subst is_inf_d_heap, fastforce, argo)
-      apply clarsimp
-      apply (simp add: is_inf_d_heap uint_nat)
-     apply clarsimp
-     apply (unfold is_graph_def is_dist_def)[1]
-     apply (subgoal_tac "sint (snd (iD sc)) = sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p int (unat sc))))")
-      apply (subgoal_tac "sint (fst (iD sc)) = sint (ENInt_C.val_C (heap_ENInt_C s (d +\<^sub>p int (unat sc))))")
-       apply linarith
-      apply (subst val_d_heap, linarith, blast, fast)
-     apply (subst is_inf_d_heap, fastforce, argo, metis uint_nat)
+      apply (subgoal_tac "sint (snd (iD sc)) = sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p int (unat sc))))")
+       apply (subgoal_tac "sint (fst (iD sc)) = sint (ENInt_C.val_C (heap_ENInt_C s (d +\<^sub>p int (unat sc))))")
+        apply linarith
+       apply (subst val_d_heap, linarith, blast, fast)
+      apply (subst is_inf_d_heap, fastforce, argo, simp add:uint_nat)
+     apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+     apply (clarsimp simp: if_bool_eq_conj)+
+     apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
     apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
     apply (clarsimp simp: if_bool_eq_conj)+
     apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
    apply rule+
-     apply (subgoal_tac "sint (snd (iD sc)) = 0", simp)
-     apply (subst is_inf_d_heap, fastforce, argo, argo)
-    apply (subgoal_tac "sint (snd (iD sc)) = 0", simp)
-    apply (subst is_inf_d_heap, fastforce, argo, argo)
+     apply argo
+    apply argo
    apply rule+
     apply (unfold is_graph_def is_dist_def)[1]
     apply (subgoal_tac "sint (snd (iD sc)) = sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p int (unat sc))))")
@@ -1937,9 +1928,7 @@ lemma check_basic_just_sp_spc_intermediate:
    apply (clarsimp simp: if_bool_eq_conj)+
    apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
   apply rule+
-     apply (subgoal_tac "sint (snd (iD sc)) = 0", simp)
-     apply (subst is_inf_d_heap, fastforce, argo)
-     apply clarsimp
+     apply meson
     apply (simp add: is_inf_d_heap uint_nat)
    apply rule+
     apply (unfold is_graph_def is_dist_def)[1]
@@ -1959,14 +1948,9 @@ lemma check_basic_just_sp_spc_intermediate:
    apply (clarsimp simp: if_bool_eq_conj)+
    apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
   apply rule+
-     apply (subgoal_tac "sint (snd (iD sc)) = 0", simp)
-     apply (subst is_inf_d_heap, fastforce, argo, argo)
+     apply fastforce
     apply (unfold is_graph_def is_dist_def)[1]
-    apply (subgoal_tac "sint (snd (iD sc)) = sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p int (unat sc))))")
-     apply (subgoal_tac "sint (fst (iD sc)) = sint (ENInt_C.val_C (heap_ENInt_C s (d +\<^sub>p int (unat sc))))") 
-      apply simp
-     apply (subst val_d_heap, fastforce, argo, force) 
-    apply (subst is_inf_d_heap, fastforce, argo, argo)
+    apply blast
    apply rule+
      apply (unfold is_graph_def is_dist_def)[1]
      apply (subgoal_tac "sint (snd (iD sc)) = sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p int (unat sc))))")
@@ -1982,8 +1966,7 @@ lemma check_basic_just_sp_spc_intermediate:
    apply (clarsimp simp: if_bool_eq_conj)+
    apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
   apply rule+
-    apply (subgoal_tac "sint (snd (iD sc)) = 0", simp)
-    apply (subst is_inf_d_heap, fastforce, argo, argo)
+    apply meson
    apply (unfold is_graph_def is_dist_def)[1]
    apply (subgoal_tac "sint (snd (iD sc)) = sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p int (unat sc))))")
     apply (subgoal_tac "sint (fst (iD sc)) = sint (ENInt_C.val_C (heap_ENInt_C s (d +\<^sub>p int (unat sc))))") 
