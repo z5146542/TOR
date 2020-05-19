@@ -2007,11 +2007,10 @@ proof -
       basic_just_sp_pred_def 
       basic_just_sp_pred_axioms_def 
       basic_sp_def basic_sp_axioms_def
-    apply (auto simp: wf_inv_is_fin_digraph[where ?G=G]
+    by (auto simp: wf_inv_is_fin_digraph[where ?G=G]
         trian_inv_eq_math[where ?G=G and ?d=d and ?c=c]
-        just_inv_eq_math[where ?G=G and ?d=d and ?c=c and ?s=s and ?n=n and ?p=p])
-    by (simp add: abs_IDist_def)+
-qed
+        just_inv_eq_math[where ?G=G and ?d=d and ?c=c and ?s=s and ?n=n and ?p=p],
+        (simp add: abs_IDist_def)+)
 
 end
 
