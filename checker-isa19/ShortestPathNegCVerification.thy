@@ -1084,7 +1084,7 @@ lemma just_spc':
          apply blast
         apply safe[1]
         apply (unfold just_inv_def is_pedge_def is_numm_def, clarsimp)[1]
-        apply (erule_tac x=vv in allE) 
+        apply (erule_tac x=vv in allE)
         apply (subgoal_tac "num_vertices_C (heap_Graph_C s g) = fst iG")
          apply (subgoal_tac "\<forall>w f p. (((snd (iN vv) = 0 \<or> vv = w) \<or> f vv < num_edges_C (heap_Graph_C s p)) \<or> 
                              \<not> is_graph s iG p) \<or> \<not> vv < num_vertices_C (heap_Graph_C s p)")
@@ -1101,18 +1101,8 @@ lemma just_spc':
          apply (rule, blast)
          apply rule+
           apply (simp add: is_graph_def is_inf_n_heap)
-         apply rule+
-          apply (subgoal_tac "snd (snd (snd iG) (iP vv)) = second_C (heap_Edge_C s
-                              (arcs_C (heap_Graph_C s g) +\<^sub>p uint (heap_w32 s 
-                              (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint vv)))))")
-           apply argo
-          apply (subgoal_tac "iP vv = heap_w32 s (ptr_coerce (p +\<^sub>p uint vv))")
-           apply (subst head_heap[where iG=iG], force, argo)
-           apply argo
-          apply (simp only: uint_nat)
-          apply (subgoal_tac "fst iG = num_vertices_C (heap_Graph_C s g)")
-           apply (metis pedge_abs_C_equiv)
-          apply blast
+         apply rule+ 
+          apply (metis (no_types) heap_ptr_coerce two_comp_to_edge_arrlist_heap t_C_pte uint_nat word_zero_le)
          apply (metis (no_types) heap_ptr_coerce t_C_pte two_comp_to_edge_arrlist_heap uint_nat word_zero_le)
         apply rule+
            apply blast
@@ -1122,7 +1112,7 @@ lemma just_spc':
           apply (rule, blast)
           apply rule+
            apply (metis EInt_isInf_C_pte two_comp_to_eint_arrlist_heap uint_nat)
-          apply rule+
+          apply rule+ 
            apply (subgoal_tac "\<not> 0 < sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p int (unat vv))))")
             apply (simp add: is_inf_d_heap uint_nat)
            apply (metis (no_types) heap_ptr_coerce is_inf_d_heap s_C_pte wellformed_iGraph 
