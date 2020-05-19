@@ -1814,9 +1814,231 @@ lemma just_inv_eq_math:
     apply (subgoal_tac "\<forall>w wa. (w::64 word) + wa = of_nat (nat (uint w) + nat (uint wa))")
      apply (metis Word.sint_0 less_irrefl) 
     apply simp
-   apply (metis (mono_tags, hide_lams) add.right_neutral add_Suc_right long_ucast word_add_cast_up_no_overflow unat_eq_1(2) word_unat.Rep_inject)
-  apply (metis (mono_tags, hide_lams) add.right_neutral add_Suc_right long_ucast word_add_cast_up_no_overflow unat_eq_1(2) word_unat.Rep_inject)
+   apply (metis (mono_tags, hide_lams) add.right_neutral add_Suc_right long_ucast word_add_cast_up_no_overflow unat_eq_1(2) word_unat.Rep_inject)+
   done
+
+definition basic_just_sp_inv :: 
+  "IGraph \<Rightarrow> IENInt \<Rightarrow> ICost \<Rightarrow> IVertex \<Rightarrow> IEInt \<Rightarrow> IPEdge \<Rightarrow> bool" where
+  "basic_just_sp_inv G d c s n p \<equiv>
+       (is_wellformed_inv G (iedge_cnt G) \<and>
+        is_inf_d d s \<le> 0 \<and>
+        (is_inf_d d s = 0 \<longrightarrow> val_d d s \<le> 0) \<and>
+        trian_inv G d c (iedge_cnt G) \<and> 
+        just_inv G d c s n p (ivertex_cnt G))"
+
+lemma check_basic_just_sp_spc_intermediate:
+  "\<lbrace> P and 
+     (\<lambda>s. is_graph s iG g \<and>
+          is_dist s iG iD d \<and>
+          is_cost s iG iC c \<and>
+          sc < ivertex_cnt iG \<and> 
+          is_numm s iG iN n \<and>
+          is_pedge s iG iP p)\<rbrace>
+   check_basic_just_sp' g d c sc n p
+   \<lbrace> (\<lambda>_ s. P s) And 
+     (\<lambda>rr s. rr \<noteq> 0  \<longleftrightarrow> 
+        basic_just_sp_inv iG iD iC sc iN iP)\<rbrace>!"
+  apply (clarsimp simp: check_basic_just_sp'_def basic_just_sp_inv_def)
+  apply wp
+        apply (rule_tac P1=" P and 
+    (\<lambda>s.  is_graph s iG g \<and>
+          is_dist s iG iD d \<and>
+          is_cost s iG iC c \<and>
+          sc < ivertex_cnt iG \<and> 
+          is_numm s iG iN n \<and>
+          is_pedge s iG iP p \<and>
+          is_wellformed_inv iG (iedge_cnt iG) \<and>
+          is_inf_d iD sc \<le> 0 \<and>
+          (is_inf_d iD sc = 0 \<longrightarrow> val_d iD sc \<le> 0) \<and>
+          trian_inv iG iD iC (iedge_cnt iG))" 
+      in validNF_post_imp[OF _ just_spc'])
+        apply fastforce 
+       apply wp
+      apply wp
+      apply (rule_tac P1=" P and 
+    (\<lambda>s.  is_graph s iG g \<and>
+          is_dist s iG iD d \<and>
+          is_cost s iG iC c \<and>
+          sc < ivertex_cnt iG \<and> 
+          is_numm s iG iN n \<and>
+          is_pedge s iG iP p \<and>
+          is_wellformed_inv iG (iedge_cnt iG) \<and>
+          is_inf_d iD sc \<le> 0 \<and>
+          (is_inf_d iD sc = 0 \<longrightarrow> val_d iD sc \<le> 0))"
+      in validNF_post_imp[OF _ trian_spc']) 
+  using fin_digraph_def fin_digraph_axioms_def
+      apply (fastforce simp: wf_inv_is_fin_digraph) 
+     apply wp
+    apply wp
+   apply (rule_tac P1 = " P and (\<lambda>s.  is_graph s iG g \<and>
+          is_dist s iG iD d \<and>
+          is_cost s iG iC c \<and>
+          sc < ivertex_cnt iG \<and> 
+          is_numm s iG iN n \<and>
+          is_pedge s iG iP p) "
+      in validNF_post_imp[OF _ is_wellformed_spc'])
+   apply clarsimp
+   defer
+   apply blast
+  apply rule+
+      apply clarsimp
+     apply (unfold is_graph_def is_dist_def)[1]
+     apply (subgoal_tac "sint (snd (iD sc)) = 0", simp)
+     apply (subst is_inf_d_heap, fastforce, argo)
+     apply force
+    apply clarsimp
+    apply (unfold is_graph_def is_dist_def)[1] 
+    apply (subst val_d_heap, fastforce, argo)
+    apply simp
+    apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+    apply (clarsimp simp: if_bool_eq_conj)+
+    apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+   apply rule+
+      apply (unfold is_graph_def is_dist_def)[1]
+      apply (subgoal_tac "sint (snd (iD sc)) = 0", simp)
+      apply (subst is_inf_d_heap, fastforce, argo, argo)
+     apply clarsimp
+    apply rule+
+      apply (unfold is_graph_def is_dist_def)[1]
+      apply (subgoal_tac "sint (snd (iD sc)) = 0", simp)
+      apply (subst is_inf_d_heap, fastforce, argo)
+      apply clarsimp
+      apply (simp add: is_inf_d_heap uint_nat)
+     apply clarsimp
+     apply (unfold is_graph_def is_dist_def)[1]
+     apply (subgoal_tac "sint (snd (iD sc)) = sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p int (unat sc))))")
+      apply (subgoal_tac "sint (fst (iD sc)) = sint (ENInt_C.val_C (heap_ENInt_C s (d +\<^sub>p int (unat sc))))")
+       apply linarith
+      apply (subst val_d_heap, linarith, blast, fast)
+     apply (subst is_inf_d_heap, fastforce, argo, metis uint_nat)
+    apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+    apply (clarsimp simp: if_bool_eq_conj)+
+    apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+   apply rule+
+     apply (subgoal_tac "sint (snd (iD sc)) = 0", simp)
+     apply (subst is_inf_d_heap, fastforce, argo, argo)
+    apply (subgoal_tac "sint (snd (iD sc)) = 0", simp)
+    apply (subst is_inf_d_heap, fastforce, argo, argo)
+   apply rule+
+    apply (unfold is_graph_def is_dist_def)[1]
+    apply (subgoal_tac "sint (snd (iD sc)) = sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p int (unat sc))))")
+     apply linarith
+    apply (subst is_inf_d_heap, fastforce, argo, metis uint_nat)
+   apply rule+
+    apply (unfold is_graph_def is_dist_def)[1]
+    apply (subgoal_tac "sint (snd (iD sc)) = sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p int (unat sc))))")
+     apply (subgoal_tac "sint (fst (iD sc)) = sint (ENInt_C.val_C (heap_ENInt_C s (d +\<^sub>p int (unat sc))))") 
+      apply simp
+     apply (subst val_d_heap, fastforce, argo, force) 
+    apply (subst is_inf_d_heap, fastforce, argo, metis uint_nat)
+   apply rule
+    apply (metis fin_digraph_def wf_inv_is_fin_digraph)
+   apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+   apply (clarsimp simp: if_bool_eq_conj)+
+   apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+  apply rule+
+     apply (subgoal_tac "sint (snd (iD sc)) = 0", simp)
+     apply (subst is_inf_d_heap, fastforce, argo)
+     apply clarsimp
+    apply (simp add: is_inf_d_heap uint_nat)
+   apply rule+
+    apply (unfold is_graph_def is_dist_def)[1]
+    apply (subgoal_tac "sint (snd (iD sc)) = sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p int (unat sc))))")
+     apply simp
+    apply (subst is_inf_d_heap, fastforce, argo, metis uint_nat)
+   apply rule
+    apply (unfold is_graph_def is_dist_def)[1]
+    apply (subgoal_tac "sint (snd (iD sc)) = sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p int (unat sc))))")
+     apply (subgoal_tac "sint (fst (iD sc)) = sint (ENInt_C.val_C (heap_ENInt_C s (d +\<^sub>p int (unat sc))))") 
+      apply simp
+     apply (subst val_d_heap, fastforce, argo, simp add: uint_nat) 
+    apply (subst is_inf_d_heap, fastforce, argo, metis uint_nat)
+   apply rule
+    apply (metis fin_digraph_def wf_inv_is_fin_digraph)
+   apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+   apply (clarsimp simp: if_bool_eq_conj)+
+   apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+  apply rule+
+     apply (subgoal_tac "sint (snd (iD sc)) = 0", simp)
+     apply (subst is_inf_d_heap, fastforce, argo, argo)
+    apply (unfold is_graph_def is_dist_def)[1]
+    apply (subgoal_tac "sint (snd (iD sc)) = sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p int (unat sc))))")
+     apply (subgoal_tac "sint (fst (iD sc)) = sint (ENInt_C.val_C (heap_ENInt_C s (d +\<^sub>p int (unat sc))))") 
+      apply simp
+     apply (subst val_d_heap, fastforce, argo, force) 
+    apply (subst is_inf_d_heap, fastforce, argo, argo)
+   apply rule+
+     apply (unfold is_graph_def is_dist_def)[1]
+     apply (subgoal_tac "sint (snd (iD sc)) = sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p int (unat sc))))")
+      apply simp
+     apply (subst is_inf_d_heap, fastforce, argo, metis uint_nat)
+    apply (unfold is_graph_def is_dist_def)[1]
+    apply (subgoal_tac "sint (snd (iD sc)) = sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p int (unat sc))))")
+     apply (subgoal_tac "sint (fst (iD sc)) = sint (ENInt_C.val_C (heap_ENInt_C s (d +\<^sub>p int (unat sc))))") 
+      apply simp
+     apply (subst val_d_heap, fastforce, blast, fast)   
+    apply (subst is_inf_d_heap, fastforce, argo, metis uint_nat)
+   apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+   apply (clarsimp simp: if_bool_eq_conj)+
+   apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+  apply rule+
+    apply (subgoal_tac "sint (snd (iD sc)) = 0", simp)
+    apply (subst is_inf_d_heap, fastforce, argo, argo)
+   apply (unfold is_graph_def is_dist_def)[1]
+   apply (subgoal_tac "sint (snd (iD sc)) = sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p int (unat sc))))")
+    apply (subgoal_tac "sint (fst (iD sc)) = sint (ENInt_C.val_C (heap_ENInt_C s (d +\<^sub>p int (unat sc))))") 
+     apply simp
+    apply (subst val_d_heap, fastforce, argo, force) 
+   apply (subst is_inf_d_heap, fastforce, argo, argo)
+  apply rule+
+   apply (unfold is_graph_def is_dist_def)[1]
+   apply (subgoal_tac "sint (snd (iD sc)) = sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p int (unat sc))))")
+    apply simp
+   apply (subst is_inf_d_heap, fastforce, argo, metis uint_nat)
+  apply rule
+   apply (unfold is_graph_def is_dist_def)[1]
+   apply (subgoal_tac "sint (snd (iD sc)) = sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p int (unat sc))))")
+    apply (subgoal_tac "sint (fst (iD sc)) = sint (ENInt_C.val_C (heap_ENInt_C s (d +\<^sub>p int (unat sc))))") 
+     apply simp
+    apply (subst val_d_heap, fastforce, argo, simp add:uint_nat)   
+   apply (subst is_inf_d_heap, fastforce, argo, metis uint_nat)
+  apply rule
+   apply (metis fin_digraph_def wf_inv_is_fin_digraph)
+  apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+  apply (clarsimp simp: if_bool_eq_conj)+
+  apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+  done
+
+lemma basic_just_sp_eq_invariants_imp:
+  "\<And>G d c s n p. 
+    (is_wellformed_inv G (iedge_cnt G) \<and> 
+    s < ivertex_cnt G \<and>
+    is_inf_d d s \<le> 0 \<and>
+    (is_inf_d d s = 0 \<longrightarrow> val_d d s \<le> 0) \<and>
+    trian_inv G d c (iedge_cnt G) \<and> 
+    just_inv G d c s n p (ivertex_cnt G))
+    =
+    basic_just_sp_pred 
+    (abs_IGraph G) (abs_IDist d) 
+    (abs_ICost c) s (abs_INum n) (abs_IPedge p) 
+    "
+proof -
+  fix G d c s n p 
+  let ?aG = "abs_IGraph G"
+  let ?ad = "abs_IDist d"
+  let ?ac = "abs_ICost c"
+  let ?an = "abs_INum n"  
+  let ?ap = "abs_IPedge p"
+  show "?thesis G d c s n p"
+    unfolding 
+      basic_just_sp_pred_def 
+      basic_just_sp_pred_axioms_def 
+      basic_sp_def basic_sp_axioms_def
+    apply (auto simp: wf_inv_is_fin_digraph[where ?G=G]
+        trian_inv_eq_math[where ?G=G and ?d=d and ?c=c]
+        just_inv_eq_math[where ?G=G and ?d=d and ?c=c and ?s=s and ?n=n and ?p=p])
+    by (simp add: abs_IDist_def)+
+qed
 
 end
 
