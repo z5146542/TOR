@@ -370,7 +370,8 @@ lemma unat_plus_leq_unats:
 
 lemma trian_imp_valid:
   fixes x y z :: "32 word"
-  assumes a1: "real (unat y) + real (unat z) \<le> real (unat (max_word :: 32 word)) \<and> real(unat x) \<le> real (unat y) + real (unat z)"
+  assumes a1: "real (unat y) + real (unat z) \<le> real (unat (max_word :: 32 word)) \<and> 
+               real(unat x) \<le> real (unat y) + real (unat z)"
   shows "unat y + unat z \<le> unat (max_word::32 word)"
   using a1 by linarith
 
@@ -680,7 +681,9 @@ lemma trian_inv_le:
 
 lemma cost_abs_C_equiv:
   fixes ee :: "32 word" and s :: lifted_globals
-  assumes a1: "arrlist (\<lambda>p. UCAST(32 \<rightarrow> 32 signed) (heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) p))) (\<lambda>p. is_valid_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) p)) (map (iC \<circ> of_nat) [0..<unat (num_edges_C (heap_Graph_C s g))]) c"
+  assumes a1: "arrlist (\<lambda>p. UCAST(32 \<rightarrow> 32 signed) (heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) p))) 
+                       (\<lambda>p. is_valid_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) p)) (map (iC \<circ> of_nat) 
+                        [0..<unat (num_edges_C (heap_Graph_C s g))]) c"
   assumes a2: "fst (snd iG) = num_edges_C (heap_Graph_C s g)"
   assumes a3: "ee < num_edges_C (heap_Graph_C s g)"
   shows "iC ee = UCAST(32 \<rightarrow> 32 signed) (heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) (c +\<^sub>p uint ee)))"
@@ -691,12 +694,15 @@ qed
 lemma enat_abs_C_equiv:
   fixes ee :: "32 word" and s :: lifted_globals
   assumes a1: "ee < num_edges_C (heap_Graph_C s g)"
-  assumes a2: "arrlist (heap_EInt_C s) (is_valid_EInt_C s) (map (to_eint \<circ> (iL \<circ> of_nat)) [0..<unat (num_vertices_C (heap_Graph_C s g))]) l"
+  assumes a2: "arrlist (heap_EInt_C s) (is_valid_EInt_C s) (map (to_eint \<circ> (iL \<circ> of_nat)) 
+               [0..<unat (num_vertices_C (heap_Graph_C s g))]) l"
   assumes a3: "fst iG = num_vertices_C (heap_Graph_C s g)"
   assumes a4: "fst (snd iG) = num_edges_C (heap_Graph_C s g)"
-  assumes a5: "arrlist (heap_Edge_C s) (is_valid_Edge_C s) (map (to_edge \<circ> (snd (snd iG) \<circ> of_nat)) [0..<unat (num_edges_C (heap_Graph_C s g))]) (arcs_C (heap_Graph_C s g))"
+  assumes a5: "arrlist (heap_Edge_C s) (is_valid_Edge_C s) (map (to_edge \<circ> (snd (snd iG) \<circ> of_nat)) 
+               [0..<unat (num_edges_C (heap_Graph_C s g))]) (arcs_C (heap_Graph_C s g))"
   assumes a6: "\<forall>ee < num_edges_C (heap_Graph_C s g). fst (snd (snd iG) ee) < num_vertices_C (heap_Graph_C s g)"
-  shows "fst (iL (fst (snd (snd iG) ee))) = val_C (heap_EInt_C s (l +\<^sub>p int (unat (first_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p int (unat ee)))))))"
+  shows "fst (iL (fst (snd (snd iG) ee))) = 
+         val_C (heap_EInt_C s (l +\<^sub>p int (unat (first_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p int (unat ee)))))))"
 proof -
   show ?thesis using a6 a5 a4 a3 a2 a1 s_C_pte two_comp_to_edge_arrlist_heap two_comp_to_eint_arrlist_heap EInt_val_C_pte by metis
 qed
@@ -1797,13 +1803,8 @@ lemma just_inv_eq_math:
     apply (case_tac "snd (d v) = 0"; 
       case_tac "snd (d (fst (snd (snd G) (p v)))) = 0"; 
       clarsimp simp: add_ucast_no_overflow_unat)
-    apply (metis add.commute of_nat_Suc ucast_nat_def) 
-   apply (subgoal_tac "UCAST(32 \<rightarrow> 64) (fst (n (fst (snd (snd G) (p v))))) + (1::64 word) = 
-                      UCAST(32 \<rightarrow> 64) (fst (n v))")
-    apply (simp add: add_ucast_no_overflow_unat)
-    apply (subgoal_tac "\<forall>w wa. (w::64 word) + wa = of_nat (nat (uint w) + nat (uint wa))")
-     apply (metis Word.sint_0 less_irrefl) 
-    apply simp
+    apply (metis add.commute of_nat_Suc ucast_nat_def)
+   apply (metis (mono_tags, hide_lams) Word.sint_0 add.right_neutral add_Suc_right less_int_code(1) long_ucast word_add_cast_up_no_overflow unat_eq_1(2) word_unat.Rep_inject)
    apply (metis (mono_tags, hide_lams) add.right_neutral add_Suc_right long_ucast word_add_cast_up_no_overflow unat_eq_1(2) word_unat.Rep_inject)+
   done
 
@@ -2011,6 +2012,43 @@ proof -
         trian_inv_eq_math[where ?G=G and ?d=d and ?c=c]
         just_inv_eq_math[where ?G=G and ?d=d and ?c=c and ?s=s and ?n=n and ?p=p],
         (simp add: abs_IDist_def)+)
+qed
+
+definition s_assms_inv :: "IGraph \<Rightarrow> IVertex \<Rightarrow> IENInt \<Rightarrow> IPEdge \<Rightarrow> IEInt \<Rightarrow> bool" where
+  "s_assms_inv G sc d p n \<equiv> 
+      (sc < ivertex_cnt G) \<and>
+      (is_inf_d d sc \<le> 0) \<and>
+      (sint (p sc) < 0) \<and>
+      (is_inf_n n sc = 0) \<and>
+      (val_n n sc = 0)"
+
+lemma s_assms_spc':
+  "wf_digraph (abs_IGraph iG) \<Longrightarrow>
+   is_graph s iG g \<Longrightarrow>
+   is_dist s iG iD d \<Longrightarrow>
+   is_pedge s iG iP p \<Longrightarrow>
+   is_numm s iG iN n \<Longrightarrow>
+   s_assms' g sc d p n s = 
+   Some (if s_assms_inv iG sc iD iP iN then 1 else 0)"
+  apply (clarsimp simp: s_assms'_def)
+  apply (simp add: ocondition_def oguard_def ogets_def oreturn_def obind_def)
+  apply rule+
+       apply (unfold s_assms_inv_def is_graph_def is_numm_def)[1] 
+       apply (subgoal_tac "snd (iN sc) = EInt_C.isInf_C (heap_EInt_C s (n +\<^sub>p uint sc))")
+        apply (subgoal_tac "fst (iN sc) = EInt_C.val_C (heap_EInt_C s (n +\<^sub>p uint sc))")
+         apply argo
+        apply (subst val_n_heap, simp, presburger, blast)
+       apply (subst is_inf_n_heap, simp, presburger, blast) 
+      apply (unfold is_graph_def is_numm_def)[1]
+      apply blast
+     apply rule+
+       apply (unfold s_assms_inv_def is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+       apply (clarsimp simp: if_bool_eq_conj)+
+       apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+      apply (unfold s_assms_inv_def is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+      apply (clarsimp simp: if_bool_eq_conj)+
+     apply (clarsimp simp: uint_nat)
+
 
 end
 

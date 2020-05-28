@@ -143,14 +143,14 @@ int parent_num_assms(Graph *g, unsigned int s, ENInt *dist, int *pred, EInt *num
     return 1;
 }
 
-int no_p_edge(Graph *g, ENInt *dist) {
+/* int no_p_edge(Graph *g, ENInt *dist) {
     for(unsigned int edge_id = 0; edge_id < edge_cnt(g); edge_id++) {
         if(dist[arcs(g, edge_id).first].isInf <= 0) {
             if(dist[arcs(g, edge_id).second].isInf > 0) return 0;
         }
     }
     return 1;
-}
+} */
 
 // locale 2
 int source_val(Graph *g, unsigned int s, ENInt *dist, EInt *num){
@@ -270,9 +270,10 @@ int int_neg_cyc(Graph *g, unsigned int s, ENInt *dist, Cycle *C, int *c, int *p,
 }
 */
 int shortest_paths_locale_step1(Graph *g, unsigned int s, int *c, EInt *num, int *pred, ENInt *dist) {
+    if(!is_wellformed(g)) return 0;
     if(!s_assms(g, s, dist, pred, num)) return 0;
     if(!parent_num_assms(g, s, dist, pred, num)) return 0;
-    if(!no_p_edge(g, dist)) return 0;
+    // if(!no_p_edge(g, dist)) return 0;
     return 1;
 }
 
