@@ -2048,8 +2048,11 @@ lemma s_assms_spc':
       apply (unfold s_assms_inv_def is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
       apply (clarsimp simp: if_bool_eq_conj)+
      apply (clarsimp simp: uint_nat)
-
-
+     apply (rule ccontr)
+     apply (erule notE)
+     apply (unfold s_assms_inv_def is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+     apply (clarsimp simp: if_bool_eq_conj)+
+     apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
 end
 
 end
