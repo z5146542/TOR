@@ -2014,6 +2014,31 @@ proof -
         (simp add: abs_IDist_def)+)
 qed
 
+lemma range:
+  fixes x :: word32
+  assumes a1: "sint x < 0"
+  assumes a2: "uint x \<le> INT_MAX"
+  shows "False"
+proof-
+  have "sint x \<le> (2::int)^31 - 1"
+    using a1 by auto
+  then have "uint x \<le> (2::int)^31 - 1"
+    using a2 INT_MAX_def by simp
+  then have "0 \<le> sint x" sorry
+  show ?thesis sorry
+qed
+
+lemma range_2:
+  fixes x :: word32
+  assumes a1: "\<not> int (unat x) \<le> INT_MAX"
+  shows "sint x < 0"
+proof-
+  have "int (unat x ) > INT_MAX"
+    using a1 by linarith
+  show ?thesis sorry
+qed
+  
+
 definition s_assms_inv :: "IGraph \<Rightarrow> IVertex \<Rightarrow> IENInt \<Rightarrow> IPEdge \<Rightarrow> IEInt \<Rightarrow> bool" where
   "s_assms_inv G sc d p n \<equiv> 
       (sc < ivertex_cnt G) \<and>
@@ -2041,18 +2066,96 @@ lemma s_assms_spc':
        apply (subst is_inf_n_heap, simp, presburger, blast) 
       apply (unfold is_graph_def is_numm_def)[1]
       apply blast
-     apply rule+
-       apply (unfold s_assms_inv_def is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
-       apply (clarsimp simp: if_bool_eq_conj)+
-       apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
-      apply (unfold s_assms_inv_def is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
-      apply (clarsimp simp: if_bool_eq_conj)+
-     apply (clarsimp simp: uint_nat)
-     apply (rule ccontr)
-     apply (erule notE)
-     apply (unfold s_assms_inv_def is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+     apply (rule impI, rule ccontr, erule notE)
+     apply (unfold s_assms_inv_def is_graph_def is_dist_def)[1]
      apply (clarsimp simp: if_bool_eq_conj)+
      apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+  using not_le word_of_nat_le apply fastforce
+    apply (rule impI, rule ccontr, erule notE)
+    apply (unfold s_assms_inv_def is_graph_def is_pedge_def)[1]
+    apply (clarsimp simp: if_bool_eq_conj)+
+    apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+    apply (metis not_le word_of_nat_le word_unat.Rep_inverse)
+   apply (rule impI, rule ccontr, erule notE)
+   apply (unfold s_assms_inv_def is_graph_def is_numm_def)[1]
+   apply (clarsimp simp: if_bool_eq_conj)+
+   apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+   apply (metis not_le word_of_nat_le word_unat.Rep_inverse)
+  apply (rule impI, rule conjI, rule impI, rule conjI, rule impI, 
+      rule conjI, rule impI, rule conjI, rule impI, rule conjI, rule impI)
+       apply (unfold is_pedge_def is_graph_def s_assms_inv_def)[1]
+       apply clarsimp
+       apply (subgoal_tac "iP sc = heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint sc))")
+        apply clarsimp 
+        apply(blast intro: range)
+       apply (blast intro: pedge_abs_C_equiv_2)
+      apply (unfold is_graph_def)[1]
+      apply (clarsimp simp: if_bool_eq_conj)+
+     apply (rule ccontr, erule notE)
+     apply (unfold s_assms_inv_def is_graph_def is_dist_def)[1]
+     apply (clarsimp simp: if_bool_eq_conj)+
+     apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+     apply (metis not_le word_less_nat_alt)
+    apply (rule impI, rule ccontr, erule notE)
+    apply (unfold s_assms_inv_def is_graph_def is_pedge_def)[1]
+    apply (clarsimp simp: if_bool_eq_conj)+
+    apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+    apply (metis not_le word_of_nat_le word_unat.Rep_inverse)
+   apply (rule impI, rule conjI, rule impI, rule conjI, rule impI, rule conjI, rule impI, rule conjI, rule impI)
+       apply (unfold s_assms_inv_def is_dist_def is_graph_def)[1]
+       apply clarsimp
+       apply (simp add: is_inf_d_heap)
+      apply (unfold is_graph_def)[1]
+      apply (clarsimp simp: if_bool_eq_conj)+
+     apply (rule conjI, rule impI, rule conjI, rule impI)
+       apply (unfold s_assms_inv_def is_dist_def is_graph_def)[1]
+       apply clarsimp
+       apply (simp add: is_inf_d_heap)
+      apply (unfold is_graph_def)[1]
+      apply (clarsimp simp: if_bool_eq_conj)+
+     apply (rule ccontr, erule_tac P="is_valid_ENInt_C s (d +\<^sub>p uint sc)" in notE)
+     apply (unfold s_assms_inv_def is_graph_def is_dist_def)[1]
+     apply (clarsimp simp: if_bool_eq_conj)+
+     apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+    apply (rule impI, rule conjI, rule impI, rule conjI, rule impI, rule conjI, rule impI)
+       apply (unfold s_assms_inv_def is_graph_def)[1]
+       apply fastforce
+      apply (unfold is_graph_def)[1]
+      apply (clarsimp simp: if_bool_eq_conj)+
+     apply (rule conjI, rule impI)
+      apply (unfold s_assms_inv_def is_graph_def is_dist_def is_pedge_def is_numm_def)[1]
+      apply (rule conjI)
+       apply simp
+      apply (rule conjI) 
+       apply (subst is_inf_d_heap, simp, force, simp add: uint_nat)
+      apply (rule conjI)
+       apply (subgoal_tac "iP sc = heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p int (unat sc)))")
+        apply (simp add: range_2)
+       apply (subgoal_tac "int (unat sc) = uint sc")
+        apply (force intro: pedge_abs_C_equiv_2)
+       apply (simp add:uint_nat)
+      apply (subst val_n_heap, simp, simp)
+      apply (subst is_inf_n_heap, simp, simp)
+      apply (simp add: uint_nat)
+     apply (unfold is_graph_def)[1]
+     apply (clarsimp simp: if_bool_eq_conj)+
+    apply (rule ccontr, erule_tac P="is_valid_ENInt_C s (d +\<^sub>p int (unat sc))" in notE)
+    apply (unfold s_assms_inv_def is_graph_def is_dist_def)[1]
+    apply (clarsimp simp: if_bool_eq_conj)+
+    apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+    apply (metis not_le word_less_nat_alt)
+   apply (rule impI, rule ccontr, erule_tac P="is_valid_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint sc))" in notE)
+   apply (unfold s_assms_inv_def is_graph_def is_pedge_def)[1]
+   apply (clarsimp simp: if_bool_eq_conj)+
+   apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+   apply (metis not_le word_of_nat_le word_unat.Rep_inverse)
+  apply (rule impI, rule ccontr, erule notE)
+  apply (unfold s_assms_inv_def is_graph_def is_numm_def)[1]
+  apply (clarsimp simp: if_bool_eq_conj)+
+  apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+  apply (metis not_le word_of_nat_le word_unat.Rep_inverse)
+  done
+
 end
 
 end
