@@ -2151,7 +2151,7 @@ lemma s_assms_eq_math:
 definition parent_num_assms_inv :: 
   "IGraph \<Rightarrow> IVertex \<Rightarrow> IENInt \<Rightarrow> IPEdge \<Rightarrow> IEInt  \<Rightarrow> 32 word \<Rightarrow> bool" where
   "parent_num_assms_inv G s d p n k \<equiv>
-    \<forall>v < k. v \<noteq> s \<and> is_inf_d d v = 0 \<longrightarrow> 
+    \<forall>v < k. v \<noteq> s \<and> is_inf_d d v \<le> 0 \<longrightarrow> 
       sint (p v) \<ge> 0 \<and>
       (\<exists> e. e = p v \<and> e < iedge_cnt G \<and>
         v = snd (iedges G e) \<and>
@@ -2163,7 +2163,7 @@ definition parent_num_assms_inv ::
 lemma parent_num_assms_step:
   assumes v_less_max: "v < (max_word::32 word)"
   shows "parent_num_assms_inv G s d p n (v + 1) \<longleftrightarrow> parent_num_assms_inv G s d p n v
-    \<and> (v \<noteq> s \<and> is_inf_d d v = 0 \<longrightarrow> 
+    \<and> (v \<noteq> s \<and> is_inf_d d v \<le> 0 \<longrightarrow> 
       sint (p v) \<ge> 0 \<and>
       (\<exists> e. e = p v \<and> e < iedge_cnt G \<and>
         v = snd (iedges G e) \<and>
@@ -2207,8 +2207,24 @@ lemma parent_num_assms_spc':
      apply simp
      apply (rule conjI, rule impI, rule conjI, rule impI, rule conjI, rule impI, rule conjI)
          apply blast
-
-
+        apply (unfold parent_num_assms_inv_def is_graph_def is_dist_def is_pedge_def, clarsimp simp del: Word_Lemmas.sint_0)[1]
+        apply (rule_tac x=vv in exI, clarsimp simp del: Word_Lemmas.sint_0)
+        apply (rule conjI, subst is_inf_d_heap, fast, fast, blast)
+        apply (subgoal_tac "sint (iP vv) = sint (UCAST(32 \<rightarrow> 32 signed) (heap_w32 s 
+                            (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint vv))))")
+         apply (linarith, metis sint_ucast pedge_abs_C_equiv_2)
+       apply (rule impI, rule conjI, rule impI, rule conjI, blast)
+        apply (unfold parent_num_assms_inv_def is_graph_def is_dist_def is_pedge_def, clarsimp simp del: Word_Lemmas.sint_0)[1]
+        apply (rule_tac x=vv in exI, clarsimp simp del: Word_Lemmas.sint_0)
+        apply (rule conjI, subst is_inf_d_heap, fast, fast, blast)
+        apply (subgoal_tac "sint (iP vv) = sint (UCAST(32 \<rightarrow> 32 signed) (heap_w32 s 
+                            (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint vv))))")
+         apply (fastforce simp: sint_ucast, metis sint_ucast pedge_abs_C_equiv_2)
+       apply (rule conjI, rule impI, rule conjI, rule impI, rule conjI, blast)
+         apply (unfold parent_num_assms_inv_def is_graph_def is_dist_def is_pedge_def, clarsimp simp del: Word_Lemmas.sint_0)[1]
+         apply (rule_tac x=vv in exI, clarsimp simp del: Word_Lemmas.sint_0)
+         apply (rule conjI, subst is_inf_d_heap, fast, fast, blast)
+         apply (rule impI, rule impI, rule impI)
 
 end
 
