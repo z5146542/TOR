@@ -116,7 +116,7 @@ int check_basic_just_sp(Graph *g, ENInt *dist, int *c, unsigned int s, EInt *num
 int s_assms(Graph *g, unsigned int s, ENInt *dist, int *pred, EInt *num) {
     if(s >= vertex_cnt(g)) return 0;
     if(dist[s].isInf > 0) return 0;
-    if(pred[s] >= 0) return 0;
+    if(!(pred[s] < 0)) return 0;
     if(num[s].isInf != 0) return 0;
     if(num[s].val != 0) return 0;
     return 1;
