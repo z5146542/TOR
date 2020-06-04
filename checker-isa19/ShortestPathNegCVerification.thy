@@ -2209,22 +2209,24 @@ lemma parent_num_assms_spc':
          apply blast
         apply (unfold parent_num_assms_inv_def is_graph_def is_dist_def is_pedge_def, clarsimp simp del: Word_Lemmas.sint_0)[1]
         apply (rule_tac x=vv in exI, clarsimp simp del: Word_Lemmas.sint_0)
-        apply (rule conjI, subst is_inf_d_heap, fast, fast, blast)
-        apply (subgoal_tac "sint (iP vv) = sint (UCAST(32 \<rightarrow> 32 signed) (heap_w32 s 
-                            (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint vv))))")
-         apply (linarith, metis sint_ucast pedge_abs_C_equiv_2)
+        apply (rule conjI, subst is_inf_d_heap, fast, fast, blast) 
+        apply (force simp: sint_ucast pedge_abs_C_equiv_2)
        apply (rule impI, rule conjI, rule impI, rule conjI, blast)
         apply (unfold parent_num_assms_inv_def is_graph_def is_dist_def is_pedge_def, clarsimp simp del: Word_Lemmas.sint_0)[1]
         apply (rule_tac x=vv in exI, clarsimp simp del: Word_Lemmas.sint_0)
         apply (rule conjI, subst is_inf_d_heap, fast, fast, blast)
-        apply (subgoal_tac "sint (iP vv) = sint (UCAST(32 \<rightarrow> 32 signed) (heap_w32 s 
-                            (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint vv))))")
-         apply (fastforce simp: sint_ucast, metis sint_ucast pedge_abs_C_equiv_2)
+        apply (force simp: sint_ucast pedge_abs_C_equiv_2)
        apply (rule conjI, rule impI, rule conjI, rule impI, rule conjI, blast)
          apply (unfold parent_num_assms_inv_def is_graph_def is_dist_def is_pedge_def, clarsimp simp del: Word_Lemmas.sint_0)[1]
          apply (rule_tac x=vv in exI, clarsimp simp del: Word_Lemmas.sint_0)
          apply (rule conjI, subst is_inf_d_heap, fast, fast, blast)
-         apply (rule impI, rule impI, rule impI)
+         apply clarsimp
+         apply (subst (asm) (2) head_heap, blast, blast)
+         apply (simp add: pedge_abs_C_equiv_2)
+        apply (rule conjI, rule impI, rule conjI, rule impI, rule conjI, blast)
+          apply (unfold parent_num_assms_inv_def is_graph_def is_dist_def is_pedge_def, clarsimp simp del: Word_Lemmas.sint_0)[1]
+          apply (rule_tac x=vv in exI, clarsimp simp del: Word_Lemmas.sint_0)
+
 
 end
 
