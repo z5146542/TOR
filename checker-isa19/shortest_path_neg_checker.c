@@ -133,10 +133,12 @@ int parent_num_assms(Graph *g, unsigned int s, ENInt *dist, int *pred, EInt *num
                 if(arcs(g, edge_id).second != v) return 0;
                 if(dist[arcs(g, edge_id).first].isInf > 0) return 0;
                 // work on logic here
-                if(num[v].isInf != 0) return 0;
-                if(num[arcs(g, edge_id).first].isInf != 0) return 0;
-                if((unsigned long) num[v].val != 
-                   (unsigned long) num[arcs(g, edge_id).first].val + 1) return 0;
+                // if(num[v].isInf != 0) return 0;
+                // if(num[arcs(g, edge_id).first].isInf != 0) return 0;
+                if((num[v].isInf == 0) != (num[arcs(g, edge_id).first].isInf == 0)) return 0;
+                if(num[v].isInf == 0)
+                    if((unsigned long) num[v].val != 
+                       (unsigned long) num[arcs(g, edge_id).first].val + 1) return 0;
             }
         }
     }
@@ -269,7 +271,7 @@ int int_neg_cyc(Graph *g, unsigned int s, ENInt *dist, Cycle *C, int *c, int *p,
     return 1;
 }
 */
-int shortest_paths_locale_step1(Graph *g, unsigned int s, int *c, EInt *num, int *pred, ENInt *dist) {
+int shortest_paths_locale_step1(Graph *g, unsigned int s, EInt *num, int *pred, ENInt *dist) {
     if(!is_wellformed(g)) return 0;
     if(!s_assms(g, s, dist, pred, num)) return 0;
     if(!parent_num_assms(g, s, dist, pred, num)) return 0;
@@ -278,7 +280,7 @@ int shortest_paths_locale_step1(Graph *g, unsigned int s, int *c, EInt *num, int
 }
 
 int shortest_paths_locale_step2(Graph *g, unsigned int s, int *c, EInt *num, int *pred, ENInt *dist) {
-    if(!shortest_paths_locale_step1(g, s, c, num, pred, dist)) return 0;
+    if(!shortest_paths_locale_step1(g, s, num, pred, dist)) return 0;
     if(!check_basic_just_sp(g, dist, c, s, num, pred)) return 0;
     if(!source_val(g, s, dist, num)) return 0;
     if(!no_edge_Vm_Vf(g, dist)) return 0;
