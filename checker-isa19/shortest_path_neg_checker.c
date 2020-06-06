@@ -24,10 +24,11 @@ typedef struct ENInt {
 
 // used for enum
 // semantics equivalent to ENInt in shortest_path_checker.c
-typedef struct EInt {
+/*typedef struct EInt {
     unsigned int val;
     unsigned int isInf;
-} EInt;
+} EInt;*/
+
 
 // Cycle contains a starting vertex, the length of the path, and the path itself
 // locale 3 related data structures will be dealt later.
@@ -76,31 +77,28 @@ int trian(Graph *g, ENInt *dist, int *c) {
     return 1;
 }
 
-int just(Graph *g, ENInt *dist, int *c, unsigned int s, EInt *num, int *pred) {
+int just(Graph *g, ENInt *dist, int *c, unsigned int s, unsigned int *num, int *pred) {
     unsigned int edge_id;
     for(unsigned int v = 0; v < vertex_cnt(g); v++) {
         edge_id = (unsigned int) pred[v];
         if(v != s) {
-            if(num[v].isInf == 0) {
+            if(dist[v].isInf == 0) {
                 if(pred[v] < 0) return 0;
                 if(edge_id >= edge_cnt(g)) return 0;
                 if(arcs(g, edge_id).second != v) return 0;
-                if((dist[v].isInf > 0) != (dist[arcs(g, edge_id).first].isInf > 0)) return 0;
-                if((dist[v].isInf < 0) != (dist[arcs(g, edge_id).first].isInf < 0)) return 0;
-                if(dist[v].isInf == 0)
-                    if((long) dist[v].val != 
-                       (long) dist[arcs(g, edge_id).first].val + 
-                       (long) c[edge_id]) return 0;
-                if(num[arcs(g, edge_id).first].isInf != 0) return 0;
-                if((unsigned long) num[v].val != 
-                   (unsigned long) num[arcs(g, edge_id).first].val + 1) return 0;
+                if(dist[arcs(g, edge_id).first].isInf != 0) return 0;
+                if((long) dist[v].val != 
+                   (long) dist[arcs(g, edge_id).first].val + 
+                   (long) c[edge_id]) return 0;
+                if((unsigned long) num[v] != 
+                   (unsigned long) num[arcs(g, edge_id).first] + 1) return 0;
             }
         }
     }
     return 1;
 }
 
-int check_basic_just_sp(Graph *g, ENInt *dist, int *c, unsigned int s, EInt *num, int *pred) {
+int check_basic_just_sp(Graph *g, ENInt *dist, int *c, unsigned int s, unsigned int *num, int *pred) {
     if(!is_wellformed(g)) return 0;
     if(dist[s].isInf > 0) return 0;
     if(dist[s].isInf == 0)
@@ -113,16 +111,17 @@ int check_basic_just_sp(Graph *g, ENInt *dist, int *c, unsigned int s, EInt *num
 // the folloiwng are for the general-weight edge shrotest path
 
 // locale 1
-int s_assms(Graph *g, unsigned int s, ENInt *dist, int *pred, EInt *num) {
+int s_assms(Graph *g, unsigned int s, ENInt *dist, int *pred, unsigned int *num) {
     if(s >= vertex_cnt(g)) return 0;
     if(dist[s].isInf > 0) return 0;
     if(!(pred[s] < 0)) return 0;
-    if(num[s].isInf != 0) return 0;
-    if(num[s].val != 0) return 0;
+    // if(num[s].isInf != 0) return 0;
+    // if(dist[s].isInf != 0) return 0;
+    if(num[s] != 0) return 0;
     return 1;
 }
 
-int parent_num_assms(Graph *g, unsigned int s, ENInt *dist, int *pred, EInt *num) {
+int parent_num_assms(Graph *g, unsigned int s, ENInt *dist, int *pred, unsigned int *num) {
     unsigned int edge_id;
     for(unsigned int v = 0; v < vertex_cnt(g); v++) {
         edge_id = (unsigned int) pred[v];
@@ -135,10 +134,8 @@ int parent_num_assms(Graph *g, unsigned int s, ENInt *dist, int *pred, EInt *num
                 // work on logic here
                 // if(num[v].isInf != 0) return 0;
                 // if(num[arcs(g, edge_id).first].isInf != 0) return 0;
-                if((num[v].isInf == 0) != (num[arcs(g, edge_id).first].isInf == 0)) return 0;
-                if(num[v].isInf == 0)
-                    if((unsigned long) num[v].val != 
-                       (unsigned long) num[arcs(g, edge_id).first].val + 1) return 0;
+                if((unsigned long) num[v] != 
+                   (unsigned long) num[arcs(g, edge_id).first] + 1) return 0;
             }
         }
     }
@@ -155,7 +152,7 @@ int parent_num_assms(Graph *g, unsigned int s, ENInt *dist, int *pred, EInt *num
 } */
 
 // locale 2
-int source_val(Graph *g, unsigned int s, ENInt *dist, EInt *num){
+int source_val(Graph *g, unsigned int s, ENInt *dist, unsigned int *num){
     /*
     for(unsigned int v = 0; v < vertex_cnt(g); v++) {
         if(num[v].isInf <= 0) {
@@ -166,8 +163,7 @@ int source_val(Graph *g, unsigned int s, ENInt *dist, EInt *num){
     }
     return 0;*/
     for(unsigned int v = 0; v < vertex_cnt(g); v++) {
-        if(num[v].isInf <= 0) {
-            if(dist[s].isInf != 0) return 0;
+        if(dist[v].isInf == 0) {
             if(dist[s].val != 0) return 0;
             return 1;
         }
@@ -271,7 +267,7 @@ int int_neg_cyc(Graph *g, unsigned int s, ENInt *dist, Cycle *C, int *c, int *p,
     return 1;
 }
 */
-int shortest_paths_locale_step1(Graph *g, unsigned int s, EInt *num, int *pred, ENInt *dist) {
+int shortest_paths_locale_step1(Graph *g, unsigned int s, unsigned int *num, int *pred, ENInt *dist) {
     if(!is_wellformed(g)) return 0;
     if(!s_assms(g, s, dist, pred, num)) return 0;
     if(!parent_num_assms(g, s, dist, pred, num)) return 0;
@@ -279,7 +275,7 @@ int shortest_paths_locale_step1(Graph *g, unsigned int s, EInt *num, int *pred, 
     return 1;
 }
 
-int shortest_paths_locale_step2(Graph *g, unsigned int s, int *c, EInt *num, int *pred, ENInt *dist) {
+int shortest_paths_locale_step2(Graph *g, unsigned int s, int *c, unsigned int *num, int *pred, ENInt *dist) {
     if(!shortest_paths_locale_step1(g, s, num, pred, dist)) return 0;
     if(!check_basic_just_sp(g, dist, c, s, num, pred)) return 0;
     if(!source_val(g, s, dist, num)) return 0;
