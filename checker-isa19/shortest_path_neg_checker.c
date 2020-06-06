@@ -153,17 +153,9 @@ int parent_num_assms(Graph *g, unsigned int s, ENInt *dist, int *pred, unsigned 
 
 // locale 2
 int source_val(Graph *g, unsigned int s, ENInt *dist, unsigned int *num){
-    /*
-    for(unsigned int v = 0; v < vertex_cnt(g); v++) {
-        if(num[v].isInf <= 0) {
-            if(dist[s].isInf == 0) {
-                if(dist[s].val == 0) return 1;
-            }
-        }
-    }
-    return 0;*/
     for(unsigned int v = 0; v < vertex_cnt(g); v++) {
         if(dist[v].isInf == 0) {
+            if(dist[s].isInf != 0) return 0;
             if(dist[s].val != 0) return 0;
             return 1;
         }

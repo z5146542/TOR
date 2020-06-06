@@ -1379,22 +1379,6 @@ lemma s_assms_spc':
   apply (metis not_le word_less_nat_alt)
   done
 
-lemma s_assms_eq_math:
-  "s_assms_inv G sc d p n  \<longleftrightarrow> 
-   (sc \<in> verts (abs_IGraph G) \<and>
-    abs_IDist d sc \<noteq> \<infinity> \<and>
-    abs_IPedge p sc = None \<and>
-    abs_INat n sc = 0)"
-  apply safe
-      apply (unfold s_assms_inv_def abs_IGraph_def, clarsimp)[1]
-     apply (unfold s_assms_inv_def abs_IDist_def, clarsimp)[1]
-    apply (unfold s_assms_inv_def abs_IDist_def, clarsimp)[1]
-  using word_msb_sint apply blast
-   apply (unfold s_assms_inv_def abs_INat_def, clarsimp)[1]
-  apply (unfold s_assms_inv_def abs_IGraph_def abs_IDist_def abs_INat_def abs_IPedge_def, clarsimp)
-   apply (simp add: unat_eq_zero word_msb_sint zero_enat_def)+
-  done
-
 definition parent_num_assms_inv :: 
   "IGraph \<Rightarrow> IVertex \<Rightarrow> IENInt \<Rightarrow> IPEdge \<Rightarrow> IEInt  \<Rightarrow> 32 word \<Rightarrow> bool" where
   "parent_num_assms_inv G s d p n k \<equiv>
@@ -1585,6 +1569,22 @@ lemma parent_num_assms_inv_eq_math:
    apply (metis (mono_tags, hide_lams) add.right_neutral add_Suc_right shortest_path_neg_checker.long_ucast shortest_path_neg_checker.word_add_cast_up_no_overflow unat_eq_1(2) word_unat.Rep_inject)+
   done
 
+lemma s_assms_eq_math:
+  "s_assms_inv G sc d p n  \<longleftrightarrow> 
+   (sc \<in> verts (abs_IGraph G) \<and>
+    abs_IDist d sc \<noteq> \<infinity> \<and>
+    abs_IPedge p sc = None \<and>
+    abs_INat n sc = 0)"
+  apply safe
+      apply (unfold s_assms_inv_def abs_IGraph_def, clarsimp)[1]
+     apply (unfold s_assms_inv_def abs_IDist_def, clarsimp)[1]
+    apply (unfold s_assms_inv_def abs_IDist_def, clarsimp)[1]
+  using word_msb_sint apply blast
+   apply (unfold s_assms_inv_def abs_INat_def, clarsimp)[1]
+  apply (unfold s_assms_inv_def abs_IGraph_def abs_IDist_def abs_INat_def abs_IPedge_def, clarsimp)
+   apply (simp add: unat_eq_zero word_msb_sint zero_enat_def)+
+  done
+
 definition shortest_paths_locale_step1_inv :: 
   "IGraph \<Rightarrow> IVertex \<Rightarrow> IEInt \<Rightarrow> IPEdge \<Rightarrow> IENInt \<Rightarrow> bool" where
   "shortest_paths_locale_step1_inv G sc n p d \<equiv>
@@ -1642,7 +1642,7 @@ lemma shortest_paths_locale_step1_spc_intermediate:
   apply (metis fin_digraph.axioms(1) shortest_path_neg_checker.wf_inv_is_fin_digraph)
   done
 
-lemma shortest_paths_locale_step1_eq_maths:
+lemma shortest_paths_locale_step1_inv_eq_maths:
   "\<And>G d s n p. 
     shortest_paths_locale_step1_inv G s n p d
     =
@@ -1696,6 +1696,214 @@ proof -
         unat_eq_1(2) word_unat.Rep_inverse)
     done
 qed
+
+definition source_val_inv :: 
+  "IGraph \<Rightarrow> IVertex \<Rightarrow> IENInt \<Rightarrow> IEInt \<Rightarrow> 32 word \<Rightarrow> bool" where
+  "source_val_inv G s d n k \<equiv>
+    (\<exists>v < k. is_inf_d d v = 0) \<longrightarrow>
+       (is_inf_d d s = 0 \<and>
+        val_d d s = 0)"
+
+lemma source_val_inv_step:
+  assumes v_less_max: "v < (max_word::32 word)"
+  shows "source_val_inv G s d n (v + 1) \<longleftrightarrow> 
+         (source_val_inv G s d n v \<and> is_inf_d d s = 0 \<and> val_d d s = 0) \<or>
+         (source_val_inv G s d n v \<and> is_inf_d d v \<noteq> 0)"
+  unfolding source_val_inv_def
+  by (metis less_irrefl less_x_plus_1 v_less_max)
+  
+
+lemma source_val_spc':
+  "\<lbrace> P and 
+     (\<lambda>s. wf_digraph (abs_IGraph iG) \<and>
+          is_graph s iG g \<and>
+          sc < ivertex_cnt iG \<and> 
+          is_dist s iG iD d \<and>
+          is_numm s iG iN n)\<rbrace>
+   source_val' g sc d n
+   \<lbrace> (\<lambda>_ s. P s) And 
+     (\<lambda>rr s. rr \<noteq> 0 \<longleftrightarrow> source_val_inv iG sc iD iN (ivertex_cnt iG)) \<rbrace>!"
+  apply (clarsimp simp: source_val'_def)
+  apply (subst whileLoopE_add_inv [where 
+        M="\<lambda>(vv, s). unat (ivertex_cnt iG - vv)" and
+        I="\<lambda>vv s. P s \<and> source_val_inv iG sc iD iN vv \<and>
+                   vv \<le> ivertex_cnt iG \<and>
+                   wf_digraph (abs_IGraph iG) \<and>
+                   is_graph s iG g \<and>
+                   sc < ivertex_cnt iG \<and> 
+                   is_dist s iG iD d \<and>
+                   is_numm s iG iN n"])
+  apply (simp add: skipE_def)
+  apply wp
+     apply (subst if_bool_eq_conj)+
+     apply (clarsimp simp del: Word_Lemmas.sint_0)
+     apply (rule conjI, rule impI, rule conjI, rule impI)
+       apply (unfold source_val_inv_def is_graph_def is_dist_def)[1]
+       apply (clarsimp simp del: Word_Lemmas.sint_0)
+       apply (rule, rule_tac x=vv in exI, clarsimp simp del: Word_Lemmas.sint_0)
+        apply (subst is_inf_d_heap, blast, force, simp)
+       apply (rule impI, subst val_d_heap, blast, fast)
+       apply (metis Word_Lemmas.sint_0 int_unat ENInt_isInf_C_pte two_comp_arrlist_heap)
+      apply (rule conjI, rule impI, rule conjI, rule impI)
+        apply (unfold source_val_inv_def is_graph_def is_dist_def)[1]
+        apply (clarsimp simp del: Word_Lemmas.sint_0, rule, rule_tac x=vv in exI, clarsimp simp del: Word_Lemmas.sint_0)
+         apply (subst is_inf_d_heap, blast, force, simp)
+        apply (rule impI, subst val_d_heap, blast, blast, fastforce)
+       apply (rule conjI, rule impI)
+        apply (unfold source_val_inv_def is_graph_def is_dist_def)[1]
+        apply (rule, rule conjI, subst is_inf_d_heap, force, argo, simp)
+        apply (subst val_d_heap, force, argo, simp)
+       apply (unfold is_graph_def is_dist_def)[1]
+       apply (clarsimp simp: if_bool_eq_conj)+
+       apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+      apply (unfold is_graph_def is_dist_def)[1]
+       apply (clarsimp simp: if_bool_eq_conj)+
+      apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+     apply (rule conjI, rule impI, rule conjI)
+       apply (subgoal_tac " vv + 1 \<le> fst iG")
+        apply (subgoal_tac "vv < (max_word::32 word)")
+         apply (drule source_val_inv_step[where G=iG and s=sc and d=iD and n=iN])
+         apply (clarsimp simp del: Word_Lemmas.sint_0)+
+         apply (unfold is_graph_def is_dist_def is_cost_def)[1]
+         apply (subst (asm) (2) is_inf_d_heap, simp, fast, simp add: uint_nat)
+        apply (metis max_word_max not_le word_le_less_eq)
+       apply (metis inc_le is_graph_def)
+      apply (rule conjI, metis inc_le is_graph_def)
+      apply (rule conjI, metis is_graph_def unat_minus_plus1_less)
+      apply (unfold is_graph_def)[1]
+      apply (clarsimp simp: if_bool_eq_conj)+
+      apply (unfold is_graph_def is_dist_def)[1]
+       apply (clarsimp simp: if_bool_eq_conj)+
+     apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+    apply (metis shortest_path_neg_checker.is_graph_def word_le_less_eq)
+   apply wp
+  apply (unfold source_val_inv_def is_graph_def, force)
+  done
+
+definition no_edge_Vm_Vf_inv :: "IGraph \<Rightarrow> IENInt \<Rightarrow> 32 word \<Rightarrow> bool" where
+  "no_edge_Vm_Vf_inv G d m \<equiv> 
+    \<forall>i < m. is_inf_d d (fst (iedges G i)) < 0 \<longrightarrow> is_inf_d d (snd (iedges G i)) \<noteq> 0"
+
+lemma no_edge_Vm_Vf_inv_step:
+  assumes i_less_max: "i < (max_word::32 word)"
+  shows "no_edge_Vm_Vf_inv G d (i + 1) \<longleftrightarrow> no_edge_Vm_Vf_inv G d i \<and>
+  (is_inf_d d (fst (iedges G i)) < 0 \<longrightarrow> is_inf_d d (snd (iedges G i)) \<noteq> 0)"
+  unfolding no_edge_Vm_Vf_inv_def
+  by (metis i_less_max less_x_plus_1 max_word_max not_le)+
+
+lemma no_edge_Vm_Vf_spc':
+  "\<lbrace> P and 
+     (\<lambda>s. wf_digraph (abs_IGraph iG) \<and>
+          is_graph s iG g \<and>
+          is_dist s iG iD d)\<rbrace>
+   no_edge_Vm_Vf' g d
+   \<lbrace> (\<lambda>_ s. P s) And 
+     (\<lambda>rr s. rr \<noteq> 0 \<longleftrightarrow> no_edge_Vm_Vf_inv iG iD (iedge_cnt iG)) \<rbrace>!"
+  apply (clarsimp simp: no_edge_Vm_Vf'_def)
+  apply (subst whileLoopE_add_inv [where 
+        M="\<lambda>(ee, s). unat (iedge_cnt iG - ee)" and
+        I="\<lambda>ee s. P s \<and> no_edge_Vm_Vf_inv iG iD ee \<and>
+                   wf_digraph (abs_IGraph iG) \<and>
+                   is_graph s iG g \<and>
+                   is_dist s iG iD d"])
+  apply (simp add: skipE_def)
+  apply wp
+     apply (subst if_bool_eq_conj)+
+     apply (clarsimp simp del: Word_Lemmas.sint_0)
+     apply (rule conjI, rule impI, rule conjI, rule impI)
+       apply (unfold no_edge_Vm_Vf_inv_def is_graph_def is_dist_def)[1]
+       apply (clarsimp simp del: Word_Lemmas.sint_0, rule_tac x=ee in exI, clarsimp simp del: Word_Lemmas.sint_0)
+       apply (rule conjI, subst tail_heap, blast, blast, subst is_inf_d_heap, blast, 
+              metis int_unat s_C_pte two_comp_to_edge_arrlist_heap wellformed_iGraph, fast)
+       apply (subst head_heap, blast, blast, subst is_inf_d_heap, blast, 
+              metis int_unat t_C_pte two_comp_to_edge_arrlist_heap wellformed_iGraph, force)
+      apply (rule conjI, rule impI, rule conjI)
+        apply (unfold is_graph_def is_dist_def)[1]
+        apply (subgoal_tac " ee + 1 \<le> fst (snd iG)")
+         apply (subgoal_tac "ee < (max_word::32 word)")
+          apply (drule no_edge_Vm_Vf_inv_step[where G=iG and d=iD])
+          apply (clarsimp simp del: Word_Lemmas.sint_0)
+          apply (metis (no_types, hide_lams) Word_Lemmas.sint_0 ENInt_isInf_C_pte head_heap 
+                 two_comp_to_eint_arrlist_heap wellformed_iGraph uint_nat)
+         apply (metis max_word_max not_le word_le_less_eq)
+        apply (metis inc_le)
+       apply (rule conjI, simp add: is_graph_def unat_minus_plus1_less)
+       apply (unfold is_graph_def)[1]
+       apply (clarsimp simp: if_bool_eq_conj)+
+      apply (unfold is_graph_def is_dist_def)[1]
+      apply (clarsimp simp: if_bool_eq_conj)+
+      apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+      apply (metis wellformed_iGraph word_less_nat_alt)
+     apply (rule conjI, rule impI, rule conjI)
+       apply (unfold is_graph_def is_dist_def)[1]
+       apply (subgoal_tac " ee + 1 \<le> fst (snd iG)")
+        apply (subgoal_tac "ee < (max_word::32 word)")
+         apply (drule no_edge_Vm_Vf_inv_step[where G=iG and d=iD])
+         apply (clarsimp simp del: Word_Lemmas.sint_0)
+         apply (metis is_inf_d_heap tail_heap wellformed_iGraph)
+        apply (metis max_word_max not_le word_le_less_eq)
+       apply (metis inc_le)
+      apply (rule conjI, simp add: is_graph_def unat_minus_plus1_less)
+      apply (unfold is_graph_def)[1]
+      apply (clarsimp simp: if_bool_eq_conj)+
+     apply (unfold is_graph_def is_dist_def)[1]
+     apply (clarsimp simp: if_bool_eq_conj)+
+     apply (rule conjI)
+      apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+      apply (metis wellformed_iGraph word_less_nat_alt)
+     apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+    apply (simp add: no_edge_Vm_Vf_inv_def is_graph_def)
+   apply wp
+  apply (unfold no_edge_Vm_Vf_inv_def is_graph_def, fastforce)
+  done
+
+
+lemma source_val_inv_eq_maths:
+  "source_val_inv G s d n (ivertex_cnt G) \<longleftrightarrow> 
+   (\<exists> v \<in> verts (abs_IGraph G). abs_INum n d v \<noteq> \<infinity>) \<longrightarrow> abs_IDist d s = 0"
+  unfolding source_val_inv_def abs_INum_def abs_IDist_def by fastforce
+
+lemma no_edge_Vm_Vf_inv_eq_maths:
+  "no_edge_Vm_Vf_inv G d (iedge_cnt G) \<longleftrightarrow>
+  (\<forall>e \<in> arcs (abs_IGraph G). 
+    abs_IDist d (tail (abs_IGraph G) e) = -\<infinity> \<longrightarrow> (\<forall>r. abs_IDist d (head (abs_IGraph G) e) \<noteq> ereal r))"
+  unfolding no_edge_Vm_Vf_inv_def abs_IDist_def abs_IGraph_def by auto
+
+definition shortest_paths_locale_step2_inv :: 
+  "IGraph \<Rightarrow> IVertex \<Rightarrow> ICost \<Rightarrow> IEInt \<Rightarrow> IPEdge \<Rightarrow> IENInt \<Rightarrow> bool" where
+  "shortest_paths_locale_step2_inv G sc c n p d \<equiv>
+   shortest_paths_locale_step1_inv G sc n p d \<and>
+   basic_just_sp_inv G d c sc n p \<and>
+   source_val_inv G sc d n (ivertex_cnt G)\<and>
+   no_edge_Vm_Vf_inv G d (iedge_cnt G)"
+
+lemma shortest_paths_locale_step2_eq_maths:
+  "\<And>G d s c n p. 
+    shortest_paths_locale_step2_inv G s c n p d
+    =
+    shortest_paths_locale_step2
+    (abs_IGraph G) s (abs_ICost c) (abs_INat n)
+    (abs_IPedge p) (abs_IDist d)"
+proof -
+  fix G d c s n p 
+  let ?aG = "abs_IGraph G"
+  let ?ad = "abs_IDist d"
+  let ?ac = "abs_ICost c"
+  let ?an = "abs_INat n"  
+  let ?ap = "abs_IPedge p"
+  show "?thesis G d s c n p"
+    unfolding 
+      shortest_paths_locale_step2_def
+      shortest_paths_locale_step2_pred_def
+      shortest_paths_locale_step2_pred_axioms_def
+      shortest_paths_locale_step2_inv_def
+    apply (clarsimp simp:
+        shortest_paths_locale_step1_inv_eq_maths[where ?G=G and ?s=s and ?n=n and ?p=p and ?d=d]
+        basic_just_sp_eq_invariants_imp[where ?G=G and ?s=s and ?d=d and ?p=p and ?n=n]
+        source_val_inv_eq_maths[where ?G=G and ?s=s and ?d=d and ?n=n]
+        no_edge_Vm_Vf_inv_eq_maths[where ?G=G and ?d=d])
+    oops
+
 end
 
 end
