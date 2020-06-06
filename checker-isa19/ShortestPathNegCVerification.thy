@@ -41,11 +41,6 @@ abbreviation val_d ::
 where 
   "val_d f v \<equiv> sint (fst (f v))"
 
-(*abbreviation val_n :: 
-  "IEInt \<Rightarrow> IVertex \<Rightarrow> 32 word"
-where 
-  "val_n f v \<equiv> fst (f v)"*)
-
 fun bool :: 
   "32 word \<Rightarrow> bool" 
 where 
@@ -55,13 +50,6 @@ abbreviation is_inf_d ::
   "IENInt \<Rightarrow> IVertex \<Rightarrow> int"
 where 
   "is_inf_d f v \<equiv>  sint (snd (f v))"
-
-(*abbreviation is_inf_n :: 
-  "IEInt \<Rightarrow> IVertex \<Rightarrow> 32 word"
-where 
-  "is_inf_n f v \<equiv>  (snd (f v))"*)
-
-(* Make List - makes a list containing the result of a function *)
 
 fun mk_list' :: 
   "nat \<Rightarrow> (32 word \<Rightarrow> 'b) \<Rightarrow> 'b list" 
@@ -142,19 +130,6 @@ fun to_enint ::
   "(32 signed word \<times> 32 signed word) \<Rightarrow> ENInt_C"
 where
   "to_enint p = ENInt_C (fst p) (snd p)"
-
-(*fun to_eint :: 
-  "(32 word \<times> 32 word) \<Rightarrow> EInt_C"
-where
-  "to_eint p = EInt_C (fst p) (snd p)"
-
-lemma EInt_val_C_pte[simp]:
-  "EInt_C.val_C (to_eint p) = fst p"
-  by (case_tac "p") auto
-
-lemma EInt_isInf_C_pte[simp]:
-  "EInt_C.isInf_C (to_eint p) = snd p"
-  by (cases p) auto*)
 
 lemma ENInt_val_C_pte[simp]:
   "ENInt_C.val_C (to_enint p) = fst p"
@@ -593,16 +568,6 @@ lemma tail_heap:
   fst ((iedges iG) e) =  first_C (h (ep +\<^sub>p  (uint e)))" 
   using two_comp_arrlist_heap to_edge.simps s_C_pte uint_nat by metis
 
-(*lemma val_n_heap:
-  "\<lbrakk>arrlist h v (map (to_eint \<circ> (f \<circ> of_nat)) [0..<unat m]) ep; e < m\<rbrakk> \<Longrightarrow>
-  val_n f e = EInt_C.val_C (h (ep +\<^sub>p (uint e)))" 
-  using two_comp_arrlist_heap to_eint.simps EInt_val_C_pte by (metis uint_nat)
-
-lemma is_inf_n_heap:
-  "\<lbrakk>arrlist h v (map (to_eint \<circ> (f \<circ> of_nat)) [0..<unat m]) ep; e < m\<rbrakk> \<Longrightarrow>
-  is_inf_n f e =  EInt_C.isInf_C (h (ep +\<^sub>p (uint e)))" 
-  using two_comp_arrlist_heap to_eint.simps EInt_isInf_C_pte by (metis uint_nat)*)
-
 lemma val_d_heap:
   "\<lbrakk>arrlist h v (map (to_enint \<circ> (f \<circ> of_nat)) [0..<unat m]) ep; e < m\<rbrakk> \<Longrightarrow>
   val_d f e = sint (ENInt_C.val_C (h (ptr_coerce (ep +\<^sub>p (uint e)))))"
@@ -683,35 +648,6 @@ lemma trian_inv_le:
   using assms 
   by (induct j) (auto simp add: trian_inv_def)
 
-lemma cost_abs_C_equiv:
-  fixes ee :: "32 word" and s :: lifted_globals
-  assumes a1: "arrlist (\<lambda>p. UCAST(32 \<rightarrow> 32 signed) (heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) p))) 
-                       (\<lambda>p. is_valid_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) p)) (map (iC \<circ> of_nat) 
-                        [0..<unat (num_edges_C (heap_Graph_C s g))]) c"
-  assumes a2: "fst (snd iG) = num_edges_C (heap_Graph_C s g)"
-  assumes a3: "ee < num_edges_C (heap_Graph_C s g)"
-  shows "iC ee = UCAST(32 \<rightarrow> 32 signed) (heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) (c +\<^sub>p uint ee)))"
-proof -
-  show ?thesis
-    by (metis (no_types) a1 a3 arrlist_heap uint_nat)
-qed
-
-(*lemma enat_abs_C_equiv:
-  fixes ee :: "32 word" and s :: lifted_globals
-  assumes a1: "ee < num_edges_C (heap_Graph_C s g)"
-  assumes a2: "arrlist (heap_EInt_C s) (is_valid_EInt_C s) (map (to_eint \<circ> (iL \<circ> of_nat)) 
-               [0..<unat (num_vertices_C (heap_Graph_C s g))]) l"
-  assumes a3: "fst iG = num_vertices_C (heap_Graph_C s g)"
-  assumes a4: "fst (snd iG) = num_edges_C (heap_Graph_C s g)"
-  assumes a5: "arrlist (heap_Edge_C s) (is_valid_Edge_C s) (map (to_edge \<circ> (snd (snd iG) \<circ> of_nat)) 
-               [0..<unat (num_edges_C (heap_Graph_C s g))]) (arcs_C (heap_Graph_C s g))"
-  assumes a6: "\<forall>ee < num_edges_C (heap_Graph_C s g). fst (snd (snd iG) ee) < num_vertices_C (heap_Graph_C s g)"
-  shows "fst (iL (fst (snd (snd iG) ee))) = 
-         val_C (heap_EInt_C s (l +\<^sub>p int (unat (first_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p int (unat ee)))))))"
-proof -
-  show ?thesis using a6 a5 a4 a3 a2 a1 s_C_pte two_comp_to_edge_arrlist_heap two_comp_to_eint_arrlist_heap sledgehammer
-qed*)
-
 declare if_bool_eq_conj [[simp add]]
 
 lemma trian_spc':
@@ -735,223 +671,136 @@ lemma trian_spc':
   apply (simp add: skipE_def)
   apply wp
      apply (subst if_bool_eq_conj)+
-     apply simp
-     apply (rule conjI, rule impI, rule conjI, rule impI, rule conjI)
-        apply fast
-       apply (unfold trian_inv_def is_dist_def is_cost_def is_graph_def)[1]
-       apply clarsimp
-       apply (rule_tac x=ee in exI)
-       apply safe[1]
-            apply (metis (no_types, hide_lams) is_inf_d_heap s_C_pte two_comp_to_edge_arrlist_heap wellformed_iGraph uint_nat Word_Lemmas.sint_0)
-           apply (metis not_le is_inf_d_heap t_C_pte two_comp_to_edge_arrlist_heap wellformed_iGraph uint_nat)
-          apply (metis not_le is_inf_d_heap t_C_pte two_comp_to_edge_arrlist_heap wellformed_iGraph uint_nat)
-         apply (subgoal_tac "snd (iD (fst (snd (snd iG) ee))) = ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p uint (first_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p uint ee)))))")
-          apply simp
-         apply (metis (no_types, hide_lams) Word_Lemmas.sint_0 is_inf_d_heap s_C_pte two_comp_to_edge_arrlist_heap wellformed_iGraph uint_nat)
-        apply (subgoal_tac "snd (iD (snd (snd (snd iG) ee))) = ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p uint (second_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p uint ee)))))")
-         apply simp
-        apply (metis not_le is_inf_d_heap t_C_pte two_comp_to_edge_arrlist_heap wellformed_iGraph uint_nat)
-       apply (metis not_le is_inf_d_heap t_C_pte two_comp_to_edge_arrlist_heap wellformed_iGraph uint_nat)
-      apply (rule conjI, rule impI, rule conjI, rule impI, rule conjI, rule impI, rule conjI)
-          apply blast
-         apply (unfold trian_inv_def is_dist_def is_cost_def is_graph_def)[1]
-         apply (subgoal_tac "sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p uint (first_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p uint ee)))))) = 0")
-          apply (subgoal_tac "sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p uint (second_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p uint ee)))))) = 0") apply clarsimp
-           apply (rule_tac x=ee in exI)
-           apply (rule conjI)
-            apply blast
-           apply (rule disjI1)
-           apply (rule conjI)
-            apply (subgoal_tac "snd (iD (fst (snd (snd iG) ee))) = ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p uint (first_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p uint ee)))))")
-             apply simp
-            apply (metis (no_types, hide_lams) Word_Lemmas.sint_0 is_inf_d_heap s_C_pte two_comp_to_edge_arrlist_heap wellformed_iGraph uint_nat)
-           apply (rule impI, rule conjI)
-            apply (subgoal_tac "snd (iD (snd (snd (snd iG) ee))) = ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p uint (second_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p uint ee)))))")
-             apply simp
-            apply (metis (no_types, hide_lams) Word_Lemmas.sint_0 is_inf_d_heap t_C_pte two_comp_to_edge_arrlist_heap wellformed_iGraph uint_nat)
-           apply (subgoal_tac "heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p uint ee) = to_edge (snd (snd iG) ee)")
-            apply (metis not_le ptr_coerce_id cost_abs_C_equiv s_C_pte t_C_pte val_d_heap wellformed_iGraph)
-           apply(simp add: two_comp_to_edge_arrlist_heap uint_nat)
-          apply argo
-         apply simp
+     apply (clarsimp simp del: Word_Lemmas.sint_0)
+     apply (rule conjI, rule impI, rule conjI, rule impI)
+       apply (unfold trian_inv_def is_dist_def is_graph_def)[1] 
+       apply (clarsimp simp del: Word_Lemmas.sint_0, rule_tac x=ee in exI, clarsimp simp del: Word_Lemmas.sint_0)
+       apply (metis Word.sint_0 int_unat not_le is_inf_d_heap s_C_pte t_C_pte two_comp_to_edge_arrlist_heap wellformed_iGraph)
+      apply (rule conjI, rule impI, rule conjI, rule impI, rule conjI, rule impI)
+         apply (unfold trian_inv_def is_dist_def is_cost_def is_graph_def)[1] 
+         apply (clarsimp simp del: Word_Lemmas.sint_0, rule_tac x=ee in exI, clarsimp simp del: Word_Lemmas.sint_0)
+         apply (rule conjI, metis Word.sint_0 is_inf_d_heap s_C_pte two_comp_to_edge_arrlist_heap wellformed_iGraph uint_nat)
+         apply (rule impI, rule conjI, metis (no_types, hide_lams) Word.sint_0 int_unat is_inf_d_heap t_C_pte two_comp_to_edge_arrlist_heap wellformed_iGraph)
+         apply (subst arrlist_heap[where iL=iC], blast, blast, subst tail_heap, blast, blast, subst head_heap, blast, blast)
+         apply (subst val_d_heap, blast, metis t_C_pte two_comp_to_edge_arrlist_heap wellformed_iGraph uint_nat)
+         apply (subst val_d_heap, blast, metis s_C_pte two_comp_to_edge_arrlist_heap wellformed_iGraph uint_nat)
+         apply (simp add: uint_nat)
         apply (rule conjI, rule impI, rule conjI)
-          apply blast
-         apply rule
+          apply (unfold is_dist_def is_numm_def is_pedge_def is_cost_def is_graph_def)[1] 
           apply (subgoal_tac " ee + 1 \<le> fst (snd iG)")
            apply (subgoal_tac "ee < (max_word::32 word)") 
             apply (drule trian_inv_step[where d=iD and G=iG and c=iC])
-            apply clarsimp
-            apply (unfold trian_inv_def is_graph_def is_cost_def is_dist_def)[1] 
-            apply clarsimp
-            apply (subgoal_tac "heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p uint ee) = to_edge (snd (snd iG) ee)")
-             apply (subgoal_tac "fst (snd (snd iG) ee) < fst iG")
-              apply (subgoal_tac "snd (snd (snd iG) ee) < fst iG")
-               apply (metis Word.sint_0 less_irrefl not_le ptr_coerce_id s_C_pte t_C_pte cost_abs_C_equiv is_inf_d_heap val_d_heap)
-              apply (metis wellformed_iGraph)
-             apply (metis wellformed_iGraph)
-            apply (metis two_comp_to_edge_arrlist_heap uint_nat)
-           apply (simp add:less_le not_le, meson less_le max_word_max not_le)
-          apply (simp add: inc_le is_graph_def, blast intro: inc_le)
-         apply rule
-          apply (metis inc_le is_graph_def)
-         apply rule
-          apply blast
-         apply rule
-          apply blast
-         apply rule
-          apply blast
-         apply rule
-          apply (metis (no_types, hide_lams) is_graph_def shortest_path_neg_checker.unat_minus_plus1_less)
-         apply rule
-          apply (simp add: is_graph_def)
-          apply argo
-         apply rule
-          apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
-          apply (clarsimp simp: if_bool_eq_conj)+
-          apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
-         apply rule
-          apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
-          apply (clarsimp simp: if_bool_eq_conj)+
-          apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
-         apply (simp add: is_graph_def)
-         apply (force simp: signed_overflow)
-        apply rule
-         apply (force simp: signed_overflow)
-        apply rule
-         apply (force simp: signed_underflow)
-        apply rule
-         apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
-         apply (clarsimp simp: if_bool_eq_conj)+
-         apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
-        apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
-        apply (clarsimp simp: if_bool_eq_conj)+
-        apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
-       apply rule+
-         apply blast
-        apply rule
-         apply (subgoal_tac " ee + 1 \<le> fst (snd iG)")
-          apply (subgoal_tac "ee < (max_word::32 word)") 
-           apply (subst trian_inv_step, blast) 
-           apply (rule conjI, blast) 
-           apply (rule conjI, rule impI, rule conjI)
-             apply (clarsimp, unfold is_graph_def is_dist_def)[1]
-             apply (subgoal_tac "snd (iD (fst (snd (snd iG) ee))) = ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p uint (first_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p uint ee)))))")
-              apply (simp, metis not_le is_inf_d_heap t_C_pte two_comp_to_edge_arrlist_heap wellformed_iGraph uint_nat)
+            apply (clarsimp simp del: Word_Lemmas.sint_0)
+            apply (rule conjI, rule impI, rule conjI)
+              apply (subst head_heap, blast, simp, subst is_inf_d_heap, blast,
+                     metis (no_types, hide_lams) not_le t_C_pte two_comp_to_edge_arrlist_heap wellformed_iGraph uint_nat, simp)
+             apply (rule impI, subst arrlist_heap[where iL=iC], blast, fast)
+             apply (subst head_heap, blast, fast, subst tail_heap, blast, fast)
+             apply (subst val_d_heap, blast, metis t_C_pte two_comp_to_edge_arrlist_heap wellformed_iGraph uint_nat)
+             apply (subst val_d_heap, blast, metis s_C_pte two_comp_to_edge_arrlist_heap wellformed_iGraph uint_nat)
              apply (simp add: uint_nat)
-            apply (unfold is_graph_def is_dist_def is_cost_def)[1]
-            apply (subgoal_tac "sint (snd (iD (snd (snd (snd iG) ee)))) \<noteq> 0")
-             apply blast
-            apply (subgoal_tac "snd (iD (snd (snd (snd iG) ee))) = ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p uint (second_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p uint ee)))))")
-             apply (simp add:uint_nat)
-            apply clarsimp
-            apply (metis t_C_pte word_sint.Rep_inject is_inf_d_heap two_comp_to_edge_arrlist_heap wellformed_iGraph uint_nat)
-           apply (subgoal_tac "snd (iD (fst (snd (snd iG) ee))) = ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p int (unat (first_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p int (unat ee)))))))")
-            apply simp
-           apply (unfold is_graph_def is_dist_def, clarsimp)[1]
-           apply (metis s_C_pte word_sint.Rep_inject is_inf_d_heap two_comp_to_edge_arrlist_heap wellformed_iGraph uint_nat)
-          apply (metis max_word_max not_le word_le_less_eq)
-         apply (metis inc_le is_graph_def)
-        apply rule
-         apply (metis inc_le is_graph_def)
-        apply (rule, blast)
-        apply (rule, blast)
-        apply (rule, blast)
-        apply (rule, metis (no_types, hide_lams) is_graph_def unat_minus_plus1_less)
-        apply (rule, fastforce simp: is_graph_def)
-        apply rule
-         apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+            apply (rule impI, subst head_heap, blast, blast, subst is_inf_d_heap, blast, metis t_C_pte two_comp_to_edge_arrlist_heap wellformed_iGraph uint_nat)
+            apply (metis is_inf_d_heap s_C_pte two_comp_to_edge_arrlist_heap wellformed_iGraph uint_nat)
+           apply (metis max_word_max not_le word_le_less_eq)
+          apply (metis inc_le)
+         apply (rule conjI, unfold is_graph_def, metis inc_le)[1]
+         apply (rule conjI, metis unat_minus_plus1_less)
+         apply (rule conjI)
+          apply (clarsimp simp: if_bool_eq_conj)+
+         apply (rule conjI, unfold is_dist_def)[1]
+          apply (clarsimp simp: if_bool_eq_conj)+
+          apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+          apply (metis wellformed_iGraph word_less_nat_alt)
          apply (clarsimp simp: if_bool_eq_conj)+
          apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
-        apply rule
-         apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+        apply (rule conjI, blast intro: signed_overflow)
+        apply (rule conjI, blast intro: signed_underflow)
+        apply (rule conjI, unfold is_cost_def is_graph_def is_dist_def)[1]
          apply (clarsimp simp: if_bool_eq_conj)+
          apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
-        apply (fastforce simp: is_graph_def)
-       apply rule
-        apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
         apply (clarsimp simp: if_bool_eq_conj)+
         apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
-       apply rule
-        apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
-        apply (clarsimp simp: if_bool_eq_conj)+
-        apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
-       apply (fastforce simp: is_graph_def)
-      apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
-      apply (clarsimp simp: if_bool_eq_conj)+
-      apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
-     apply rule+
-         apply blast
-        apply (unfold trian_inv_def is_graph_def is_cost_def is_dist_def)[1]
-        apply clarsimp
-        apply (rule_tac x=ee in exI)
-        apply rule
-         apply blast
-        apply (metis not_le is_inf_d_heap s_C_pte t_C_pte two_comp_to_edge_arrlist_heap wellformed_iGraph uint_nat)
-       apply rule+
-         apply blast
-        apply rule
+        apply (metis wellformed_iGraph word_less_nat_alt)
+       apply (rule conjI, rule impI, rule conjI)
+         apply (unfold is_dist_def is_numm_def is_pedge_def is_cost_def is_graph_def)[1] 
          apply (subgoal_tac " ee + 1 \<le> fst (snd iG)")
           apply (subgoal_tac "ee < (max_word::32 word)") 
-           apply (subst trian_inv_step, blast) 
-           apply (rule conjI, blast) 
-           apply (subgoal_tac "sint (snd (iD (fst (snd (snd iG) ee)))) < 0")
-            apply (subgoal_tac "sint (snd (iD (snd (snd (snd iG) ee)))) < 0")
-             apply linarith
-            apply (subgoal_tac "snd (iD (snd (snd (snd iG) ee))) = ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p int (unat (second_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p int (unat ee)))))))")
-             apply presburger
-            apply (unfold is_graph_def is_cost_def is_dist_def)[1]
-            apply clarsimp
-            apply (metis is_inf_d_heap t_C_pte two_comp_to_edge_arrlist_heap wellformed_iGraph uint_nat word_sint.Rep_inject)
-           apply (subgoal_tac "snd (iD (fst (snd (snd iG) ee))) = ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p int (unat (first_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p int (unat ee)))))))")
-            apply argo
-           apply (unfold is_graph_def is_cost_def is_dist_def)[1]
-           apply clarsimp
-           apply (metis (no_types, hide_lams) is_inf_d_heap wellformed_iGraph tail_heap uint_nat word_sint.Rep_inject)
+           apply (drule trian_inv_step[where d=iD and G=iG and c=iC])
+           apply (clarsimp simp del: Word_Lemmas.sint_0)
+           apply (metis (no_types, hide_lams) Word_Lemmas.sint_0 int_unat less_le not_le is_inf_d_heap t_C_pte two_comp_to_edge_arrlist_heap wellformed_iGraph)
           apply (metis max_word_max not_le word_le_less_eq)
-         apply (metis inc_le is_graph_def)
-        apply (rule, metis inc_le is_graph_def)
-        apply (metis (no_types, hide_lams) is_graph_def unat_minus_plus1_less)
-       apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+         apply (metis inc_le)
+        apply (rule conjI, unfold is_graph_def, metis inc_le)[1]
+        apply (rule conjI, metis unat_minus_plus1_less)
+        apply (rule conjI)
+         apply (clarsimp simp: if_bool_eq_conj)+
+        apply (rule conjI, unfold is_dist_def)[1]
+         apply (clarsimp simp: if_bool_eq_conj)+
+         apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+         apply (metis wellformed_iGraph word_less_nat_alt)
+        apply (clarsimp simp: if_bool_eq_conj)+
+        apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+       apply (unfold is_graph_def is_dist_def, rule conjI)[1]
+        apply (clarsimp simp: if_bool_eq_conj)+
+        apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+        apply (metis wellformed_iGraph word_less_nat_alt)
        apply (clarsimp simp: if_bool_eq_conj)+
        apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
-      apply rule+
-        apply blast
-       apply rule
+      apply (unfold is_graph_def is_dist_def)[1]
+      apply (clarsimp simp: if_bool_eq_conj)+
+      apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+      apply (metis wellformed_iGraph word_less_nat_alt)
+     apply (rule conjI, rule impI, rule conjI, rule impI, rule conjI, rule impI)
+        apply (unfold trian_inv_def is_graph_def is_dist_def)[1]
+        apply (clarsimp simp del: Word_Lemmas.sint_0, rule_tac x=ee in exI, clarsimp simp del: Word_Lemmas.sint_0)
+        apply (subst (asm) (4) tail_heap, fast, fast, subst (asm) (4) head_heap, fast, fast)
+        apply (subst (asm) (7) is_inf_d_heap, blast, metis head_heap wellformed_iGraph)
+        apply (subst (asm) (6) is_inf_d_heap, blast, metis tail_heap wellformed_iGraph)
+        apply linarith
+       apply (rule conjI, rule impI, rule conjI)
+         apply (unfold is_dist_def is_numm_def is_pedge_def is_cost_def is_graph_def)[1] 
+         apply (subgoal_tac " ee + 1 \<le> fst (snd iG)")
+          apply (subgoal_tac "ee < (max_word::32 word)") 
+           apply (drule trian_inv_step[where d=iD and G=iG and c=iC])
+           apply (clarsimp simp del: Word_Lemmas.sint_0)
+           apply (metis (no_types, hide_lams) less_le not_le is_inf_d_heap t_C_pte two_comp_to_edge_arrlist_heap 
+                  wellformed_iGraph uint_nat)
+          apply (metis max_word_max not_le word_le_less_eq)
+         apply (metis inc_le)
+        apply (rule conjI, unfold is_graph_def, metis inc_le)[1]
+        apply (rule conjI, metis unat_minus_plus1_less)
+        apply (clarsimp simp: if_bool_eq_conj)+
+       apply (unfold is_graph_def is_dist_def)[1]
+       apply (clarsimp simp: if_bool_eq_conj)+
+       apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+       apply (metis wellformed_iGraph word_less_nat_alt)
+      apply (rule conjI, rule impI, rule conjI)
+        apply (unfold is_dist_def is_numm_def is_pedge_def is_cost_def is_graph_def)[1] 
         apply (subgoal_tac " ee + 1 \<le> fst (snd iG)")
          apply (subgoal_tac "ee < (max_word::32 word)") 
-          apply (subst trian_inv_step, blast) 
-          apply (rule conjI, blast) 
-          apply (subgoal_tac "sint (snd (iD (fst (snd (snd iG) ee)))) > 0")
-           apply linarith
-          apply (subgoal_tac "snd (iD (fst (snd (snd iG) ee))) = ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p int (unat (first_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p int (unat ee)))))))")
-           apply (unfold is_graph_def is_cost_def is_dist_def)[1]
-           apply clarsimp
-           apply (simp add: less_le)
-          apply (unfold is_graph_def is_cost_def is_dist_def)[1]
-          apply clarsimp
-          apply (metis is_inf_d_heap s_C_pte two_comp_to_edge_arrlist_heap wellformed_iGraph uint_nat word_sint.Rep_inject)
+          apply (drule trian_inv_step[where d=iD and G=iG and c=iC])
+          apply (clarsimp simp del: Word_Lemmas.sint_0)
+          apply (metis Word_Lemmas.sint_0 int_unat is_inf_d_heap s_C_pte two_comp_to_edge_arrlist_heap wellformed_iGraph)
          apply (metis max_word_max not_le word_le_less_eq)
-        apply (metis inc_le is_graph_def)
-       apply (rule, metis inc_le is_graph_def)
-       apply (metis (no_types, hide_lams) is_graph_def unat_minus_plus1_less)
-      apply rule
-       apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+        apply (metis inc_le)
+       apply (rule conjI, unfold is_graph_def, metis inc_le)[1]
+       apply (rule conjI, metis shortest_path_neg_checker.unat_minus_plus1_less)
+       apply (clarsimp simp: if_bool_eq_conj)+
+      apply (rule conjI, unfold is_graph_def is_dist_def)[1]
        apply (clarsimp simp: if_bool_eq_conj)+
        apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
-      apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+       apply (metis wellformed_iGraph word_less_nat_alt)
       apply (clarsimp simp: if_bool_eq_conj)+
       apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
-     apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+     apply (rule conjI, unfold is_graph_def is_dist_def)[1]
+      apply (clarsimp simp: if_bool_eq_conj)+
+      apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+      apply (metis wellformed_iGraph word_less_nat_alt)
      apply (clarsimp simp: if_bool_eq_conj)+
      apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
-    apply (subgoal_tac  "\<not> ee < fst (snd iG)")
-     apply (subgoal_tac "fst (snd iG) = ee")
-      apply simp
-     apply (metis word_le_less_eq)
-    apply (metis is_graph_def)
+    apply (metis is_graph_def word_le_less_eq)
    apply wp
-  apply (unfold trian_inv_def is_graph_def is_cost_def is_dist_def)[1]
-  apply force
+  apply (unfold is_graph_def trian_inv_def, force)
   done
 
 definition just_inv :: 
@@ -985,70 +834,6 @@ lemma just_inv_le:
   shows "just_inv G d c s n p j"
   using assms 
   by (induct j) (auto simp add: just_inv_def)
-
-lemma pedge_abs_C_equiv:
-  fixes vv :: "32 word" and s :: lifted_globals
-  assumes a1: "arrlist (\<lambda>p. heap_w32 s (ptr_coerce p)) (\<lambda>p. is_valid_w32 s (ptr_coerce p)) (map (iP \<circ> of_nat) [0..<unat (num_vertices_C (heap_Graph_C s g))]) p"
-  assumes a2: "fst iG = num_vertices_C (heap_Graph_C s g)"
-  assumes a3: "vv < num_vertices_C (heap_Graph_C s g)"
-  shows "iP vv = heap_w32 s (ptr_coerce (p +\<^sub>p int (unat vv)))"
-proof - 
-  have "\<forall>w. heap_w32 s (ptr_coerce (p +\<^sub>p int (unat w))) = iP w \<or> \<not> w < fst iG"
-    using a2 a1 heap_ptr_coerce unat_0 by fastforce
-  show ?thesis
-    using a1 a3 arrlist_heap by blast
-qed
-
-lemma pedge_abs_C_equiv_2:
-  fixes vv :: "32 word" and s :: lifted_globals
-  assumes a1: "arrlist (\<lambda>p. heap_w32 s (ptr_coerce p)) (\<lambda>p. is_valid_w32 s (ptr_coerce p)) (map (iP \<circ> of_nat) [0..<unat (num_vertices_C (heap_Graph_C s g))]) p"
-  assumes a2: "fst iG = num_vertices_C (heap_Graph_C s g)"
-  assumes a3: "vv < num_vertices_C (heap_Graph_C s g)"
-  shows "iP vv = heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint vv))"
-proof - 
-  have "\<forall>w. heap_w32 s (ptr_coerce (p +\<^sub>p int (unat w))) = iP w \<or> \<not> w < fst iG"
-    using a2 a1 heap_ptr_coerce unat_0 by fastforce
-  show ?thesis
-    by (metis (no_types) a1 a3 int_unat arrlist_heap)
-qed
-
-lemma pedge_abs_C_equiv_sint:
-  fixes vv :: "32 word" and s :: lifted_globals
-  assumes a1: "is_graph s iG g"
-  assumes a2: "vv < num_vertices_C (heap_Graph_C s g)"
-  assumes a3: "arrlist (\<lambda>p. heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) p)) (\<lambda>p. is_valid_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) p)) (map (iP \<circ> of_nat) [0..<unat (fst iG)]) p"
-  shows "sint (UCAST(32 \<rightarrow> 32 signed) (heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint vv)))::32 signed word) = sint (iP vv)"
-proof -
-  have "num_vertices_C (heap_Graph_C s g) = fst iG"
-    using a1 by (simp add: is_graph_def)
-  then show ?thesis
-    using a3 a2 by (metis (no_types) pedge_abs_C_equiv sint_ucast uint_nat)
-qed
-
-(*lemma  valid_pedge:
-  fixes vv :: "32 word" and s :: lifted_globals
-  assumes a1: "is_graph s iG g"
-  assumes a2: "vv < fst iG \<longrightarrow> vv \<noteq> sc \<and> snd (iN vv) = 0 \<longrightarrow> 0 \<le> sint (iP vv) \<and> iP vv < fst (snd iG) \<and> vv = snd (snd (snd iG) (iP vv)) \<and> (0 < sint (snd (iD vv))) = (0 < sint (snd (iD (fst (snd (snd iG) (iP vv)))))) \<and> (sint (snd (iD vv)) < 0) = (sint (snd (iD (fst (snd (snd iG) (iP vv))))) < 0) \<and> (snd (iD vv) = 0 \<longrightarrow> sint (fst (iD vv)) = sint (fst (iD (fst (snd (snd iG) (iP vv))))) + sint (iC (iP vv))) \<and> snd (iN (fst (snd (snd iG) (iP vv)))) = 0 \<and> UCAST(32 \<rightarrow> 64) (fst (iN vv)) = UCAST(32 \<rightarrow> 64) (fst (iN (fst (snd (snd iG) (iP vv))))) + (1::64 word)"
-  assumes a3: "vv \<noteq> sc"
-  assumes a4: "vv < num_vertices_C (heap_Graph_C s g)"
-  assumes a5: "EInt_C.isInf_C (heap_EInt_C s (n +\<^sub>p uint vv)) = 0"
-  assumes a6: "arrlist (heap_EInt_C s) (is_valid_EInt_C s) (map (to_eint \<circ> (iN \<circ> of_nat)) [0..<unat (fst iG)]) n"
-  shows "iP vv < num_edges_C (heap_Graph_C s g)"
-  by (metis (no_types, hide_lams) a1 a2 a3 a4 a5 a6 is_graph_def is_inf_n_heap) *)
-
-lemma is_inf_distance_eq:
-  fixes vv :: "32 word" and s :: lifted_globals
-  assumes a1: "\<not> num_edges_C (heap_Graph_C s g) \<le> heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint vv))"
-  assumes a2: "iP vv = heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint vv))"
-  assumes a3: "arrlist (heap_ENInt_C s) (is_valid_ENInt_C s) (map (to_enint \<circ> (iD \<circ> of_nat)) [0..<unat (num_vertices_C (heap_Graph_C s g))]) d"
-  assumes b1: "fst iG = num_vertices_C (heap_Graph_C s g)"
-  assumes a4: "arrlist (heap_Edge_C s) (is_valid_Edge_C s) (map (to_edge \<circ> (snd (snd iG) \<circ> of_nat)) [0..<unat (num_edges_C (heap_Graph_C s g))]) (arcs_C (heap_Graph_C s g))"
-  assumes b2:"\<forall>e<num_edges_C (heap_Graph_C s g). fst (snd (snd iG) e) < num_vertices_C (heap_Graph_C s g)"
-  shows "ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p uint (first_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p uint (heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint vv)))))))) = snd (iD (first_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p uint (heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint vv)))))))"
-proof -
-  show ?thesis
-    using a4 a3 a2 a1 b2 by (metis not_le is_inf_d_heap s_C_pte two_comp_to_edge_arrlist_heap uint_nat word_sint.Rep_inject)
-qed
 
 lemma  word32_minus_comm: "(x:: 32 word) - y - z = x - z - y" by simp
 
@@ -1668,18 +1453,18 @@ lemma parent_num_assms_spc':
         apply (unfold parent_num_assms_inv_def is_graph_def is_dist_def is_pedge_def, clarsimp simp del: Word_Lemmas.sint_0)[1]
         apply (rule_tac x=vv in exI, clarsimp simp del: Word_Lemmas.sint_0)
         apply (rule conjI, subst is_inf_d_heap, fast, fast, blast) 
-        apply (force simp: sint_ucast pedge_abs_C_equiv_2)
+        apply (clarsimp, subst (asm) (9) arrlist_heap[where iL=iP], fast, fast, simp add: uint_nat sint_ucast)
        apply (rule impI, rule conjI, rule impI, rule conjI, blast)
         apply (unfold parent_num_assms_inv_def is_graph_def is_dist_def is_pedge_def, clarsimp simp del: Word_Lemmas.sint_0)[1]
         apply (rule_tac x=vv in exI, clarsimp simp del: Word_Lemmas.sint_0)
         apply (rule conjI, subst is_inf_d_heap, fast, fast, blast)
-        apply (force simp: sint_ucast pedge_abs_C_equiv_2)
+        apply (clarsimp, subst (asm) (8) arrlist_heap[where iL=iP], fast, fast, simp add: uint_nat sint_ucast)
        apply (rule conjI, rule impI, rule conjI, rule impI, rule conjI, blast)
          apply (unfold parent_num_assms_inv_def is_graph_def is_dist_def is_pedge_def, clarsimp simp del: Word_Lemmas.sint_0)[1]
          apply (rule_tac x=vv in exI, clarsimp simp del: Word_Lemmas.sint_0)
          apply (rule conjI, subst is_inf_d_heap, fast, fast, blast)
          apply (clarsimp, subst (asm) (2) head_heap, blast, blast)
-         apply (simp add: pedge_abs_C_equiv_2)
+         apply (subst (asm) (7) arrlist_heap[where iL=iP], fast, fast, simp add: uint_nat sint_ucast)
         apply (rule conjI, rule impI, rule conjI, rule impI, rule conjI, blast)
           apply (unfold parent_num_assms_inv_def is_graph_def is_dist_def is_numm_def is_pedge_def, clarsimp simp del: Word_Lemmas.sint_0)[1]
           apply (rule_tac x=vv in exI, clarsimp simp del: Word_Lemmas.sint_0)
