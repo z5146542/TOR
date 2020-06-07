@@ -1879,7 +1879,6 @@ lemma no_edge_Vm_Vf_spc':
   apply (unfold no_edge_Vm_Vf_inv_def is_graph_def, fastforce)
   done
 
-
 lemma source_val_inv_eq_maths:
   "source_val_inv G s d n (ivertex_cnt G) \<longleftrightarrow> 
    (\<exists> v \<in> verts (abs_IGraph G). abs_INum n d v \<noteq> \<infinity>) \<longrightarrow> abs_IDist d s = 0"
@@ -1898,6 +1897,38 @@ definition shortest_paths_locale_step2_inv ::
    basic_just_sp_inv G d c sc n p \<and>
    source_val_inv G sc d n (ivertex_cnt G)\<and>
    no_edge_Vm_Vf_inv G d (iedge_cnt G)"
+
+lemma shortest_paths_locale_step2_spc_intermediate:
+  "\<lbrace> P and 
+     (\<lambda>s. is_graph s iG g \<and>
+          is_dist s iG iD d \<and>
+          is_numm s iG iN n \<and>
+          is_pedge s iG iP p)\<rbrace>
+   shortest_paths_locale_step2' g sc c n p d
+   \<lbrace> (\<lambda>_ s. P s) And 
+     (\<lambda>rr s. rr \<noteq> 0  \<longleftrightarrow> 
+        shortest_paths_locale_step2_inv iG sc iC iN iP iD)\<rbrace>!"
+  apply (clarsimp simp: shortest_paths_locale_step2'_def shortest_paths_locale_step2_inv_def)
+  apply wp
+        apply (rule_tac P1=" P and 
+    (\<lambda>s.  is_graph s iG g \<and>
+          is_dist s iG iD d \<and>
+          is_numm s iG iN n \<and>
+          is_pedge s iG iP p \<and>
+          shortest_paths_locale_step1_inv iG sc iN iP iD \<and> 
+          basic_just_sp_inv iG iD iC sc iN iP \<and>
+          source_val_inv iG sc iD iN (fst iG))" 
+      in validNF_post_imp[OF _ no_edge_Vm_Vf_spc'])
+      apply fastforce  
+     apply (rule_tac P1=" P and 
+    (\<lambda>s.  is_graph s iG g \<and>
+          is_dist s iG iD d \<and>
+          is_numm s iG iN n \<and>
+          is_pedge s iG iP p \<and>
+          shortest_paths_locale_step1_inv iG sc iN iP iD \<and> 
+          basic_just_sp_inv iG iD iC sc iN iP)" 
+      in validNF_post_imp[OF _ source_val_spc'])
+  oops 
 
 lemma abs_INat_to_abs_INum:
     "shortest_paths_locale_step1
