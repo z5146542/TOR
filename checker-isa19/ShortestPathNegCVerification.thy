@@ -1028,6 +1028,12 @@ lemma wf_inv_is_fin_digraph:
       wf_digraph_def no_loops_def 
     by auto
 
+lemma wf_inv_is_wf_digraph:
+   "is_wellformed_inv G (iedge_cnt G) \<longleftrightarrow> wf_digraph (abs_IGraph G)"
+    unfolding is_wellformed_inv_def fin_digraph_def fin_digraph_axioms_def
+      wf_digraph_def no_loops_def 
+    by auto
+
 lemma trian_inv_eq_math:
   "trian_inv G d c (fst (snd G)) \<longleftrightarrow> 
    (\<forall>e. e \<in> arcs (abs_IGraph G) \<longrightarrow> 
@@ -1903,6 +1909,7 @@ lemma shortest_paths_locale_step2_spc_intermediate:
      (\<lambda>s. is_graph s iG g \<and>
           is_dist s iG iD d \<and>
           is_numm s iG iN n \<and>
+          is_cost s iG iC c \<and>
           is_pedge s iG iP p)\<rbrace>
    shortest_paths_locale_step2' g sc c n p d
    \<lbrace> (\<lambda>_ s. P s) And 
@@ -1914,6 +1921,7 @@ lemma shortest_paths_locale_step2_spc_intermediate:
     (\<lambda>s.  is_graph s iG g \<and>
           is_dist s iG iD d \<and>
           is_numm s iG iN n \<and>
+          is_cost s iG iC c \<and>
           is_pedge s iG iP p \<and>
           shortest_paths_locale_step1_inv iG sc iN iP iD \<and> 
           basic_just_sp_inv iG iD iC sc iN iP \<and>
@@ -1924,11 +1932,34 @@ lemma shortest_paths_locale_step2_spc_intermediate:
     (\<lambda>s.  is_graph s iG g \<and>
           is_dist s iG iD d \<and>
           is_numm s iG iN n \<and>
+          is_cost s iG iC c \<and>
           is_pedge s iG iP p \<and>
           shortest_paths_locale_step1_inv iG sc iN iP iD \<and> 
           basic_just_sp_inv iG iD iC sc iN iP)" 
       in validNF_post_imp[OF _ source_val_spc'])
-  oops 
+     apply (unfold basic_just_sp_inv_def)[1]
+     apply (fastforce simp: wf_inv_is_wf_digraph)
+     apply (rule_tac P1=" P and 
+    (\<lambda>s.  is_graph s iG g \<and>
+          is_dist s iG iD d \<and>
+          is_numm s iG iN n \<and>
+          is_cost s iG iC c \<and>
+          is_pedge s iG iP p \<and>
+          shortest_paths_locale_step1_inv iG sc iN iP iD)" 
+      in validNF_post_imp[OF _ check_basic_just_sp_spc_intermediate])
+    apply (unfold shortest_paths_locale_step1_inv_def s_assms_inv_def)[1]
+    apply (fastforce simp: wf_inv_is_wf_digraph)
+     apply (rule_tac P1=" P and 
+    (\<lambda>s.  is_graph s iG g \<and>
+          is_dist s iG iD d \<and>
+          is_cost s iG iC c \<and>
+          is_numm s iG iN n \<and>
+          is_pedge s iG iP p)" 
+      in validNF_post_imp[OF _ shortest_paths_locale_step1_spc_intermediate])
+   defer
+  apply (blast, clarsimp, safe)
+  apply (unfold shortest_paths_locale_step1_inv_def s_assms_inv_def, fast) 
+  done 
 
 lemma abs_INat_to_abs_INum:
     "shortest_paths_locale_step1
