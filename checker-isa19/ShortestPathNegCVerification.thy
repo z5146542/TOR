@@ -1278,6 +1278,28 @@ proof -
         (simp add: abs_IDist_def)+)
 qed
 
+lemma basic_just_sp_eq_maths:
+  "\<And>G d c s n p. 
+    (s < ivertex_cnt G \<and>
+    basic_just_sp_inv G d c s n p)
+    =
+    basic_just_sp_pred 
+    (abs_IGraph G) (abs_IDist d) 
+    (abs_ICost c) s (abs_INum n d) (abs_IPedge p) 
+    "
+proof -
+  fix G d c s n p 
+  let ?aG = "abs_IGraph G"
+  let ?ad = "abs_IDist d"
+  let ?ac = "abs_ICost c"
+  let ?an = "abs_INum n d"  
+  let ?ap = "abs_IPedge p"
+  show "?thesis G d c s n p"
+    unfolding basic_just_sp_inv_def
+    using basic_just_sp_eq_invariants_imp 
+    by blast
+qed
+
 definition s_assms_inv :: "IGraph \<Rightarrow> IVertex \<Rightarrow> IENInt \<Rightarrow> IPEdge \<Rightarrow> IEInt \<Rightarrow> bool" where
   "s_assms_inv G sc d p n \<equiv> 
       sc < ivertex_cnt G \<and>
@@ -1877,13 +1899,21 @@ definition shortest_paths_locale_step2_inv ::
    source_val_inv G sc d n (ivertex_cnt G)\<and>
    no_edge_Vm_Vf_inv G d (iedge_cnt G)"
 
+lemma abs_INat_to_abs_INum:
+    "shortest_paths_locale_step1
+    (abs_IGraph G) s (abs_INat n)
+    (abs_IPedge p) (abs_IDist d) \<Longrightarrow> (shortest_paths_locale_step1.enum (abs_INat n) (abs_IDist d)) = (abs_INum n d)"
+  using shortest_paths_locale_step1.enum_def[where ?G="(abs_IGraph G)" and ?s=s and ?num="(abs_INat n)" and ?parent_edge="(abs_IPedge p)" and ?dist="(abs_IDist d)"] 
+  unfolding abs_INum_def[where ?n=n and ?d=d] abs_IDist_def[where ?d=d] abs_INat_def[where ?n=n] 
+  by auto
+
 lemma shortest_paths_locale_step2_eq_maths:
   "\<And>G d s c n p. 
     shortest_paths_locale_step2_inv G s c n p d
     =
-    shortest_paths_locale_step2
+    shortest_paths_locale_step2_pred
     (abs_IGraph G) s (abs_ICost c) (abs_INat n)
-    (abs_IPedge p) (abs_IDist d)"
+    (abs_IPedge p) (abs_IDist d) (abs_IPedge p)"
 proof -
   fix G d c s n p 
   let ?aG = "abs_IGraph G"
@@ -1892,18 +1922,14 @@ proof -
   let ?an = "abs_INat n"  
   let ?ap = "abs_IPedge p"
   show "?thesis G d s c n p"
-    unfolding 
-      shortest_paths_locale_step2_def
-      shortest_paths_locale_step2_pred_def
+    unfolding  shortest_paths_locale_step2_inv_def 
+      shortest_paths_locale_step2_pred_def 
       shortest_paths_locale_step2_pred_axioms_def
-      shortest_paths_locale_step2_inv_def
-    apply (clarsimp simp:
-        shortest_paths_locale_step1_inv_eq_maths[where ?G=G and ?s=s and ?n=n and ?p=p and ?d=d]
-        basic_just_sp_eq_invariants_imp[where ?G=G and ?s=s and ?d=d and ?p=p and ?n=n]
-        source_val_inv_eq_maths[where ?G=G and ?s=s and ?d=d and ?n=n]
-        no_edge_Vm_Vf_inv_eq_maths[where ?G=G and ?d=d])
-    oops
-
+    by (metis (no_types, hide_lams) atLeastLessThan_iff no_edge_Vm_Vf_inv_eq_maths abs_INat_to_abs_INum 
+      basic_just_sp_eq_maths shortest_paths_locale_step1_inv_eq_maths source_val_inv_eq_maths verts_absI 
+      shortest_paths_locale_step1.s_assms(1))
+qed
+                                       
 end
 
 end
