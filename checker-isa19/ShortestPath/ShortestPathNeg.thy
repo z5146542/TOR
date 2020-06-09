@@ -109,12 +109,12 @@ sublocale shortest_paths_locale_step2_pred \<subseteq> shortest_paths_locale_ste
 
 locale shortest_paths_locale_step3_pred =
   shortest_paths_locale_step2_pred +
-  fixes C :: "('a \<times>('b awalk)) set"
-  assumes C_se: 
+  fixes C :: "('a \<times> ('b awalk)) set"
+  assumes C_se:
     "C \<subseteq> {(u, p). dist u \<noteq> \<infinity> \<and> awalk u p u \<and> awalk_cost c p < 0}"
-  assumes int_neg_cyc: 
-    "\<And>v. v \<in> verts G \<Longrightarrow> dist v = -\<infinity> \<Longrightarrow> 
-      (fst ` C) \<inter> pwalk_verts v  \<noteq> {}"
+  assumes int_neg_cyc:
+    "\<And>v. v \<in> verts G \<Longrightarrow> dist v = -\<infinity> \<Longrightarrow>
+      (fst ` C) \<inter> pwalk_verts v \<noteq> {}"
 
 sublocale shortest_paths_locale_step3_pred \<subseteq> shortest_paths_locale_step3
   using shortest_paths_locale_step3_pred_axioms
