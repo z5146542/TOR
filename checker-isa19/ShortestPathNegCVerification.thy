@@ -1917,7 +1917,7 @@ lemma shortest_paths_locale_step2_spc_intermediate:
         shortest_paths_locale_step2_inv iG sc iC iN iP iD)\<rbrace>!"
   apply (clarsimp simp: shortest_paths_locale_step2'_def shortest_paths_locale_step2_inv_def)
   apply wp
-        apply (rule_tac P1=" P and 
+      apply (rule_tac P1=" P and 
     (\<lambda>s.  is_graph s iG g \<and>
           is_dist s iG iD d \<and>
           is_numm s iG iN n \<and>
@@ -1937,9 +1937,8 @@ lemma shortest_paths_locale_step2_spc_intermediate:
           shortest_paths_locale_step1_inv iG sc iN iP iD \<and> 
           basic_just_sp_inv iG iD iC sc iN iP)" 
       in validNF_post_imp[OF _ source_val_spc'])
-     apply (unfold basic_just_sp_inv_def)[1]
-     apply (fastforce simp: wf_inv_is_wf_digraph)
-     apply (rule_tac P1=" P and 
+     apply (unfold basic_just_sp_inv_def, fastforce simp: wf_inv_is_wf_digraph)[1]
+    apply (rule_tac P1=" P and 
     (\<lambda>s.  is_graph s iG g \<and>
           is_dist s iG iD d \<and>
           is_numm s iG iN n \<and>
@@ -1947,26 +1946,27 @@ lemma shortest_paths_locale_step2_spc_intermediate:
           is_pedge s iG iP p \<and>
           shortest_paths_locale_step1_inv iG sc iN iP iD)" 
       in validNF_post_imp[OF _ check_basic_just_sp_spc_intermediate])
-    apply (unfold shortest_paths_locale_step1_inv_def s_assms_inv_def)[1]
-    apply (fastforce simp: wf_inv_is_wf_digraph)
-     apply (rule_tac P1=" P and 
+    apply (unfold shortest_paths_locale_step1_inv_def s_assms_inv_def, fastforce simp: wf_inv_is_wf_digraph)[1]
+   apply (rule_tac P1=" P and 
     (\<lambda>s.  is_graph s iG g \<and>
           is_dist s iG iD d \<and>
           is_cost s iG iC c \<and>
           is_numm s iG iN n \<and>
           is_pedge s iG iP p)" 
       in validNF_post_imp[OF _ shortest_paths_locale_step1_spc_intermediate])
-   defer
-  apply (blast, clarsimp, safe)
-  apply (unfold shortest_paths_locale_step1_inv_def s_assms_inv_def, fast) 
+   apply (clarsimp, unfold shortest_paths_locale_step1_inv_def s_assms_inv_def, fast) 
+  apply blast
   done 
 
 lemma abs_INat_to_abs_INum:
     "shortest_paths_locale_step1
     (abs_IGraph G) s (abs_INat n)
     (abs_IPedge p) (abs_IDist d) \<Longrightarrow> (shortest_paths_locale_step1.enum (abs_INat n) (abs_IDist d)) = (abs_INum n d)"
-  using shortest_paths_locale_step1.enum_def[where ?G="(abs_IGraph G)" and ?s=s and ?num="(abs_INat n)" and ?parent_edge="(abs_IPedge p)" and ?dist="(abs_IDist d)"] 
-  unfolding abs_INum_def[where ?n=n and ?d=d] abs_IDist_def[where ?d=d] abs_INat_def[where ?n=n] 
+  using shortest_paths_locale_step1.enum_def[where 
+      ?G="(abs_IGraph G)" and ?s=s and ?num="(abs_INat n)" and
+      ?parent_edge="(abs_IPedge p)" and ?dist="(abs_IDist d)"] 
+  unfolding abs_INum_def[where ?n=n and ?d=d] abs_IDist_def[where ?d=d] 
+    abs_INat_def[where ?n=n] 
   by auto
 
 lemma shortest_paths_locale_step2_eq_maths:
