@@ -94,15 +94,43 @@ locale shortest_paths_locale_step2_pred =
   assumes source_val: "(\<exists>v \<in> verts G. enum v \<noteq> \<infinity>) \<Longrightarrow> dist s = 0"
   assumes no_edge_Vm_Vf: 
     "\<And>e. e \<in> arcs G \<Longrightarrow> dist (tail G e) = - \<infinity> \<Longrightarrow> \<forall> r. dist (head G e) \<noteq> ereal r"
-(*
+
 sublocale shortest_paths_locale_step2_pred \<subseteq> shortest_paths_locale_step2
-using shortest_paths_locale_step2_pred_axioms 
-unfolding shortest_paths_locale_step2_pred_def 
+  using shortest_paths_locale_step2_pred_axioms
+  unfolding shortest_paths_locale_step2_pred_def 
    shortest_paths_locale_step2_pred_axioms_def 
    shortest_paths_locale_step2_def 
-   shortest_paths_locale_step2_axioms_def
-try0
-*)
+   shortest_paths_locale_step2_axioms_def 
+   basic_just_sp_pred_def
+   basic_just_sp_def
+   basic_just_sp_axioms_def
+   basic_just_sp_pred_axioms_def
+  by blast
+
+locale shortest_paths_locale_step3_pred =
+  shortest_paths_locale_step2_pred +
+  fixes C :: "('a \<times>('b awalk)) set"
+  assumes C_se: 
+    "C \<subseteq> {(u, p). dist u \<noteq> \<infinity> \<and> awalk u p u \<and> awalk_cost c p < 0}"
+  assumes int_neg_cyc: 
+    "\<And>v. v \<in> verts G \<Longrightarrow> dist v = -\<infinity> \<Longrightarrow> 
+      (fst ` C) \<inter> pwalk_verts v  \<noteq> {}"
+
+sublocale shortest_paths_locale_step3_pred \<subseteq> shortest_paths_locale_step3
+  using shortest_paths_locale_step3_pred_axioms
+  unfolding shortest_paths_locale_step3_pred_def 
+   shortest_paths_locale_step3_pred_axioms_def 
+   shortest_paths_locale_step3_def 
+   shortest_paths_locale_step3_axioms_def 
+   shortest_paths_locale_step2_pred_def 
+   shortest_paths_locale_step2_pred_axioms_def 
+   shortest_paths_locale_step2_def 
+   shortest_paths_locale_step2_axioms_def 
+   basic_just_sp_pred_def
+   basic_just_sp_def
+   basic_just_sp_axioms_def
+   basic_just_sp_pred_axioms_def
+  by blast
 
 lemma (in shortest_paths_locale_step1) num_s_is_min:
   assumes "v \<in> verts G"
@@ -284,6 +312,12 @@ next
 show "dist v = -\<infinity> \<Longrightarrow> dist v = \<mu> c s v"
   using \<mu>_ninf[OF assms] by simp
 qed
+
+corollary (in shortest_paths_locale_step3_pred) correct_shortest_path:
+  fixes v :: 'a
+  assumes "v \<in> verts G"
+  shows "dist v = \<mu> c s v"
+  by (simp add: assms correct_shortest_path)
 
 end
 
