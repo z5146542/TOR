@@ -20,6 +20,10 @@ type_synonym IENInt = "IVertex \<Rightarrow> (32 signed word \<times> 32 signed 
 type_synonym IEInt = "IVertex \<Rightarrow> 32 word"
 type_synonym ICost = "IEdge_Id \<Rightarrow> 32 signed word"
 type_synonym IGraph = "32 word \<times> 32 word \<times> (IEdge_Id \<Rightarrow> IEdge)"
+(* for locale 3 *)
+type_synonym ICycle_Id = "32 word"
+type_synonym IPath = "32 word \<Rightarrow> IEdge_Id"
+type_synonym ICycle = "32 word \<times> 32 word \<times> IPath"
 
 abbreviation ivertex_cnt :: 
   "IGraph \<Rightarrow> 32 word"

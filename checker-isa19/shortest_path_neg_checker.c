@@ -22,21 +22,14 @@ typedef struct ENInt {
     int isInf;
 } ENInt;
 
-// used for enum
-// semantics equivalent to ENInt in shortest_path_checker.c
-/*typedef struct EInt {
-    unsigned int val;
-    unsigned int isInf;
-} EInt;*/
-
-
 // Cycle contains a starting vertex, the length of the path, and the path itself
-// locale 3 related data structures will be dealt later.
-/*typedef struct Cycle {
+typedef struct Cycle {
+    // 'a 
     unsigned int start;
+    // 'b awalk; needs two components in C
     unsigned int length;
     unsigned int *path;
-} Cycle;*/
+} Cycle;
 
 // Abbreviations
 
@@ -115,8 +108,6 @@ int s_assms(Graph *g, unsigned int s, ENInt *dist, int *pred, unsigned int *num)
     if(s >= vertex_cnt(g)) return 0;
     if(dist[s].isInf > 0) return 0;
     if(!(pred[s] < 0)) return 0;
-    // if(num[s].isInf != 0) return 0;
-    // if(dist[s].isInf != 0) return 0;
     if(num[s] != 0) return 0;
     return 1;
 }
@@ -131,9 +122,6 @@ int parent_num_assms(Graph *g, unsigned int s, ENInt *dist, int *pred, unsigned 
                 if(edge_id >= edge_cnt(g)) return 0;
                 if(arcs(g, edge_id).second != v) return 0;
                 if(dist[arcs(g, edge_id).first].isInf > 0) return 0;
-                // work on logic here
-                // if(num[v].isInf != 0) return 0;
-                // if(num[arcs(g, edge_id).first].isInf != 0) return 0;
                 if((unsigned long) num[v] != 
                    (unsigned long) num[arcs(g, edge_id).first] + 1) return 0;
             }
@@ -141,15 +129,6 @@ int parent_num_assms(Graph *g, unsigned int s, ENInt *dist, int *pred, unsigned 
     }
     return 1;
 }
-
-/* int no_p_edge(Graph *g, ENInt *dist) {
-    for(unsigned int edge_id = 0; edge_id < edge_cnt(g); edge_id++) {
-        if(dist[arcs(g, edge_id).first].isInf <= 0) {
-            if(dist[arcs(g, edge_id).second].isInf > 0) return 0;
-        }
-    }
-    return 1;
-} */
 
 // locale 2
 int source_val(Graph *g, unsigned int s, ENInt *dist, unsigned int *num){
@@ -174,23 +153,37 @@ int no_edge_Vm_Vf(Graph *g, ENInt *dist) {
 
 
 // the following functions are all related to locale 3, which will be dealt with later. 
-/*
+
 // helpers
 
-// checks if the sequence of edge_ids are connected
-// also checks if the last vertex and the first vertex are the same
-
-int awalk(Graph *g, Cycle C) {
-    for(unsigned int z = 0; z < C.length - 1; z++) {
-        // return false if the second vertex of the first edge is not the same as the first vertex of the second edge
-        if(arcs(g, C.path[z]).second != arcs(g, C.path[z+1]).first) return 0;
-    }
+int awalk(Graph *g, unsigned int u, unsigned int length, unsigned int *path, unsigned int v) {
+    // u in verts G
+    if(u >= vertex_cnt(g)) return 0;
+    // set p subsetof arcs G
+    for(int i = 0; i < length; i++)
+        if(path[i] >= edge_cnt(g)) return 0;
+    // cas u p v
+    // if(!(cas(g, u, length, path, v))) return 0;
+    unsigned int edge_id;
+    unsigned int next = u;
+    for(unsigned int i = 0; i <= length; i++) {
+        // cas u [] v = (u = v)
+        if(i == length) {
+            if(next != v) return 0;
+            return 1;
+        }
+        edge_id = path[i];
+        // tail G e = u
+        if(arcs(g, edge_id).first != next) return 0;
+        // cas (head G e) es v
+        next = arcs(g, edge_id).second;
+    }   
     return 1;
 }
 
 // returns the total cost of the path
 
-int awalk_cost(int *c, unsigned int *path, unsigned int length) {
+int awalk_cost(int *c, unsigned int length, unsigned int *path) {
     int total = 0;
     for(unsigned int e = 0; e < length; e++) {
         total = total + c[path[e]];
@@ -204,66 +197,55 @@ int awalk_cost(int *c, unsigned int *path, unsigned int length) {
 int C_se(Graph *g, Cycle *C, int *c, unsigned int nc, ENInt *dist) {
     for(unsigned int y = 0; y < nc; y++) {
         if(dist[C[y].start].isInf > 0) return 0;
-        if(awalk(g, C[y]) == 0) return 0;
-        if(awalk_cost(c, C[y].path, C[y].length) >= 0) return 0;
+        if(awalk(g, C[y].start, C[y].length, C[y].path, C[y].start) == 0) return 0;
+        if(awalk_cost(c, C[y].length, C[y].path) >= 0) return 0;
     }
     return 1;
 }
-
-// checks if a vertex s is connected to the vertex v given a list of parent edges of each respective vertices
-
-int is_connected(Graph *g, unsigned int s, int *p, unsigned int v) {
-    unsigned int n = v;
-    // the while loop will eventually terminate given n is either the source vertex or some other disjoint vertex
-    while(p[n] >= 0) {
-        if(n == s) return 1;
-        n = arcs(g, p[n]).first;
-    }
-    return 0;
-}
-
-// pwalk: function from vertices to paths.
-// it is the path obtained by concatenating the edges defined by the parent-edge function form v to s for vertices in Vf union Vm different from s, otherwise it is the empty path.
 
 // int_neg_cyc: For each vertex v in Vm, pwalk v intersects a cycle in C
 // hence, each vertex v in Vm is connected to s with a walk that contains a negative cycle 
 // maybe define pwalk internally?
 
 // note pedge defines the edgeid of parent edges of vertices
-int int_neg_cyc(Graph *g, unsigned int s, ENInt *dist, Cycle *C, int *c, int *p, unsigned int nc) {
-    unsigned int u;
-    unsigned int i;
-    unsigned int is_neg_cycle;
+int int_neg_cyc(Graph *g, unsigned int s, ENInt *dist, Cycle *C, unsigned int nc, int *c, int *p) {
+    unsigned int edge_id;
+    unsigned int baby_vertex;
     for(unsigned int v = 0; v < vertex_cnt(g); v++) {
         if(dist[v].isInf < 0) {
-            is_neg_cycle = 0;
-            // check if v == s, whcih we then check if s itself is the start of a negative cycle
-            if(v == s) {
-                for(i = 0; i < nc; i++) {
-                    if(s == C[i].start) is_neg_cycle = 1;
-                }
+            // idea: sort the Cycle array in terms of the start element in increasing order (do this outside the for loop)
+            //       or for simplicity, just use sequential search (probably reduces complexity of verification at the cost of t cplxty)
+            //       implement pwalk within function, where pwalk produces an array of edges
+            //       or alternatively, implement an array of vertices where each succeeding pair is an edge (s only if empty)
+            //       for each vertex in the the awalks_verts array, perform binary search on Cycle.start to find if 
+            //       intersecting element is present.
+            //       If present, continue (as this implies intersection is not the empty set)
+            // case: parent(fst edge) is negative
+            //       just check source
+            //       parent(v).first outputs vertex
+            //       check if fst edge is in start of any cycle by bin/seq search
+            //       if exists, check next vertex parent(v).snd, otherwise return 0
+            edge_id = p[v];
+            baby_vertex = arcs(g, edge_id).first;
+            while(p[baby_vertex] > 0 && dist[baby_vertex].isInf <= 0 && baby_vertex < vertex_cnt(g)) {
+                // TODO: serach if baby_vertex = any start of a cycle
+                // return 1 if true, continue if false
+                edge_id = p[arcs(g, edge_id).second];
+                baby_vertex = arcs(g, edge_id).first;
             }
-            // if is_connected returns false, then a path from s to v does not exist, which is false
-            if(is_connected(g, s, p, v) == 0) return 0;
-            // checks every vertex u between s and v.
-            // the next vertex on the loop will always be the predecessing vertex on the path
-            // since is_connected is true, the for loop will terminate towards s, where 
-            for(u = v; v != s; v = arcs(g, p[u]).first) {
-                for(i = 0; i < nc; i++) {
-                    if(u == C[i].start) is_neg_cycle = 1;
-                }
-            }
-            if(is_neg_cycle == 0) return 0;
+            // final case: check if last vertex is in cycle
+            // last vertex is either source, start of a different component of the same graph
+            // TODO: search if baby_vertex = any start of a cycle
+            // return 1 if exists, continue if false
         }
     }
-    return 1;
+    return 0;
 }
-*/
+
 int shortest_paths_locale_step1(Graph *g, unsigned int s, unsigned int *num, int *pred, ENInt *dist) {
     if(!is_wellformed(g)) return 0;
     if(!s_assms(g, s, dist, pred, num)) return 0;
     if(!parent_num_assms(g, s, dist, pred, num)) return 0;
-    // if(!no_p_edge(g, dist)) return 0;
     return 1;
 }
 
@@ -274,14 +256,13 @@ int shortest_paths_locale_step2(Graph *g, unsigned int s, int *c, unsigned int *
     if(!no_edge_Vm_Vf(g, dist)) return 0;
     return 1;
 }
-/*
-int shortest_paths_locale_step3(Graph *g, unsigned int s, int *c, EInt *num, int *pred, ENInt *dist, Cycle *C, unsigned int nc) {
+
+int shortest_paths_locale_step3(Graph *g, unsigned int s, int *c, unsigned int *num, int *pred, ENInt *dist, Cycle *C, unsigned int nc) {
     if(shortest_paths_locale_step2(g, s, c, num, pred, dist) == 0) return 0;
     if(C_se(g, C, c, nc, dist) == 0) return 0;
-    if(int_neg_cyc(g, s, dist, C, c, pred, nc) == 0) return 0;
+    if(int_neg_cyc(g, s, dist, C, nc, c, pred) == 0) return 0;
     return 1;
-}*/
-
+}
 
 int main(int argc, char **argv) {
     return 0;
