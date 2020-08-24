@@ -211,7 +211,7 @@ int C_se(Graph *g, int *c, ENInt *dist, int *cycles, unsigned int *visited) {
 // C_se must check two properties as per the theory file.
 // 1. check that negative cycles are actually cycles
 // 2. check that negative cycles have negative cumulative cost
-int C_se(Graph *g, int *c, unsigned int s, ENInt *dist, int *pred, int *label) {
+int C_se(Graph *g, int *c, unsigned int s, ENInt *dist, int *pred, unsigned int *label) {
     // the following labelling idea is adapted from the LEDA checker algorithm. 
     // precondition: label is an array of size vertex_cnt(g). 
     // first: iterate through array, label vertices v with dist[v].isInf > 0 PLUS
@@ -279,6 +279,7 @@ int C_se(Graph *g, int *c, unsigned int s, ENInt *dist, int *pred, int *label) {
 //                         any other combination: v not in V_m. Note: visited[v] must be 0 in this case
 // idea: find all v s.t.   dist[v] = -inf && visited[v] = 0 and check if arcs(g, pedge[v]).first
 //       is connected to a negative cycle and so on... 
+/*
 int int_neg_cyc(Graph *g, unsigned int s, ENInt *dist, int *c, int *p, unsigned int *visited) {
     for(int v = 0; v < vertex_cnt(g); v++) {
         if(dist[v].isInf < 0 && visited[v] == 0) {
@@ -297,7 +298,7 @@ int int_neg_cyc(Graph *g, unsigned int s, ENInt *dist, int *c, int *p, unsigned 
         }
     }
     return 1;
-}
+}*/
 
 int shortest_paths_locale_step1(Graph *g, unsigned int s, unsigned int *num, int *pred, ENInt *dist) {
     if(!is_wellformed(g)) return 0;
@@ -314,11 +315,10 @@ int shortest_paths_locale_step2(Graph *g, unsigned int s, int *c, unsigned int *
     return 1;
 }
 
-int shortest_paths_locale_step3(Graph *g, unsigned int s, int *c, unsigned int *num, int *pred, ENInt *dist, int *cycles, unsigned int *visited) {
+int shortest_paths_locale_step3(Graph *g, unsigned int s, int *c, unsigned int *num, int *pred, ENInt *dist, int *cycles, unsigned int *label) {
     if(shortest_paths_locale_step2(g, s, c, num, pred, dist) == 0) return 0;
-    for(unsigned int i = 0; i < vertex_cnt(g); i++) visited[i] = 0;
-    if(C_se(g, c, dist, cycles, visited) == 0) return 0;
-    if(int_neg_cyc(g, s, dist, c, pred, visited) == 0) return 0;
+    if(C_se(g, c, dist, pred, label) == 0) return 0;
+    // if(int_neg_cyc(g, s, dist, c, pred, visited) == 0) return 0;
     return 1;
 }
 
