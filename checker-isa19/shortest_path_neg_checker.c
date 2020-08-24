@@ -41,6 +41,16 @@ typedef struct Cycle {
 
 #define arcs(g, e) g->arcs[e]
 
+// for the label array
+#define UNKNOWN         0
+#define PLUS            1
+#define FINITE          2
+#define ON_CURR_PATH    3
+#define ATT_TO_CYC      4
+#define CYC             5
+#define NEG_CYC         6
+
+
 // Procedures
 
 // the following procedures are from the nonnegative shortest path 
@@ -159,6 +169,7 @@ int no_edge_Vm_Vf(Graph *g, ENInt *dist) {
 //          note: if there is a vertex v, part of a negative cycle, where there is an edge (v, u) that denotes the next veretex,
 //          then cycles[v] returns the edge (v, u) where arcs(g, cycles[v]).first = v, unlike pedge, which is the opposite case.
 // visited: array of size vertex_cnt(g). All vertices are initially 0. When visited, value increments by 1.
+/*
 int C_se(Graph *g, int *c, ENInt *dist, int *cycles, unsigned int *visited) {
     for(unsigned int v = 0; v < vertex_cnt(g); v++) {
         if(cycles[v] >= 0 && visited[v] == 0) {
@@ -193,6 +204,72 @@ int C_se(Graph *g, int *c, ENInt *dist, int *cycles, unsigned int *visited) {
             if(cost >= 0) return 0;
         }
     }
+    return 1;
+}
+*/
+
+// C_se must check two properties as per the theory file.
+// 1. check that negative cycles are actually cycles
+// 2. check that negative cycles have negative cumulative cost
+int C_se(Graph *g, int *c, unsigned int s, ENInt *dist, int *pred, int *label) {
+    // the following labelling idea is adapted from the LEDA checker algorithm. 
+    // precondition: label is an array of size vertex_cnt(g). 
+    // first: iterate through array, label vertices v with dist[v].isInf > 0 PLUS
+    //                                                     otherwise         UNKNOWN
+    for(unsigned int v = 0; v < vertex_cnt(g); v++) {
+        if(dist[v].isInf > 0) label[v] = PLUS;
+        else label[v] = UNKNOWN;
+    }
+
+    // initial condition
+    if(pred[s] < 0) label[s] = FINITE;
+
+    // next, we iterate through each vertices
+    for(unsigned int v = 0; v < vertex_cnt(g); v++) {
+        // only perform the following if v is not labelled
+        if(label[v] == UNKNOWN) {
+            // initialise stack. This will track which vertices will potentially be a cycle once it is detected
+            Stack s = new_stack();
+            unsigned int w = v;
+            // iterate through pred until non-UNKNOWN vertex is visited
+            while(label[w] == UNKNOWN) {
+                label[w] = ON_CURR_PATH;
+                s.push(w);
+                w = arcs(g, pred[w]).first;
+            }
+            unsigned int t = label[w];
+            // at this point, a non-UNKNOWN vertex is visited. Two cases here:
+            // case 1: forming a new negative cycle
+            if(t == ON_CURR_PATH) {
+                unsigned int z;
+                do {
+                    z = s.pop();
+                    label[z] = CYC;
+                } while (z != w);
+                // remaining vertices in stack are attached to this negative cycle. Label them as such.
+                while (!s.empty()) label[s.pop()] = ATT_TO_CYC;
+            }
+            // case 2: negative cycle or ATT_TO_NEG_CYC already defiend for w. Then the vertices in the stack are attached to a negative cycle.
+            //         or, the vertex is simply in the finite set. 
+            if(t == CYC) t = ATT_TO_CYC;
+            while(!s.empty()) label[s.pop()] = t;
+        }
+    }
+
+    // finally, check that each negative cycle is negative in cumulative cost
+    for(unsigned int v = 0; v < vertex_cnt(g); v++) {
+        if(label[v] == NEG_CYC) {
+            unsigned int w = v;
+            long total_cost = 0;
+            do {
+                total_cost == c[pred[w]];
+                label[w] = NEG_CYC;
+                w = arcs(g, pred[w]).first;
+            } while(w != v);
+            if(total_cost >= 0) return 0;
+        }
+    } 
+
     return 1;
 }
 
