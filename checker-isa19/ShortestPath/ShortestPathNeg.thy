@@ -122,12 +122,12 @@ lemma (in shortest_paths_general_cost_source) \<mu>_V_less_inf:
   shows "\<mu> c s v \<noteq> \<infinity>"
   using assms path_from_root_Vr \<mu>_reach_conv by force
 
-lemma (in shortest_paths_general_cost) enum_not0:
+lemma (in shortest_paths_general_cost) num_not0:
   assumes "v \<in> verts G"
   assumes "v \<noteq> s"
   assumes "enum v \<noteq> \<infinity>"
-  shows "enum v \<noteq> enat 0"
-     using just[OF assms(1,2)] assms unfolding enum_def by auto
+  shows "num v \<noteq> 0"
+     using just[OF assms(1,2)] assms unfolding enum_def by fastforce 
 
 lemma (in shortest_paths_general_cost) dist_Vf_\<mu>:
   fixes v :: 'a
@@ -144,9 +144,8 @@ proof -
     awalk_cost_Nil ds  dist_le_\<mu>[OF s_in_G] zero_ereal_def
     by simp
   thus ?thesis 
-
     using ds assms dist_le_\<mu>[OF vG] 
-    dist_ge_\<mu>[OF vG _ mu ds enum_not0]      
+    dist_ge_\<mu>[OF vG _ mu ds num_not0]      
     unfolding enum_def 
     by force 
 qed
