@@ -164,7 +164,7 @@ lemma (in basic_just_sp) dist_ge_\<mu>:
   assumes "\<mu> c s s = ereal 0"
   assumes "dist s = 0"
   assumes "\<And>u. u\<in>verts G \<Longrightarrow> u\<noteq>s \<Longrightarrow>
-            enum u \<noteq> \<infinity> \<Longrightarrow> enum u \<noteq> enat 0"
+            enum u \<noteq> \<infinity> \<Longrightarrow> num u \<noteq> 0"
   shows "dist v \<ge> \<mu> c s v"
 proof -
   obtain n where "n = num v" using assms(2) by force
