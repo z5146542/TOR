@@ -19,43 +19,48 @@ locale basic_sp =
 
 locale basic_just_sp = 
   basic_sp +
-  fixes num :: "'a \<Rightarrow> enat"
+  fixes num :: "'a \<Rightarrow> nat"
   assumes just:
-    "\<And>v. \<lbrakk>v \<in> verts G; v \<noteq> s; num v \<noteq> \<infinity>\<rbrakk> \<Longrightarrow>
+    "\<And>v. \<lbrakk>v \<in> verts G; v \<noteq> s; dist v \<noteq> \<infinity>\<rbrakk> \<Longrightarrow>
       \<exists> e \<in> arcs G. v = head G e \<and>
         dist v = dist (tail G e) + c e  \<and>
-        num v = num (tail G e) + (enat 1)"
+        num v = num (tail G e) + 1"
+
+definition (in basic_just_sp) enum :: "'a \<Rightarrow> enat" where
+  "enum v = (if (dist v = \<infinity> \<or> dist v = - \<infinity>) then \<infinity> else num v)"
+
 
 locale shortest_path_pos_cost =
   basic_just_sp +
-  assumes s_in_G: "s \<in> verts G"
   assumes tail_val: "dist s = 0"
-  assumes no_path: "\<And>v. v \<in> verts G \<Longrightarrow> dist v = \<infinity> \<longleftrightarrow> num v = \<infinity>"
+  assumes no_neg_dist: "\<And>v. v \<in> verts G \<Longrightarrow> dist v \<noteq> - \<infinity>"
   assumes pos_cost: "\<And>e. e \<in> arcs G \<Longrightarrow> 0 \<le> c e"
 
 locale basic_just_sp_pred = 
   basic_sp +
-  fixes num :: "'a \<Rightarrow> enat"
+  fixes num :: "'a \<Rightarrow> nat"
   fixes pred :: "'a \<Rightarrow> 'b option"
   assumes just:
-    "\<And>v. \<lbrakk>v \<in> verts G; v \<noteq> s; num v \<noteq> \<infinity>\<rbrakk> \<Longrightarrow>
+    "\<And>v. \<lbrakk>v \<in> verts G; v \<noteq> s; dist v \<noteq> \<infinity>\<rbrakk> \<Longrightarrow>
       \<exists> e \<in> arcs G. 
         pred v = Some e \<and> 
         v = head G e \<and>
         dist v = dist (tail G e) + c e  \<and>
-        num v = num (tail G e) + (enat 1)"
+        num v = num (tail G e) + 1 "
 
 sublocale basic_just_sp_pred \<subseteq> basic_just_sp  
 using basic_just_sp_pred_axioms 
 unfolding basic_just_sp_pred_def
    basic_just_sp_pred_axioms_def
-by unfold_locales (blast)
+  apply unfold_locales
+  by fast
 
 locale shortest_path_pos_cost_pred =
   basic_just_sp_pred +
   assumes s_in_G: "s \<in> verts G"
   assumes tail_val: "dist s = 0"
-  assumes no_path: "\<And>v. v \<in> verts G \<Longrightarrow> dist v = \<infinity> \<longleftrightarrow> num v = \<infinity>"
+  assumes no_neg_dist: "\<And>v. v \<in> verts G \<Longrightarrow> dist v = -\<infinity>"
+(*\<longleftrightarrow> enum v = \<infinity>"*)
   assumes pos_cost: "\<And>e. e \<in> arcs G \<Longrightarrow> 0 \<le> c e"
 
 sublocale shortest_path_pos_cost_pred \<subseteq> shortest_path_pos_cost
@@ -115,7 +120,7 @@ proof -
   thus ?thesis using no_neg_cyc_reach_imp_path[OF sv] by presburger
 qed
 
-lemma (in basic_sp)  dist_le_\<mu>:
+lemma (in basic_sp) dist_le_\<mu>:
   fixes v :: 'a
   assumes "v \<in> verts G"
   shows "dist v \<le> \<mu> c s v" 
@@ -155,18 +160,18 @@ qed
 lemma (in basic_just_sp) dist_ge_\<mu>:
   fixes v :: 'a
   assumes "v \<in> verts G"
-  assumes "num v \<noteq> \<infinity>"
-  assumes "dist v \<noteq> -\<infinity>"
+  assumes "enum v \<noteq> \<infinity>"
   assumes "\<mu> c s s = ereal 0"
   assumes "dist s = 0"
   assumes "\<And>u. u\<in>verts G \<Longrightarrow> u\<noteq>s \<Longrightarrow>
-            num u \<noteq> \<infinity> \<Longrightarrow> num u \<noteq> enat 0"
+            enum u \<noteq> \<infinity> \<Longrightarrow> num u \<noteq> 0"
   shows "dist v \<ge> \<mu> c s v"
 proof -
-  obtain n where "enat n = num v" using assms(2) by force
+  obtain n where "n = num v" using assms(2) by force
   thus ?thesis using assms
   proof(induct n arbitrary: v) 
-  case 0 thus ?case by (cases "v=s", auto)
+    case 0 thus ?case 
+      by (cases "v=s"; fastforce simp: assms)
   next
   case (Suc n)
     thus ?case 
@@ -176,15 +181,17 @@ proof -
         "e \<in> arcs G" 
         "v = head G e"
         "dist v = dist (tail G e) + ereal (c e)" 
-        "num v = num (tail G e) + enat 1" 
-        using just[OF Suc(3) False Suc(4)] by blast
-      then have nsinf:"num (tail G e) \<noteq> \<infinity>" 
-        by (metis Suc(2) enat.simps(3) enat_1 plus_enat_simps(2))
-      then have ns:"enat n = num (tail G e)" 
-        using e_assms(4) Suc(2) by force
+        "num v = num (tail G e) + 1" 
+        using just[OF Suc(3) False]Suc(4) enum_def by metis
+      then have nsinf:"enum (tail G e) \<noteq> \<infinity>" 
+        using assms
+        using Suc.prems(3) enum_def by auto
+      then have ns:"n = num (tail G e)" 
+        using e_assms(4) Suc(2) enum_def 
+        by auto
       have  ds: "dist (tail G e) = \<mu> c s (tail G e)" 
         using Suc(1)[OF ns tail_in_verts[OF e_assms(1)] nsinf] 
-        Suc(5-8) e_assms(3) dist_le_\<mu>[OF tail_in_verts[OF e_assms(1)]] 
+        Suc(5-7) dist_le_\<mu>[OF tail_in_verts[OF e_assms(1)]]
         by simp
       have dmuc:"dist v \<ge> \<mu> c s (tail G e) + ereal (c e)"
         using e_assms(3) ds  by auto
@@ -195,7 +202,7 @@ proof -
           unfolding arc_to_ends_def
           by (simp add: e_assms(2))
         obtain r where  \<mu>r: "\<mu> c s (tail G e) = ereal r"
-           using e_assms(3) Suc(5) ds False
+           using ds enum_def nsinf
            by (cases "\<mu> c s (tail G e)", auto)
         obtain p where 
           "awalk s p (tail G e)" and
@@ -232,11 +239,11 @@ lemma (in shortest_path_pos_cost) num_not0:
   fixes v :: 'a
   assumes "v \<in> verts G"
   assumes "v \<noteq> s"
-  assumes "num v \<noteq> \<infinity>"
-  shows "num v \<noteq> enat 0"
+  assumes "enum v \<noteq> \<infinity>"
+  shows "num v \<noteq> 0"
 proof -
-  obtain ku where "num v = ku + enat 1" 
-    using assms just by blast
+  obtain ku where "num v = ku + 1" 
+    using assms just enum_def by metis
   thus ?thesis  by (induct ku) auto
 qed
 
@@ -244,14 +251,14 @@ lemma (in shortest_path_pos_cost) dist_ne_ninf:
   fixes v :: 'a
   assumes "v \<in> verts G"
   shows "dist v \<noteq> -\<infinity>"
-proof (cases "num v = \<infinity>")
+proof (cases "enum v = \<infinity>")
 case False 
-  obtain n where "enat n = num v"
+  obtain n where "n = num v"
     using False by force
   thus ?thesis using assms False
   proof(induct n arbitrary: v) 
   case 0 thus ?case 
-    using num_not0 tail_val by (cases "v=s", auto) 
+    using num_not0 tail_val  by (cases "v=s", auto) 
   next
   case (Suc n)
     thus ?case 
@@ -263,11 +270,13 @@ case False
       obtain e where e_assms:
         "e \<in> arcs G"
         "dist v = dist (tail G e) + ereal (c e)" 
-        "num v = num (tail G e) + enat 1" 
-        using just[OF Suc(3) False Suc(4)] by blast
-      then have nsinf:"num (tail G e) \<noteq> \<infinity>" 
-        by (metis Suc(2) enat.simps(3) enat_1 plus_enat_simps(2))
-      then have ns:"enat n = num (tail G e)" 
+        "num v = num (tail G e) + 1" 
+        using just[OF Suc(3) False] Suc(4) enum_def 
+        by metis
+      then have nsinf:"enum (tail G e) \<noteq> \<infinity>" 
+        using Suc(4) enum_def 
+        by auto
+      then have ns:"n = num (tail G e)" 
         using e_assms(3) Suc(2) by force
       have "dist (tail G e ) \<noteq> - \<infinity>" 
         by (rule Suc(1) [OF ns tail_in_verts[OF e_assms(1)] nsinf])
@@ -276,17 +285,18 @@ case False
   qed
 next
 case True 
-  thus ?thesis using no_path[OF assms] by simp
+  thus ?thesis using assms no_neg_dist by simp 
 qed
 
 theorem (in shortest_path_pos_cost) correct_shortest_path:
   fixes v :: 'a
   assumes "v \<in> verts G"
   shows "dist v = \<mu> c s v"
-  using no_path[OF assms(1)] dist_le_\<mu>[OF assms(1)]
-    dist_ge_\<mu>[OF assms(1) _ dist_ne_ninf[OF assms(1)] 
-    tail_value_check[OF s_in_G] tail_val num_not0] 
-    by fastforce
+  using  dist_le_\<mu>[OF assms(1)]
+    dist_ge_\<mu>[OF assms(1) _ 
+   tail_value_check[OF s_in_G] tail_val] 
+   dist_ne_ninf[OF assms(1)] 
+   num_not0 enum_def by fastforce
 
 corollary (in shortest_path_pos_cost_pred) correct_shortest_path_pred:
   fixes v :: 'a

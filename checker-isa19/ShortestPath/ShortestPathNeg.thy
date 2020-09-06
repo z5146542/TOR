@@ -9,164 +9,86 @@ imports ShortestPath
 
 begin
 section \<open>Shortest Path (with general edge costs)\<close>
-(* 
-  In this locale we assume we are given a 
-  wellformed directed graph $G = (V,E)$ with 
-  finite $V$ and $E$ (this is the assumption 
-  $graphG$). Moreover, a source vertex $s$ in 
-  $V$ . In addition, a cost function c, a function
- $num:V\to \Nat$, $parent\dash edge:V\to E \cup $*)
-locale shortest_paths_locale_step1 = 
-  fixes G :: "('a, 'b) pre_digraph" (structure)
-  fixes s :: "'a"
-  fixes c :: "'b \<Rightarrow> real"
-  fixes num :: "'a \<Rightarrow> nat"
-  fixes parent_edge :: "'a \<Rightarrow> 'b option"
-  fixes dist :: "'a  \<Rightarrow> ereal"
-  assumes graphG: "fin_digraph G"
-  assumes s_assms: 
-    "s \<in> verts G" 
-    "dist s \<noteq> \<infinity>" 
-    "parent_edge s = None" 
-    "num s = 0"
-  assumes  parent_num_assms: 
-    "\<And>v.  \<lbrakk>v \<in> verts G; v \<noteq> s; dist v \<noteq> \<infinity>\<rbrakk> \<Longrightarrow>
-    (\<exists>e \<in> arcs G. parent_edge v = Some e \<and> 
-    head G e = v \<and> dist (tail G e) \<noteq> \<infinity> \<and>
-    num v  = num (tail G e) + 1)"
- (* assumes noPedge: "\<And>e. e\<in>arcs G \<Longrightarrow> 
-    dist (tail G e) \<noteq> \<infinity> \<Longrightarrow> dist (head G e) \<noteq> \<infinity>"*)
 
-sublocale shortest_paths_locale_step1 \<subseteq> fin_digraph G
-  using graphG by auto
-
-definition (in shortest_paths_locale_step1) enum :: "'a \<Rightarrow> enat" where
-  "enum v = (if (dist v = \<infinity> \<or> dist v = - \<infinity>) then \<infinity> else num v)"
-
-locale shortest_paths_locale_step2 = 
-  shortest_paths_locale_step1 +
-  basic_just_sp G dist c s enum +
+locale shortest_paths_general_cost_source = 
+  basic_just_sp_pred +
+  assumes source_num: "num s = 0"
   assumes source_val: "(\<exists>v \<in> verts G. enum v \<noteq> \<infinity>) \<Longrightarrow> dist s = 0"
-  assumes no_edge_Vm_Vf: 
-    "\<And>e. e \<in> arcs G \<Longrightarrow> dist (tail G e) = - \<infinity> \<Longrightarrow> \<forall> r. dist (head G e) \<noteq> ereal r"
+  
 
-lemma (in basic_sp) noPedge: 
+lemma (in basic_sp) noPedge:                       
   "\<And>e. e\<in>arcs G \<Longrightarrow> 
     dist (tail G e) \<noteq> \<infinity> \<Longrightarrow> dist (head G e) \<noteq> \<infinity>"
   by (case_tac "dist (head G e)") (fastforce dest: trian)+
-
  
-function (in shortest_paths_locale_step1) pwalk :: "'a \<Rightarrow> 'b list" 
+function (in shortest_paths_general_cost_source) pwalk :: "'a \<Rightarrow> 'b list" 
 where
   "pwalk v = 
     (if (v = s \<or> dist v = \<infinity> \<or> v \<notin> verts G)
       then [] 
-      else pwalk (tail G (the (parent_edge v))) @ [the (parent_edge v)]
+      else pwalk (tail G (the (pred v))) @ [the (pred v)]
     )"
 by auto 
-termination (in shortest_paths_locale_step1) 
-  using parent_num_assms
-  by (relation "measure num", auto, fastforce)
+termination (in shortest_paths_general_cost_source) 
+  using just  
+  by (relation "measure num", simp, fastforce)  
 
-
-lemma (in shortest_paths_locale_step1) pwalk_simps:
+lemma (in shortest_paths_general_cost_source) pwalk_simps:
   "v = s \<or> dist v = \<infinity> \<or> v \<notin> verts G \<Longrightarrow> pwalk v = []"
   "v \<noteq> s \<Longrightarrow> dist v \<noteq> \<infinity> \<Longrightarrow> v \<in> verts G \<Longrightarrow> 
-    pwalk v = pwalk (tail G (the (parent_edge v))) @ [the (parent_edge v)]"
+    pwalk v = pwalk (tail G (the (pred v))) @ [the (pred v)]" 
 by auto
 
-definition (in shortest_paths_locale_step1) pwalk_verts :: "'a  \<Rightarrow> 'a set" where 
+definition (in shortest_paths_general_cost_source) pwalk_verts :: "'a  \<Rightarrow> 'a set" where 
   "pwalk_verts v = {u. u \<in> set (awalk_verts s (pwalk v))}" 
 
-locale shortest_paths_locale_step3 =
-  shortest_paths_locale_step2 +
+locale shortest_paths_general_cost =
+  shortest_paths_general_cost_source +
   fixes C :: "('a \<times>('b awalk)) set"
+  assumes no_edge_Vm_Vf: 
+    "\<And>e. e \<in> arcs G \<Longrightarrow> dist (tail G e) = - \<infinity> \<Longrightarrow> \<forall> r. dist (head G e) \<noteq> ereal r"
   assumes C_se: 
     "C \<subseteq> {(u, p). dist u \<noteq> \<infinity> \<and> awalk u p u \<and> awalk_cost c p < 0}"
   assumes int_neg_cyc: 
     "\<And>v. v \<in> verts G \<Longrightarrow> dist v = -\<infinity> \<Longrightarrow> 
       (fst ` C) \<inter> pwalk_verts v  \<noteq> {}"
 
-locale shortest_paths_locale_step2_pred = 
-  shortest_paths_locale_step1 +
-  fixes pred :: "'a \<Rightarrow> 'b option" 
-  assumes bj: "basic_just_sp_pred G dist c s enum pred" 
-  assumes source_val: "(\<exists>v \<in> verts G. enum v \<noteq> \<infinity>) \<Longrightarrow> dist s = 0"
-  assumes no_edge_Vm_Vf: 
-    "\<And>e. e \<in> arcs G \<Longrightarrow> dist (tail G e) = - \<infinity> \<Longrightarrow> \<forall> r. dist (head G e) \<noteq> ereal r"
-
-sublocale shortest_paths_locale_step2_pred \<subseteq> shortest_paths_locale_step2
-  using shortest_paths_locale_step2_pred_axioms
-  unfolding shortest_paths_locale_step2_pred_def 
-   shortest_paths_locale_step2_pred_axioms_def 
-   shortest_paths_locale_step2_def 
-   shortest_paths_locale_step2_axioms_def 
-   basic_just_sp_pred_def
-   basic_just_sp_def
-   basic_just_sp_axioms_def
-   basic_just_sp_pred_axioms_def
-  by blast
-
-locale shortest_paths_locale_step3_pred =
-  shortest_paths_locale_step2_pred +
-  fixes C :: "('a \<times> ('b awalk)) set"
-  assumes C_se:
-    "C \<subseteq> {(u, p). dist u \<noteq> \<infinity> \<and> awalk u p u \<and> awalk_cost c p < 0}"
-  assumes int_neg_cyc:
-    "\<And>v. v \<in> verts G \<Longrightarrow> dist v = -\<infinity> \<Longrightarrow>
-      (fst ` C) \<inter> pwalk_verts v \<noteq> {}"
-
-sublocale shortest_paths_locale_step3_pred \<subseteq> shortest_paths_locale_step3
-  using shortest_paths_locale_step3_pred_axioms
-  unfolding shortest_paths_locale_step3_pred_def 
-   shortest_paths_locale_step3_pred_axioms_def 
-   shortest_paths_locale_step3_def 
-   shortest_paths_locale_step3_axioms_def 
-   shortest_paths_locale_step2_pred_def 
-   shortest_paths_locale_step2_pred_axioms_def 
-   shortest_paths_locale_step2_def 
-   shortest_paths_locale_step2_axioms_def 
-   basic_just_sp_pred_def
-   basic_just_sp_def
-   basic_just_sp_axioms_def
-   basic_just_sp_pred_axioms_def
-  by blast
-
-lemma (in shortest_paths_locale_step1) num_s_is_min:
+lemma (in shortest_paths_general_cost_source) num_s_is_min:
   assumes "v \<in> verts G"
   assumes "v \<noteq> s"
   assumes "dist v \<noteq> \<infinity>"
   shows "num v > 0"
-     using parent_num_assms[OF assms] by fastforce
+     using just[OF assms] by fastforce
 
-lemma (in shortest_paths_locale_step1) path_from_root_Vr_ex:
+lemma (in shortest_paths_general_cost_source) path_from_root_Vr_ex:
   fixes v :: 'a
   assumes "v \<in> verts G"
   assumes "v \<noteq> s"
   assumes "dist v \<noteq> \<infinity>"
   shows  "\<exists>e. s \<rightarrow>\<^sup>* tail G e \<and>
           e \<in> arcs G \<and> head G e = v \<and> dist (tail G e) \<noteq> \<infinity> \<and>
-          parent_edge v = Some e \<and> num v = num (tail G e) + 1"
+          pred v = Some e \<and> num v = num (tail G e) + 1"
 using assms
 proof(induct "num v - 1" arbitrary : v)
 case 0
-  obtain e where ee:
-    "e \<in> arcs G" "head G e = v" "dist (tail G e) \<noteq> \<infinity>" 
-    "parent_edge v = Some e" "num v = num (tail G e) + 1"
-    using parent_num_assms[OF 0(2-4)] by fast
+   obtain e where ee:
+    "e \<in> arcs G" "v = head G e" "dist (tail G e) \<noteq> \<infinity>" 
+    "pred v = Some e" "num v = num (tail G e) + 1"
+    using just[OF 0(2-4)] `dist v \<noteq> \<infinity>`
+    by force 
   have "tail G e = s" 
     using num_s_is_min[OF tail_in_verts [OF ee(1)] _ ee(3)] 
     ee(5) 0(1) by auto
   then show ?case using ee by auto
 next
 case (Suc n')
-  obtain e where ee:
-    "e \<in> arcs G" "head G e = v" "dist (tail G e) \<noteq> \<infinity>" 
-    "parent_edge v = Some e" "num v = num (tail G e) + 1"
-    using parent_num_assms[OF Suc(3-5)] by fast
+  then obtain e where ee:
+    "e \<in> arcs G" "v = head G e" "dist (tail G e) \<noteq> \<infinity>" 
+    "pred v = Some e" "num v = num (tail G e) + 1"
+    using just[OF Suc(3-5)] by force 
   then have ss: "tail G e \<noteq> s"
     using num_s_is_min tail_in_verts
-    Suc(2) s_assms(4) by force
+    Suc(2) source_num by force 
   have nst: "n' = num (tail G e) - 1"
     using ee(5) Suc(2) by presburger
   obtain e' where reach: "s \<rightarrow>\<^sup>* tail G e'" and
@@ -177,7 +99,7 @@ case (Suc n')
   then show ?case using e' ee by auto
 qed
 
-lemma (in shortest_paths_locale_step1) path_from_root_Vr:
+lemma (in shortest_paths_general_cost_source) path_from_root_Vr:
   fixes v :: 'a
   assumes "v \<in> verts G"
   assumes "dist v \<noteq> \<infinity>"
@@ -188,26 +110,26 @@ next
 case False
   obtain e where "s \<rightarrow>\<^sup>* tail G e" "e \<in> arcs G" "head G e = v"
       using path_from_root_Vr_ex[OF assms(1) False assms(2)] by blast
-  then have "s \<rightarrow>\<^sup>* tail G e" "tail G e \<rightarrow> v"
+  then have "s \<rightarrow>\<^sup>* tail G e" and "tail G e \<rightarrow> v"
     by (auto intro: in_arcs_imp_in_arcs_ends)
   then show ?thesis by (rule reachable_adj_trans)
 qed
 
-lemma (in shortest_paths_locale_step1) \<mu>_V_less_inf:
+lemma (in shortest_paths_general_cost_source) \<mu>_V_less_inf:
   fixes v :: 'a
   assumes "v \<in> verts G"
   assumes "dist v \<noteq> \<infinity>"
   shows "\<mu> c s v \<noteq> \<infinity>"
   using assms path_from_root_Vr \<mu>_reach_conv by force
 
-lemma (in shortest_paths_locale_step2) enum_not0:
+lemma (in shortest_paths_general_cost) enum_not0:
   assumes "v \<in> verts G"
   assumes "v \<noteq> s"
   assumes "enum v \<noteq> \<infinity>"
   shows "enum v \<noteq> enat 0"
-     using parent_num_assms[OF assms(1,2)] assms unfolding enum_def by auto
+     using just[OF assms(1,2)] assms unfolding enum_def by auto
 
-lemma (in shortest_paths_locale_step2) dist_Vf_\<mu>:
+lemma (in shortest_paths_general_cost) dist_Vf_\<mu>:
   fixes v :: 'a
   assumes vG: "v \<in> verts G"
   assumes "\<exists>r. dist v = ereal r"
@@ -216,18 +138,20 @@ proof -
   have ds: "dist s =  0" 
     using assms source_val unfolding enum_def by force
   have ews:"awalk s [] s" 
-    using s_assms(1) unfolding awalk_def by simp
+     unfolding awalk_def using s_in_G by simp
   have mu: "\<mu> c s s = ereal 0" 
     using min_cost_le_walk_cost[OF ews, where c=c] 
-    awalk_cost_Nil ds  dist_le_\<mu>[OF s_assms(1)] zero_ereal_def
+    awalk_cost_Nil ds  dist_le_\<mu>[OF s_in_G] zero_ereal_def
     by simp
   thus ?thesis 
+
     using ds assms dist_le_\<mu>[OF vG] 
-    dist_ge_\<mu>[OF vG _ _ mu ds enum_not0]
-    unfolding enum_def by fastforce
+    dist_ge_\<mu>[OF vG _ mu ds enum_not0]      
+    unfolding enum_def 
+    by force 
 qed
 
-lemma (in shortest_paths_locale_step1) pwalk_awalk:
+lemma (in shortest_paths_general_cost_source) pwalk_awalk:
   fixes v :: 'a
   assumes "v \<in> verts G"
   assumes "dist v \<noteq> \<infinity>"
@@ -242,7 +166,7 @@ case False
   from assms show ?thesis 
   proof (induct rule: pwalk.induct)
     fix v 
-    let ?e = "the (parent_edge v)"
+    let ?e = "the (pred v)"
     let ?u = "tail G ?e"
     assume ewu: "\<not> (v = s \<or> dist v = \<infinity> \<or> v \<notin> verts G) \<Longrightarrow> 
                  ?u \<in> verts G \<Longrightarrow> dist ?u \<noteq> \<infinity> \<Longrightarrow> 
@@ -259,10 +183,10 @@ case False
     case False
       obtain e  where ee:
         "e \<in>arcs G" 
-        "parent_edge v = Some e" 
-        "head G e = v" 
+        "pred v = Some e" 
+        "v = head G e" 
         "dist (tail G e) \<noteq> \<infinity>" 
-        using parent_num_assms False by blast
+        using just False by force
       hence "awalk s (pwalk ?u) ?u"
         using ewu[OF False] tail_in_verts by simp
       hence "awalk s (pwalk (tail G e) @ [e]) v"
@@ -275,7 +199,7 @@ case False
   qed
 qed
 
-lemma (in shortest_paths_locale_step3) \<mu>_ninf:
+lemma (in shortest_paths_general_cost) \<mu>_ninf:
   fixes v :: 'a
   assumes "v \<in> verts G"
   assumes "dist v = - \<infinity>"
@@ -297,7 +221,7 @@ ultimately
   show ?thesis using  neg_cycle_imp_inf_\<mu> by force
 qed
 
-lemma (in shortest_paths_locale_step3) correct_shortest_path:
+lemma (in shortest_paths_general_cost) correct_shortest_path:
   fixes v :: 'a
   assumes "v \<in> verts G"
   shows "dist v = \<mu> c s v"
@@ -312,12 +236,6 @@ next
 show "dist v = -\<infinity> \<Longrightarrow> dist v = \<mu> c s v"
   using \<mu>_ninf[OF assms] by simp
 qed
-
-corollary (in shortest_paths_locale_step3_pred) correct_shortest_path:
-  fixes v :: 'a
-  assumes "v \<in> verts G"
-  shows "dist v = \<mu> c s v"
-  by (simp add: assms correct_shortest_path)
 
 end
 
