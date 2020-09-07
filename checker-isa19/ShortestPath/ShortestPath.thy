@@ -60,7 +60,6 @@ locale shortest_path_pos_cost_pred =
   assumes s_in_G: "s \<in> verts G"
   assumes tail_val: "dist s = 0"
   assumes no_neg_dist: "\<And>v. v \<in> verts G \<Longrightarrow> dist v = -\<infinity>"
-(*\<longleftrightarrow> enum v = \<infinity>"*)
   assumes pos_cost: "\<And>e. e \<in> arcs G \<Longrightarrow> 0 \<le> c e"
 
 sublocale shortest_path_pos_cost_pred \<subseteq> shortest_path_pos_cost
