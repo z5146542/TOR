@@ -13,12 +13,18 @@ locale basic_sp =
   fixes s :: "'a"
   fixes dist :: "'a \<Rightarrow> ereal"
   fixes pred :: "'a \<Rightarrow> 'b option"
+  assumes s_in_verts: "s \<in> verts G"
 
 (* Let P = {pred[v] ; pred[v] \<noteq> nil} be the set of edges defined by the pred-array *)
 
+(* differs from LEDA definition: (is this necessary?)
+   limits set to edges (pred v) that are in G such that v is also in G *)
 definition (in basic_sp) pred_edges :: "'b set" where 
- "pred_edges = { e. \<exists> v \<in> verts G.  pred v = Some e }"
-
+ "pred_edges = { e\<in> arcs G. \<exists> v \<in> verts G.  pred v = Some e }"
+               
+lemma (in basic_sp) finite_pred_edge: 
+  "finite pred_edges" 
+  by (simp add: pred_edges_def)
 (*
 U+ = {v;v \<noteq> s \<and> pred[v]=nil},
 U f = \<emptyset>, if pred[s]\<noteq> nil,
@@ -26,6 +32,7 @@ Uf = {v; v is reachable from s by a P-path}, if pred[s]=nil,
 U− = {v ; v lies on a P-cycle or is reachable from a P-cycle by a P-path}.
 *)
 
+(* U+ differs from LEDA in that it adds that v is in G *)
 definition (in basic_sp) U_plus :: "'a set" where
   "U_plus = {v \<in> verts G. v \<noteq> s \<and> pred v = None}"  
 
@@ -33,14 +40,32 @@ definition (in basic_sp) U_finite :: "'a set" where
   "U_finite = (if (pred s = None) then 
                   {v. \<exists> p. apath s p v \<and> set p \<subseteq> pred_edges} else {})"  
 
-
 definition (in basic_sp) U_minus :: "'a set" where
   "U_minus = {v. \<exists> cyc. cycle cyc \<and> 
-                  awalk_cost c cyc < 0 \<and> 
                   set cyc \<subseteq> pred_edges \<and>
                   (v\<in> set (awalk_verts v cyc) \<or> 
                     (\<exists>u p. u \<in> set (awalk_verts v cyc) \<and> 
                            apath u p v \<and> set p \<subseteq> pred_edges)) }"
+
+(*
+definition (in basic_sp) pred_edges :: "'b set" where 
+ "pred_edges = { e. \<exists> v.  pred v = Some e }"
+     
+
+definition (in basic_sp) U_plus :: "'a set" where
+  "U_plus = {v. v \<noteq> s \<and> pred v = None}"  
+
+definition (in basic_sp) U_finite :: "'a set" where
+  "U_finite = (if (pred s = None) then 
+                  {v. \<exists> p. apath s p v \<and> set p \<subseteq> pred_edges} else {})"  
+
+definition (in basic_sp) U_minus :: "'a set" where
+  "U_minus = {v. \<exists> cyc. cycle cyc \<and> 
+                  set cyc \<subseteq> pred_edges \<and>
+                  (v\<in> set (awalk_verts v cyc) \<or> 
+                    (\<exists>u p. u \<in> set (awalk_verts v cyc) \<and> 
+                           apath u p v \<and> set p \<subseteq> pred_edges)) }"
+*)
 
 locale sp_plus =
   basic_sp +
@@ -48,33 +73,8 @@ locale sp_plus =
   assumes reach_plus:
     "\<And>v. (v \<in> U_plus) = (\<not> (s \<rightarrow>\<^sup>* v))"
 
-locale sp_plus_trian =
-  basic_sp +
-(*(4) Forall e=(v,w)\<in>E:ifv\<in>Uf and w\<in>Uf then dist[v]+c[e] \<ge> dist[w].*)
-  assumes trian:
-    "\<And>e. \<lbrakk>e \<in> arcs G; 
-          head G e \<in> U_finite; 
-          tail G e \<in> U_finite\<rbrakk> \<Longrightarrow>
-      dist (head G e) \<le> dist (tail G e) + c e"
-
-locale sp_plus_trian_just = 
-  sp_plus_trian +
-(* (5) For all v \<in> U f : 
-   if v = s then dist[v] = 0 and 
-   if v \<noteq> s 
-   then dist[v] = dist[u] +
-   c[pred[v]] where u is the source of pred[v].*)
-  assumes source_dist_0: 
-        "s \<in> U_finite \<Longrightarrow> dist s = 0"
-  assumes just:
-    "\<And>v. \<lbrakk>v \<in> U_finite; v\<noteq> s\<rbrakk> \<Longrightarrow>
-      \<exists> e \<in> arcs G. 
-        pred v = Some e \<and> 
-        v = head G e \<and>
-        dist v = dist (tail G e) + c e"
-
-locale sp_neg = 
-  sp_plus_trian_just +
+locale sp_inf = 
+  sp_plus +
 (* (2) All P-cycles have negative cost.
    (3) There is no edge(v,w)\<in>E with v\<in>U− and w\<in>Uf.
 *)
@@ -86,7 +86,37 @@ locale sp_neg =
       (head G e)\<notin> U_finite"
 
 
-lemma (in sp_plus_trian_just) just_pred:
+locale sp_trian =
+  sp_inf +
+(*(4) Forall e=(v,w)\<in>E:ifv\<in>Uf and w\<in>Uf then dist[v]+c[e] \<ge> dist[w].*)
+  assumes trian:
+    "\<And>e. \<lbrakk>e \<in> arcs G; 
+          head G e \<in> U_finite; 
+          tail G e \<in> U_finite\<rbrakk> \<Longrightarrow>
+      dist (head G e) \<le> dist (tail G e) + c e"
+
+locale sp_trian_just = 
+  sp_trian +
+(* (5) For all v \<in> U f : 
+   if v = s then dist[v] = 0 and 
+   if v \<noteq> s 
+   then dist[v] = dist[u] +
+   c[pred[v]] where u is the source of pred[v].*)
+(* deviating from LEDA definition 
+   in just assumption: 
+   adding through an edge in pred (pred v = Some e). *)
+  assumes source_dist_0: 
+        "s \<in> U_finite \<Longrightarrow> dist s = 0"
+  assumes just:
+    "\<And>v. \<lbrakk>v \<in> U_finite; v\<noteq> s\<rbrakk> \<Longrightarrow>
+      \<exists> e \<in> arcs G. 
+        pred v = Some e \<and> 
+        v = head G e \<and>
+        dist v = dist (tail G e) + c e"
+
+
+
+lemma (in sp_trian_just) just_pred:
   "\<And>v. \<lbrakk>v \<in> U_finite; v \<noteq> s\<rbrakk> \<Longrightarrow>
     \<exists> k. \<exists> e \<in> arcs G. v = head G e \<and>
       dist v = dist (tail G e) + c e  \<and>
@@ -123,14 +153,12 @@ definition (in basic_sp) V_plus :: "'a set" where
   "V_plus = {v\<in>verts G. \<mu> c s v= \<infinity> }"
 
 lemma (in basic_sp) V_partition: 
-  "verts G = (V_minus \<union> V_finite \<union> V_plus)" and
-  "disjnt V_plus V_minus" and
-  "disjnt V_plus V_finite" and
-  "disjnt V_minus V_finite" 
+  "verts G = (V_minus \<union> V_finite \<union> V_plus) \<and>
+   disjnt V_plus V_minus \<and>
+   disjnt V_plus V_finite \<and>
+   disjnt V_minus V_finite" 
   unfolding V_minus_def V_finite_def V_plus_def disjnt_def
   by (auto intro: real_of_ereal.cases) 
-find_theorems "_ \<union> _" "_ \<in> _"
-
 
 lemma (in basic_sp) Us_in_verts: 
   "U_minus \<union> U_finite \<union> U_plus \<subseteq> verts G"
@@ -150,22 +178,147 @@ proof (rule subsetI)
   { 
     assume  "v\<in>U_finite" 
     then have "v \<in> verts G" 
-      unfolding U_finite_def
+      unfolding U_finite_def 
       by (case_tac "pred s") (fastforce dest: awalkI_apath)+ 
   }
   ultimately show "v\<in> verts G" unfolding U_plus_def by blast
 qed
 
-lemma (in basic_sp) verts_in_Us: 
+
+lemma (in basic_sp) s_in_Uf:
+  "pred s = None \<Longrightarrow> s \<in> U_finite"
+  using apath_Nil_iff s_in_verts
+  by (fastforce simp: U_finite_def)
+
+lemma (in basic_sp) s_in_Um:
+  "pred s = Some e  \<Longrightarrow> s \<in> U_minus"
+  unfolding U_minus_def s_in_verts
+  apply (rule ccontr)
+  apply simp 
+  
+  oops
+
+(*
+
+Stuck proving that
+if pred s = Some e
+then s \<in> U−.
+
+
+——————
+The Us do not form 
+a partition on vertices. 
+
+Therefore we cannot infer
+Uf  \<union> U− = Vf  \<union> V−.
+
+In fact, the LEDA conditions (axioms in our locale) 
+are not sufficient for a correct checker. Below is 
+a counter-example.
+——————
+
+Counterexample: 
+
+Graph:
+v —> s
+c (v,s) = 1
+
+pred s = (v,s)
+pred v = nil
+
+dist s = 17
+dist v = 19
+
+——
+P = {(v,s)}
+
+U+ = {v}
+
+Uf = U− = {}
+
+——
+
+(1) v is not reachable 
+and is in U+
+(2) All P-cycles \<dots>
+vacuously true
+(3) nothing in U- 
+ vacuously true
+(4) nothing in Uf
+vacuously true
+(5) nothing in Uf
+vacuously true
+
+——
+Here the Us do not
+form a partition, yet all 
+conditions are satisfied
+\<dots>
+
+The checker needs to check
+an extra condition: 
+(6)  if pred s ~=nil then
+ s is in U−.
+
+—————————
+Other minor issues (not used in the counter-example):
+
+We need to know that
+pred (v) is in the edges 
+of the graph and is an 
+edge ending in v. 
+
+*)
+lemma (in basic_sp) Us_in_verts:
   "verts G \<subseteq> U_minus \<union> U_finite \<union> U_plus"
+  apply (rule subsetI)
+  apply (rename_tac v)
+  apply (case_tac "v = s")
+   apply (case_tac "pred s", simp_all add: s_in_Uf) 
 
   oops
 
-lemma (in sp_plus) U_plus_eq_V_plus:
+lemma (in sp_plus) Up_Vp_eq:
   shows "U_plus = V_plus"
   using reach_plus \<mu>_reach_conv  shortest_path_inf 
   unfolding  V_plus_def U_plus_def by auto
 
+lemma (in sp_plus) pred_some_mu:
+  "\<lbrakk>v \<in> verts G; v \<noteq> s \<rbrakk> \<Longrightarrow> 
+      (\<exists>e. pred v = Some e) = (\<mu> c s v < \<infinity>)"
+  using reach_plus \<mu>_reach_conv U_plus_def 
+  by (simp cong: Collect_cong) (metis not_Some_eq)
+
+lemma (in fin_digraph) mu_le_zero: 
+  "v \<in> verts G \<Longrightarrow> \<mu> f v v \<le> ereal 0" 
+  by (metis awalk_cost_Nil zero_ereal_def awalk_Nil_iff min_cost_le_walk_cost)
+
+lemma (in sp_plus) Umf_not_\<mu>_inf:
+  "U_minus \<union> U_finite = {v \<in> verts G. \<mu> c s v < \<infinity>}"
+  unfolding Un_def
+  apply (subst Collect_cong[where Q="\<lambda>v. v \<in> verts G \<and> \<mu> c s v < \<infinity>"])
+  prefer 2 
+   apply simp 
+  apply (rename_tac v)
+  
+  apply (case_tac "v = s")
+   apply (subgoal_tac "(s \<in> U_minus \<or> s \<in> U_finite)") 
+    apply simp
+    using s_in_verts
+    apply (fastforce dest: mu_le_zero[where v=s and f=c])
+   apply (case_tac "pred s")
+    apply (fastforce dest: s_in_Uf)
+  apply (rule disjI1)
+    oops
+
+lemma (in sp_plus) Umf_Vmf_eq:
+  "U_minus \<union> U_finite = V_minus \<union> V_finite" 
+  unfolding V_minus_def V_finite_def
+  apply (subst conjunct1[OF V_partition])+
+  using reach_plus \<mu>_reach_conv  shortest_path_inf V_partition Up_Vp_eq Us_in_verts
+  oops
+
+  
 lemma (in sp_plus) U_minus_U_finite_eq_V_minus_V_finite:
   fixes v :: 'a
   shows "(U_finite \<union> U_minus) = V_finite \<union> V_minus"
