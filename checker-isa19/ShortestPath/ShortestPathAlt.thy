@@ -114,7 +114,13 @@ locale sp_trian_just =
         v = head G e \<and>
         dist v = dist (tail G e) + c e"
 
+(*This extra condition is not in LEDA but it is needed see counter example below. 
 
+  (6) if pred s \<noteq> nil then s\<in>U−*)
+locale sp_plus_s_minus = 
+  sp_trian_just + 
+  assumes s_in_Um:
+  "pred s \<noteq> None \<Longrightarrow> s\<in> U_minus"
 
 lemma (in sp_trian_just) just_pred:
   "\<And>v. \<lbrakk>v \<in> U_finite; v \<noteq> s\<rbrakk> \<Longrightarrow>
@@ -185,6 +191,21 @@ proof (rule subsetI)
 qed
 
 
+lemma (in sp_plus) Up_Vp_eq:
+  shows "U_plus = V_plus"
+  using reach_plus \<mu>_reach_conv  shortest_path_inf 
+  unfolding  V_plus_def U_plus_def by auto
+
+lemma (in sp_plus) pred_some_mu:
+  "\<lbrakk>v \<in> verts G; v \<noteq> s \<rbrakk> \<Longrightarrow> 
+      (\<exists>e. pred v = Some e) = (\<mu> c s v < \<infinity>)"
+  using reach_plus \<mu>_reach_conv U_plus_def 
+  by (simp cong: Collect_cong) (metis not_Some_eq)
+
+lemma (in fin_digraph) mu_le_zero: 
+  "v \<in> verts G \<Longrightarrow> \<mu> f v v \<le> ereal 0" 
+  by (metis awalk_cost_Nil zero_ereal_def awalk_Nil_iff min_cost_le_walk_cost)
+
 lemma (in basic_sp) s_in_Uf:
   "pred s = None \<Longrightarrow> s \<in> U_finite"
   using apath_Nil_iff s_in_verts
@@ -193,10 +214,96 @@ lemma (in basic_sp) s_in_Uf:
 lemma (in basic_sp) s_in_Um:
   "pred s = Some e  \<Longrightarrow> s \<in> U_minus"
   unfolding U_minus_def s_in_verts
-  apply (rule ccontr)
-  apply simp 
-  
   oops
+datatype 'a IOs = "TOD (nat \<Rightarrow> ('a \<times> nat) option)"
+
+  term "x::nat"
+class IO_sort =
+  fixes intro :: "'a \<Rightarrow> 'a"
+
+datatype IO :: "('a::IO_sort) \<Rightarrow> 'a" where
+    Input: "IO a"
+    |Output: "bool \<Longrightarrow> IO unit"  
+
+inductive IO:: "nat \<Rightarrow> nat" where
+  Input: "IO nat"
+| Output: "nat \<Longrightarrow> IO nat"
+term "[]"
+inductive IO :: "ind \<Rightarrow> bool"
+  where
+    Zeros_RepI: "IO Zero_Rep"
+  | Sucs_RepIs: "IO i \<Longrightarrow> IO (Suc_Rep i)"
+
+definition counterexample_graph where
+  "counterexample_graph = 
+   \<lparr>verts = {False,True::bool}, arcs = 
+    {(True, False)}, tail = fst, head = snd \<rparr>"
+
+
+interpretation counterexample: 
+   wf_digraph counterexample_graph 
+  unfolding counterexample_graph_def 
+  by unfold_locales simp_all 
+
+interpretation counterexample: 
+   fin_digraph counterexample_graph 
+  unfolding counterexample_graph_def 
+  by unfold_locales simp_all 
+
+
+interpretation counterexample: 
+  basic_sp 
+      counterexample_graph (*G*)
+      "\<lambda>x. 1" (*c*)
+      "False" (*s*)
+      "\<lambda>x. 17" (*dist*)
+      "\<lambda>x. if x then None else Some (True,False)" (*pred*)
+  unfolding counterexample_graph_def 
+  by unfold_locales simp_all 
+ 
+interpretation counterexample_sp_plus: 
+ sp_plus 
+      counterexample_graph (*G*)
+      "\<lambda>x. 1" (*c*)
+      "False" (*s*)
+      "\<lambda>x. 17" (*dist*)
+      "\<lambda>x. if x then None else Some (True,False)" (*pred*)
+  unfolding sp_plus_def sp_plus_axioms_def  
+  apply (simp add: counterexample.basic_sp_axioms)
+  unfolding counterexample.U_plus_def 
+  by (subst counterexample.reachable_conv') 
+     (force simp: arcs_ends_def arc_to_ends_def 
+                  counterexample_graph_def
+            elim: converse_rtranclE)+
+
+interpretation counterexample_sp_trian_just: 
+ sp_trian
+      counterexample_graph (*G*)
+      "\<lambda>x. 1" (*c*)
+      "False" (*s*)
+      "\<lambda>x. 17" (*dist*)
+      "\<lambda>x. if x then None else Some (True,False)" (*pred*)
+  unfolding sp_trian_def sp_trian_axioms_def  
+ 
+
+interpretation counterexample_sp_trian_just: 
+ sp_trian_just 
+      counterexample_graph (*G*)
+      "\<lambda>x. 1" (*c*)
+      "False" (*s*)
+      "\<lambda>x. 17" (*dist*)
+      "\<lambda>x. if x then None else Some (True,False)" (*pred*)
+  apply unfold_locales 
+      apply (unfold counterexample_wf_digraph.cycle_def 
+                    counterexample_wf_digraph.awalk_def
+                    counterexample_basic_sp.pred_edges_def)
+     
+      apply (rule FalseE)
+
+  apply(erule notI)
+   
+  find_theorems "\<exists> _. _" "\<not> _"
+  apply (rule notnotD)
 
 (*
 
@@ -269,6 +376,8 @@ of the graph and is an
 edge ending in v. 
 
 *)
+
+
 lemma (in basic_sp) Us_in_verts:
   "verts G \<subseteq> U_minus \<union> U_finite \<union> U_plus"
   apply (rule subsetI)
@@ -278,20 +387,7 @@ lemma (in basic_sp) Us_in_verts:
 
   oops
 
-lemma (in sp_plus) Up_Vp_eq:
-  shows "U_plus = V_plus"
-  using reach_plus \<mu>_reach_conv  shortest_path_inf 
-  unfolding  V_plus_def U_plus_def by auto
 
-lemma (in sp_plus) pred_some_mu:
-  "\<lbrakk>v \<in> verts G; v \<noteq> s \<rbrakk> \<Longrightarrow> 
-      (\<exists>e. pred v = Some e) = (\<mu> c s v < \<infinity>)"
-  using reach_plus \<mu>_reach_conv U_plus_def 
-  by (simp cong: Collect_cong) (metis not_Some_eq)
-
-lemma (in fin_digraph) mu_le_zero: 
-  "v \<in> verts G \<Longrightarrow> \<mu> f v v \<le> ereal 0" 
-  by (metis awalk_cost_Nil zero_ereal_def awalk_Nil_iff min_cost_le_walk_cost)
 
 lemma (in sp_plus) Umf_not_\<mu>_inf:
   "U_minus \<union> U_finite = {v \<in> verts G. \<mu> c s v < \<infinity>}"

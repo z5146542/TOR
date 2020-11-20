@@ -33,7 +33,7 @@ definition (in basic_just_sp) enum :: "'a \<Rightarrow> enat" where
 locale shortest_path_pos_cost =
   basic_just_sp +
   assumes tail_val: "dist s = 0"
-  assumes no_neg_dist: "\<And>v. v \<in> verts G \<Longrightarrow> dist v \<noteq> - \<infinity>"
+  (*assumes no_neg_dist: "\<And>v. v \<in> verts G \<Longrightarrow> dist v \<noteq> - \<infinity>"*)
   assumes pos_cost: "\<And>e. e \<in> arcs G \<Longrightarrow> 0 \<le> c e"
 
 locale basic_just_sp_pred = 
@@ -45,8 +45,8 @@ locale basic_just_sp_pred =
       \<exists> e \<in> arcs G. 
         pred v = Some e \<and> 
         v = head G e \<and>
-        dist v = dist (tail G e) + c e  \<and>
-        num v = num (tail G e) + 1 "
+        dist v = dist (tail G e) + c e  "
+(* \<and> num v = num (tail G e) + 1 "*)
 
 sublocale basic_just_sp_pred \<subseteq> basic_just_sp  
 using basic_just_sp_pred_axioms 
@@ -59,7 +59,7 @@ locale shortest_path_pos_cost_pred =
   basic_just_sp_pred +
   assumes s_in_G: "s \<in> verts G"
   assumes tail_val: "dist s = 0"
-  assumes no_neg_dist: "\<And>v. v \<in> verts G \<Longrightarrow> dist v = -\<infinity>"
+  assumes no_neg_dist: "\<And>v. v \<in> verts G \<Longrightarrow> dist v = -\<infinity>" (*drop*)
   assumes pos_cost: "\<And>e. e \<in> arcs G \<Longrightarrow> 0 \<le> c e"
 
 sublocale shortest_path_pos_cost_pred \<subseteq> shortest_path_pos_cost
@@ -284,7 +284,7 @@ case False
   qed
 next
 case True 
-  thus ?thesis using assms no_neg_dist by simp 
+  thus ?thesis using assms (*no_neg_dist by simp *)sorry
 qed
 
 theorem (in shortest_path_pos_cost) correct_shortest_path:

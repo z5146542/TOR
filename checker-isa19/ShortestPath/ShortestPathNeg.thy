@@ -14,6 +14,7 @@ locale shortest_paths_general_cost_source =
   basic_just_sp_pred +
   assumes source_num: "num s = 0"
   assumes source_val: "(\<exists>v \<in> verts G. enum v \<noteq> \<infinity>) \<Longrightarrow> dist s = 0"
+  (*can we prove this and just assume dist s \<noteq> \<infinity> like in old version? *)
   
 
 lemma (in basic_sp) noPedge:                       
@@ -46,7 +47,8 @@ locale shortest_paths_general_cost =
   shortest_paths_general_cost_source +
   fixes C :: "('a \<times>('b awalk)) set"
   assumes no_edge_Vm_Vf: 
-    "\<And>e. e \<in> arcs G \<Longrightarrow> dist (tail G e) = - \<infinity> \<Longrightarrow> \<forall> r. dist (head G e) \<noteq> ereal r"
+    "\<And>e. e \<in> arcs G \<Longrightarrow> dist (tail G e) = - \<infinity> \<Longrightarrow> 
+         \<forall> r. dist (head G e) \<noteq> ereal r"
   assumes C_se: 
     "C \<subseteq> {(u, p). dist u \<noteq> \<infinity> \<and> awalk u p u \<and> awalk_cost c p < 0}"
   assumes int_neg_cyc: 

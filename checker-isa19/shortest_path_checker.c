@@ -48,7 +48,7 @@ int trian(Graph *g, EInt *dist, int *c) {
         if(dist[arcs(g, edge_id).first].isInf == 0) {
             if(dist[arcs(g, edge_id).second].isInf > 0) return 0;
             // if(dist[arcs(g, edge_id).first].val > dist[arcs(g, edge_id).first].val + c[edge_id]) return 0; // check there is no overflow
-            if((unsigned long) dist[arcs(g, edge_id).second].val > (unsigned long) dist[arcs(g, edge_id).first].val + (unsigned long)c[edge_id]) return 0;
+            if((long) dist[arcs(g, edge_id).second].val > (long) dist[arcs(g, edge_id).first].val + (long) c[edge_id]) return 0;
         }
         if(dist[arcs(g, edge_id).first].isInf < 0) {
             if(dist[arcs(g, edge_id).second].isInf >= 0) return 0;
@@ -68,11 +68,14 @@ int just(Graph *g, EInt *dist, int *c, unsigned int s, unsigned int *enu, int *p
                 if(arcs(g, edge_id).second != v) return 0;
                 // if((dist[v].isInf == 0) != (dist[arcs(g, edge_id).first].isInf == 0)) return 0;
                 if(dist[v].isInf == 0)
-                    if((unsigned long) dist[v].val != (unsigned long) dist[arcs(g, edge_id).first].val + (unsigned long) c[edge_id]) return 0;
+                    if((long) dist[v].val != (long) dist[arcs(g, edge_id).first].val + (long) c[edge_id]) return 0;
+                if(dist[v].isInf < 0)
+                    if(dist[arcs(g, edge_id).first].isInf >= 0) return 0;
+
                 // if(enu[arcs(g, edge_id).first].isInf != 0) return 0;
                 // if(enu[arcs(g, edge_id).first].val > enu[arcs(g, edge_id).first].val + 1) return 0;
                 // if(enu[v].val >= vertex_cnt(g)) return 0;
-                if((unsigned long) enu[v] != (unsigned long) enu[arcs(g, edge_id).first] + 1) return 0;
+                if((long) enu[v] != (long) enu[arcs(g, edge_id).first] + 1) return 0;
             }
         }
     }
