@@ -21,10 +21,9 @@ type_synonym IEInt = "IVertex \<Rightarrow> 32 word"
 type_synonym ICost = "IEdge_Id \<Rightarrow> 32 signed word"
 type_synonym IGraph = "32 word \<times> 32 word \<times> (IEdge_Id \<Rightarrow> IEdge)"
 (* for locale 3 *)
-type_synonym IPath = "32 word \<Rightarrow> IEdge_Id"
-type_synonym ICycle = "32 word \<times> 32 word \<times> (IPath)"
 type_synonym ICycle_Id = "32 word"
-type_synonym ICycle_Set = "32 word \<times> ICycle"
+type_synonym IPath = "32 word \<Rightarrow> IEdge_Id"
+type_synonym ICycle = "32 word \<times> 32 word \<times> IPath"
 
 abbreviation ivertex_cnt :: 
   "IGraph \<Rightarrow> 32 word"
@@ -32,7 +31,7 @@ where
   "ivertex_cnt G \<equiv> fst G"
 
 abbreviation iedge_cnt :: 
-  "IGraph \<Rightarrow> 32 word"
+"IGraph \<Rightarrow> 32 word"
 where 
   "iedge_cnt G \<equiv> fst (snd G)"
 
@@ -46,30 +45,15 @@ abbreviation val_d ::
 where 
   "val_d f v \<equiv> sint (fst (f v))"
 
-abbreviation is_inf_d :: 
-  "IENInt \<Rightarrow> IVertex \<Rightarrow> int"
-where 
-  "is_inf_d f v \<equiv>  sint (snd (f v))"
-
-abbreviation cycle_start ::
-  "ICycle \<Rightarrow> 32 word"
-where
-  "cycle_start C \<equiv> fst C"
-
-abbreviation cycle_length ::
-  "ICycle \<Rightarrow> 32 word"
-where
-  "cycle_length C \<equiv> fst (snd C)"
-
-abbreviation cycle_path ::
-  "ICycle \<Rightarrow> IPath"
-where
-  "cycle_path C \<equiv> snd (snd C)"
-
 fun bool :: 
   "32 word \<Rightarrow> bool" 
 where 
   "bool b = (if b=0 then False else True)"
+
+abbreviation is_inf_d :: 
+  "IENInt \<Rightarrow> IVertex \<Rightarrow> int"
+where 
+  "is_inf_d f v \<equiv>  sint (snd (f v))"
 
 fun mk_list' :: 
   "nat \<Rightarrow> (32 word \<Rightarrow> 'b) \<Rightarrow> 'b list" 
@@ -112,11 +96,6 @@ fun mk_icost_list ::
   "IGraph \<Rightarrow> ICost \<Rightarrow> 32 signed word list"
 where
   "mk_icost_list G cost = mk_list' (unat (iedge_cnt G)) cost"
-
-fun mk_icycle_path_list ::
-  "ICycle \<Rightarrow> IPath list"
-where
-  "mk_icycle_path_list C = mk_list' (unat (cycle_length C)) (cycle_path C)"
 
 (* Equate to Implementation *)
 

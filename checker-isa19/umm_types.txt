@@ -16,7 +16,3 @@ Cycle_C
 	length_C:Word 32
 	path_C:Ptr Word 32
 
-Cycle_set_C
-	no_cycles_C:Word 32
-	cyc_obj_C:Ptr Cycle_C
-
