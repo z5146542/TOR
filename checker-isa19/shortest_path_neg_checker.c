@@ -271,7 +271,7 @@ int shortest_paths_locale_step2(Graph *g, unsigned int s, int *c, unsigned int *
 int shortest_paths_locale_step3(Graph *g, unsigned int s, int *c, unsigned int *num, int *pred, ENInt *dist, Cycle_set *cse, int *parent_edge) {
     if(shortest_paths_locale_step2(g, s, c, num, pred, dist) == 0) return 0;
     if(C_se(g, cse, c, dist) == 0) return 0;
-    if(int_neg_cyc(g, s, dist, cse, c, parent_edge) == 0) return 0;
+    if(int_neg_cyc(g, s, dist, cse, c, parent_edge, num) == 0) return 0;
     return 1;
 }
 

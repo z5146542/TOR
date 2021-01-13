@@ -112,12 +112,12 @@ fun mk_icost_list ::
   "IGraph \<Rightarrow> ICost \<Rightarrow> 32 signed word list"
 where
   "mk_icost_list G cost = mk_list' (unat (iedge_cnt G)) cost"
-
+(*
 fun mk_icycle_path_list ::
   "ICycle \<Rightarrow> IPath list"
 where
   "mk_icycle_path_list C = mk_list' (unat (cycle_length C)) (cycle_path C)"
-
+*)
 (* Equate to Implementation *)
 
 lemma sint_ucast: 
