@@ -628,25 +628,19 @@ lemma is_wellformed_spc':
   apply wp
   unfolding is_graph_def is_wellformed_inv_def
      apply (subst if_bool_eq_conj)+
-     apply (simp, safe) 
-              apply (rule_tac x = "ee" in exI)
-              apply (subgoal_tac "num_vertices_C (heap_Graph_C s g) \<le> fst (snd (snd iG) ee)", force)
-              apply (subgoal_tac "first_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p uint ee)) = fst (snd (snd iG) ee)", simp)
-              apply (subst tail_heap[where iG=iG], simp, blast+)
-             apply(rule_tac x = "ee" in exI)
-             apply (subgoal_tac "num_vertices_C (heap_Graph_C s g) \<le> snd (snd (snd iG) ee)", force)
-             apply (subgoal_tac "second_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p uint ee)) = snd (snd (snd iG) ee)", simp)
-             apply (subst head_heap[where iG=iG], simp, blast+)
-            apply (metis two_comp_arrlist_heap s_C_pte le_cases le_step uint_nat word_le_less_eq)
-           apply (metis head_heap le_step not_less) 
-          apply (metis le_step word_not_le)
-         apply simp
-        apply (metis (mono_tags, hide_lams) diff_diff_add 
-                diff_self_eq_0 eq_iff_diff_eq_0 measure_unat not_less0 
-                word_less_nat_alt zero_less_diff)
-       apply (simp add: uint_nat unat_mono)+
-   apply wp 
-  apply simp
+     apply ((rule conjI)+, rule impI, clarsimp, rule_tac x = "ee" in exI, clarsimp, simp add: tail_heap)
+       apply (rule impI, (rule conjI)+, rule impI, clarsimp, rule_tac x = "ee" in exI, clarsimp, simp add: head_heap)
+        apply (rule impI, rule conjI, rule conjI, clarsimp, rule conjI)
+           apply (metis inc_le not_le head_heap tail_heap word_le_less_eq) 
+          apply (metis inc_le)
+         apply (metis unat_minus_plus1_less)
+        apply (force intro: unat_minus_plus1_less)
+       apply (fast intro: unat_minus_plus1_less)
+      apply (clarsimp simp: if_bool_eq_conj)+
+      apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+     apply (clarsimp simp: if_bool_eq_conj)+
+   apply wp
+  apply force
   done
 
 definition trian_inv :: "IGraph \<Rightarrow> IENInt \<Rightarrow> ICost \<Rightarrow> 32 word \<Rightarrow> bool" where
@@ -1166,115 +1160,52 @@ lemma check_basic_just_sp_spc_intermediate:
    apply clarsimp
    defer
    apply blast
-  apply rule+
-      apply (unfold is_graph_def is_dist_def)[1]
-      apply force
+  apply (rule conjI, rule impI, rule conjI, rule impI, rule conjI, rule impI, fast)
+    apply (rule impI, rule conjI, rule impI, rule impI, rule impI, rule disjI1)
      apply (unfold is_graph_def is_dist_def)[1]
-     apply argo
-    apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+     apply (subst Word_Lemmas.sint_0[symmetric], subst is_inf_d_heap, simp, argo, subst val_d_heap, simp, argo, simp)
+    apply (unfold is_graph_def is_dist_def)[1]
     apply (clarsimp simp: if_bool_eq_conj)+
     apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
-   apply rule+
-      apply (unfold is_graph_def is_dist_def)[1]
-      apply argo
-     apply rule+
-     apply (unfold is_graph_def is_dist_def)[1]
-     apply argo
-    apply rule+
-      apply (unfold is_graph_def is_dist_def)[1]
-      apply (subgoal_tac "sint (snd (iD sc)) = sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p int (unat sc))))")
-       apply (subgoal_tac "sint (fst (iD sc)) = sint (ENInt_C.val_C (heap_ENInt_C s (d +\<^sub>p int (unat sc))))")
-        apply linarith
-       apply (subst val_d_heap, linarith, blast, fast)
-      apply (subst is_inf_d_heap, fastforce, argo, simp add:uint_nat)
-     apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
-     apply (clarsimp simp: if_bool_eq_conj)+
-     apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
-    apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
+   apply (rule impI, rule conjI, rule impI, rule conjI, rule impI, blast)
+    apply (rule impI, rule conjI, rule impI, rule impI, rule disjI2)
+     apply (unfold just_inv_def is_graph_def is_dist_def, clarsimp simp del: Word_Lemmas.sint_0)[1]
+     apply (rule_tac x=sc in exI, clarsimp simp del: Word_Lemmas.sint_0)
+     apply (metis not_le ENInt_isInf_C_pte two_comp_to_eint_arrlist_heap)
+    apply (unfold is_graph_def is_dist_def)[1]
     apply (clarsimp simp: if_bool_eq_conj)+
     apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
-   apply rule+
-     apply argo
-    apply argo
-   apply rule+
-    apply (unfold is_graph_def is_dist_def)[1]
-    apply (subgoal_tac "sint (snd (iD sc)) = sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p int (unat sc))))")
-     apply linarith
-    apply (subst is_inf_d_heap, fastforce, argo, metis uint_nat)
-   apply rule+
-    apply (unfold is_graph_def is_dist_def)[1]
-    apply (subgoal_tac "sint (snd (iD sc)) = sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p int (unat sc))))")
-     apply (subgoal_tac "sint (fst (iD sc)) = sint (ENInt_C.val_C (heap_ENInt_C s (d +\<^sub>p int (unat sc))))") 
-      apply simp
-     apply (subst val_d_heap, fastforce, argo, force) 
-    apply (subst is_inf_d_heap, fastforce, argo, metis uint_nat)
-   apply rule
-    apply (metis fin_digraph_def wf_inv_is_fin_digraph)
-   apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
-   apply (clarsimp simp: if_bool_eq_conj)+
+   apply (rule impI, rule conjI, (rule impI)+, rule disjI2)
+    apply (unfold just_inv_def is_graph_def is_dist_def, clarsimp simp del: Word_Lemmas.sint_0)[1]
+   apply (rule impI, rule conjI, unfold is_graph_def is_dist_def)[1]
+    apply (subst is_inf_d_heap, simp, argo, simp add: uint_nat)
+    apply (subst Word_Lemmas.sint_0[symmetric], subst is_inf_d_heap, simp, presburger, simp add: uint_nat)
+   apply (rule conjI, metis wf_inv_is_wf_digraph)
+    apply (clarsimp simp: if_bool_eq_conj)+
    apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
-  apply rule+
-     apply meson
-    apply (simp add: is_inf_d_heap uint_nat)
-   apply rule+
-    apply (unfold is_graph_def is_dist_def)[1]
-    apply (subgoal_tac "sint (snd (iD sc)) = sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p int (unat sc))))")
-     apply simp
-    apply (subst is_inf_d_heap, fastforce, argo, metis uint_nat)
-   apply rule
-    apply (unfold is_graph_def is_dist_def)[1]
-    apply (subgoal_tac "sint (snd (iD sc)) = sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p int (unat sc))))")
-     apply (subgoal_tac "sint (fst (iD sc)) = sint (ENInt_C.val_C (heap_ENInt_C s (d +\<^sub>p int (unat sc))))") 
-      apply simp
-     apply (subst val_d_heap, fastforce, argo, simp add: uint_nat) 
-    apply (subst is_inf_d_heap, fastforce, argo, metis uint_nat)
-   apply rule
-    apply (metis fin_digraph_def wf_inv_is_fin_digraph)
-   apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
-   apply (clarsimp simp: if_bool_eq_conj)+
-   apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
-  apply rule+
-     apply fastforce
-    apply (unfold is_graph_def is_dist_def)[1]
-    apply blast
-   apply rule+
+  apply (rule impI, rule conjI, rule impI, rule conjI, (rule impI)+, rule disjI1)
      apply (unfold is_graph_def is_dist_def)[1]
-     apply (subgoal_tac "sint (snd (iD sc)) = sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p int (unat sc))))")
-      apply simp
-     apply (subst is_inf_d_heap, fastforce, argo, metis uint_nat)
-    apply (unfold is_graph_def is_dist_def)[1]
-    apply (subgoal_tac "sint (snd (iD sc)) = sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p int (unat sc))))")
-     apply (subgoal_tac "sint (fst (iD sc)) = sint (ENInt_C.val_C (heap_ENInt_C s (d +\<^sub>p int (unat sc))))") 
-      apply simp
-     apply (subst val_d_heap, fastforce, blast, fast)   
-    apply (subst is_inf_d_heap, fastforce, argo, metis uint_nat)
-   apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
-   apply (clarsimp simp: if_bool_eq_conj)+
+    apply (subst Word_Lemmas.sint_0[symmetric], subst is_inf_d_heap, simp, argo, subst val_d_heap, simp, argo, simp)
+   apply (rule impI, rule conjI, unfold is_graph_def is_dist_def)[1]
+    apply (subst is_inf_d_heap, simp, argo, simp add: uint_nat)
+   apply (rule conjI, rule impI, subst val_d_heap, simp, argo, simp add: uint_nat)
+  apply (rule conjI, metis wf_inv_is_wf_digraph)
+    apply (clarsimp simp: if_bool_eq_conj)+
    apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
-  apply rule+
-    apply meson
-   apply (unfold is_graph_def is_dist_def)[1]
-   apply (subgoal_tac "sint (snd (iD sc)) = sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p int (unat sc))))")
-    apply (subgoal_tac "sint (fst (iD sc)) = sint (ENInt_C.val_C (heap_ENInt_C s (d +\<^sub>p int (unat sc))))") 
-     apply simp
-    apply (subst val_d_heap, fastforce, argo, force) 
-   apply (subst is_inf_d_heap, fastforce, argo, argo)
-  apply rule+
-   apply (unfold is_graph_def is_dist_def)[1]
-   apply (subgoal_tac "sint (snd (iD sc)) = sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p int (unat sc))))")
-    apply simp
-   apply (subst is_inf_d_heap, fastforce, argo, metis uint_nat)
-  apply rule
-   apply (unfold is_graph_def is_dist_def)[1]
-   apply (subgoal_tac "sint (snd (iD sc)) = sint (ENInt_C.isInf_C (heap_ENInt_C s (d +\<^sub>p int (unat sc))))")
-    apply (subgoal_tac "sint (fst (iD sc)) = sint (ENInt_C.val_C (heap_ENInt_C s (d +\<^sub>p int (unat sc))))") 
-     apply simp
-    apply (subst val_d_heap, fastforce, argo, simp add:uint_nat)   
-   apply (subst is_inf_d_heap, fastforce, argo, metis uint_nat)
-  apply rule
-   apply (metis fin_digraph_def wf_inv_is_fin_digraph)
-  apply (unfold is_graph_def is_dist_def is_cost_def is_numm_def is_pedge_def wf_digraph_def)[1]
-  apply (clarsimp simp: if_bool_eq_conj)+
+  apply (rule impI, rule conjI, rule impI, rule conjI, rule impI, argo)
+   apply (rule impI, rule conjI, rule impI, rule impI, rule disjI2)
+     apply (unfold just_inv_def is_graph_def is_dist_def, clarsimp simp del: Word_Lemmas.sint_0)[1]
+     apply (rule_tac x=sc in exI, clarsimp simp del: Word_Lemmas.sint_0)
+    apply (metis not_le ENInt_isInf_C_pte two_comp_to_eint_arrlist_heap)
+  apply (unfold is_graph_def is_dist_def)[1]
+    apply (clarsimp simp: if_bool_eq_conj)+
+   apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
+  apply (rule impI, rule conjI, rule impI, meson)
+  apply (rule impI, rule conjI, unfold is_graph_def is_dist_def)[1]
+   apply (subst is_inf_d_heap, simp, argo, simp add: uint_nat)
+  apply (rule conjI, subst Word_Lemmas.sint_0[symmetric], subst is_inf_d_heap, simp, argo, simp add: uint_nat)
+  apply (rule conjI, metis wf_inv_is_wf_digraph)
+    apply (clarsimp simp: if_bool_eq_conj)+
   apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
   done
 
@@ -1619,7 +1550,7 @@ lemma parent_num_assms_inv_eq_math:
       infinity_ereal_def not_le long_ucast word_add_cast_up_no_overflow unat_eq_1(2))
   apply ((safe)[1], (fastforce simp add: abs_IDist_def)+, unfold abs_IGraph_def abs_IDist_def abs_INat_def abs_IPedge_def, simp_all)
      apply (simp add: word_msb_sint)+
-   apply (metis (mono_tags, hide_lams) add.right_neutral add_Suc_right shortest_path_neg_checker.long_ucast shortest_path_neg_checker.word_add_cast_up_no_overflow unat_eq_1(2) word_unat.Rep_inject)+
+   apply (metis (mono_tags, hide_lams) add.right_neutral add_Suc_right long_ucast word_add_cast_up_no_overflow unat_eq_1(2) word_unat.Rep_inject)+
   done
 
 lemma s_assms_eq_math:
@@ -1911,7 +1842,7 @@ lemma no_edge_Vm_Vf_spc':
   done
 
 lemma source_val_inv_eq_maths:
-  "source_val_inv G s d n (ivertex_cnt G) \<longleftrightarrow> 
+  "source_val_inv G s d n (ivertex_cnt G) \<longleftrightarrow>
    (\<exists> v \<in> verts (abs_IGraph G). abs_INum n d v \<noteq> \<infinity>) \<longrightarrow> abs_IDist d s = 0"
   unfolding source_val_inv_def abs_INum_def abs_IDist_def by fastforce
 
@@ -1942,7 +1873,7 @@ lemma shortest_paths_locale_step2_spc_intermediate:
         shortest_paths_locale_step2_inv iG sc iC iN iP iD)\<rbrace>!"
   apply (clarsimp simp: shortest_paths_locale_step2'_def shortest_paths_locale_step2_inv_def)
   apply wp
-        apply (rule_tac P1=" P and 
+      apply (rule_tac P1=" P and 
     (\<lambda>s.  is_graph s iG g \<and>
           is_dist s iG iD d \<and>
           is_numm s iG iN n \<and>
@@ -1962,9 +1893,8 @@ lemma shortest_paths_locale_step2_spc_intermediate:
           shortest_paths_locale_step1_inv iG sc iN iP iD \<and> 
           basic_just_sp_inv iG iD iC sc iN iP)" 
       in validNF_post_imp[OF _ source_val_spc'])
-     apply (unfold basic_just_sp_inv_def)[1]
-     apply (fastforce simp: wf_inv_is_wf_digraph)
-     apply (rule_tac P1=" P and 
+     apply (unfold basic_just_sp_inv_def, fastforce simp: wf_inv_is_wf_digraph)[1]
+    apply (rule_tac P1=" P and 
     (\<lambda>s.  is_graph s iG g \<and>
           is_dist s iG iD d \<and>
           is_numm s iG iN n \<and>
@@ -1972,30 +1902,30 @@ lemma shortest_paths_locale_step2_spc_intermediate:
           is_pedge s iG iP p \<and>
           shortest_paths_locale_step1_inv iG sc iN iP iD)" 
       in validNF_post_imp[OF _ check_basic_just_sp_spc_intermediate])
-    apply (unfold shortest_paths_locale_step1_inv_def s_assms_inv_def)[1]
-    apply (fastforce simp: wf_inv_is_wf_digraph)
-     apply (rule_tac P1=" P and 
+    apply (unfold shortest_paths_locale_step1_inv_def s_assms_inv_def, fastforce simp: wf_inv_is_wf_digraph)[1]
+   apply (rule_tac P1=" P and 
     (\<lambda>s.  is_graph s iG g \<and>
           is_dist s iG iD d \<and>
           is_cost s iG iC c \<and>
           is_numm s iG iN n \<and>
           is_pedge s iG iP p)" 
       in validNF_post_imp[OF _ shortest_paths_locale_step1_spc_intermediate])
-   defer
-  apply (blast, clarsimp, safe)
-  apply (unfold shortest_paths_locale_step1_inv_def s_assms_inv_def, fast) 
+   apply (clarsimp, unfold shortest_paths_locale_step1_inv_def s_assms_inv_def, fast) 
+  apply blast
   done 
 
 lemma abs_INat_to_abs_INum:
     "shortest_paths_locale_step1
     (abs_IGraph G) s (abs_INat n)
     (abs_IPedge p) (abs_IDist d) \<Longrightarrow> (shortest_paths_locale_step1.enum (abs_INat n) (abs_IDist d)) = (abs_INum n d)"
-  using shortest_paths_locale_step1.enum_def[where ?G="(abs_IGraph G)" and ?s=s and ?num="(abs_INat n)" and ?parent_edge="(abs_IPedge p)" and ?dist="(abs_IDist d)"] 
-  unfolding abs_INum_def[where ?n=n and ?d=d] abs_IDist_def[where ?d=d] abs_INat_def[where ?n=n] 
+  using shortest_paths_locale_step1.enum_def[where
+      ?G="(abs_IGraph G)" and ?s=s and ?num="(abs_INat n)" and
+      ?parent_edge="(abs_IPedge p)" and ?dist="(abs_IDist d)"]
+  unfolding abs_INum_def abs_IDist_def abs_INat_def
   by auto
 
 lemma shortest_paths_locale_step2_eq_maths:
-  "\<And>G d s c n p. 
+  "\<And>G d s c n p.
     shortest_paths_locale_step2_inv G s c n p d
     =
     shortest_paths_locale_step2_pred
@@ -2006,7 +1936,7 @@ proof -
   let ?aG = "abs_IGraph G"
   let ?ad = "abs_IDist d"
   let ?ac = "abs_ICost c"
-  let ?an = "abs_INat n"  
+  let ?an = "abs_INat n"
   let ?ap = "abs_IPedge p"
   show "?thesis G d s c n p"
     unfolding  shortest_paths_locale_step2_inv_def 

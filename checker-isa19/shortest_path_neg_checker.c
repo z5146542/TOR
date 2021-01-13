@@ -22,18 +22,12 @@ typedef struct ENInt {
     int isInf;
 } ENInt;
 
-// used for enum
-// semantics equivalent to ENInt in shortest_path_checker.c
-/*typedef struct EInt {
-    unsigned int val;
-    unsigned int isInf;
-} EInt;*/
-
-
 // Cycle contains a starting vertex, the length of the path, and the path itself
 // locale 3 related data structures will be dealt later.
 typedef struct Cycle {
+    // 'a 
     unsigned int start;
+    // 'b awalk; needs two components in C
     unsigned int length;
     unsigned int *path;
 } Cycle;
@@ -120,8 +114,6 @@ int s_assms(Graph *g, unsigned int s, ENInt *dist, int *pred, unsigned int *num)
     if(s >= vertex_cnt(g)) return 0;
     if(dist[s].isInf > 0) return 0;
     if(!(pred[s] < 0)) return 0;
-    // if(num[s].isInf != 0) return 0;
-    // if(dist[s].isInf != 0) return 0;
     if(num[s] != 0) return 0;
     return 1;
 }
@@ -136,9 +128,6 @@ int parent_num_assms(Graph *g, unsigned int s, ENInt *dist, int *pred, unsigned 
                 if(edge_id >= edge_cnt(g)) return 0;
                 if(arcs(g, edge_id).second != v) return 0;
                 if(dist[arcs(g, edge_id).first].isInf > 0) return 0;
-                // work on logic here
-                // if(num[v].isInf != 0) return 0;
-                // if(num[arcs(g, edge_id).first].isInf != 0) return 0;
                 if((unsigned long) num[v] != 
                    (unsigned long) num[arcs(g, edge_id).first] + 1) return 0;
             }
@@ -146,15 +135,6 @@ int parent_num_assms(Graph *g, unsigned int s, ENInt *dist, int *pred, unsigned 
     }
     return 1;
 }
-
-/* int no_p_edge(Graph *g, ENInt *dist) {
-    for(unsigned int edge_id = 0; edge_id < edge_cnt(g); edge_id++) {
-        if(dist[arcs(g, edge_id).first].isInf <= 0) {
-            if(dist[arcs(g, edge_id).second].isInf > 0) return 0;
-        }
-    }
-    return 1;
-} */
 
 // locale 2
 int source_val(Graph *g, unsigned int s, ENInt *dist, unsigned int *num){
@@ -181,9 +161,6 @@ int no_edge_Vm_Vf(Graph *g, ENInt *dist) {
 // the following functions are all related to locale 3, which will be dealt with later. 
 
 // helpers
-
-// checks if the sequence of edge_ids are connected
-// also checks if the last vertex and the first vertex are the same
 
 int awalk(Graph *g, Cycle C) {
     // u \in verts G
@@ -273,7 +250,7 @@ int int_neg_cyc(Graph *g, unsigned int s, ENInt *dist, Cycle_set *cse, int *c, i
             if(is_neg_cycle == 0) return 0;
         }
     }
-    return 1;
+    return 0;
 }
 
 int shortest_paths_locale_step1(Graph *g, unsigned int s, unsigned int *num, int *pred, ENInt *dist) {
@@ -297,7 +274,6 @@ int shortest_paths_locale_step3(Graph *g, unsigned int s, int *c, unsigned int *
     if(int_neg_cyc(g, s, dist, cse, c, parent_edge) == 0) return 0;
     return 1;
 }
-
 
 int main(int argc, char **argv) {
     return 0;
