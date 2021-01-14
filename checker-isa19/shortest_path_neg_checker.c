@@ -110,21 +110,21 @@ int check_basic_just_sp(Graph *g, ENInt *dist, int *c, unsigned int s, unsigned 
 // the folloiwng are for the general-weight edge shrotest path
 
 // locale 1
-int s_assms(Graph *g, unsigned int s, ENInt *dist, int *pred, unsigned int *num) {
+int s_assms(Graph *g, unsigned int s, ENInt *dist, int *parent_edge, unsigned int *num) {
     if(s >= vertex_cnt(g)) return 0;
     if(dist[s].isInf > 0) return 0;
-    if(!(pred[s] < 0)) return 0;
+    if(!(parent_edge[s] < 0)) return 0;
     if(num[s] != 0) return 0;
     return 1;
 }
 
-int parent_num_assms(Graph *g, unsigned int s, ENInt *dist, int *pred, unsigned int *num) {
+int parent_num_assms(Graph *g, unsigned int s, ENInt *dist, int *parent_edge, unsigned int *num) {
     unsigned int edge_id;
     for(unsigned int v = 0; v < vertex_cnt(g); v++) {
-        edge_id = (unsigned int) pred[v];
+        edge_id = (unsigned int) parent_edge[v];
         if(v != s) {
             if(dist[v].isInf <= 0) {
-                if(pred[v] < 0) return 0;
+                if(parent_edge[v] < 0) return 0;
                 if(edge_id >= edge_cnt(g)) return 0;
                 if(arcs(g, edge_id).second != v) return 0;
                 if(dist[arcs(g, edge_id).first].isInf > 0) return 0;
@@ -253,15 +253,15 @@ int int_neg_cyc(Graph *g, unsigned int s, ENInt *dist, Cycle_set *cse, int *c, i
     return 0;
 }
 
-int shortest_paths_locale_step1(Graph *g, unsigned int s, unsigned int *num, int *pred, ENInt *dist) {
+int shortest_paths_locale_step1(Graph *g, unsigned int s, unsigned int *num, int *parent_edge, ENInt *dist) {
     if(!is_wellformed(g)) return 0;
-    if(!s_assms(g, s, dist, pred, num)) return 0;
-    if(!parent_num_assms(g, s, dist, pred, num)) return 0;
+    if(!s_assms(g, s, dist, parent_edge, num)) return 0;
+    if(!parent_num_assms(g, s, dist, parent_edge, num)) return 0;
     return 1;
 }
 
-int shortest_paths_locale_step2(Graph *g, unsigned int s, int *c, unsigned int *num, int *pred, ENInt *dist) {
-    if(!shortest_paths_locale_step1(g, s, num, pred, dist)) return 0;
+int shortest_paths_locale_step2(Graph *g, unsigned int s, int *c, unsigned int *num, int *pred, ENInt *dist, int *parent_edge) {
+    if(!shortest_paths_locale_step1(g, s, num, parent_edge, dist)) return 0;
     if(!check_basic_just_sp(g, dist, c, s, num, pred)) return 0;
     if(!source_val(g, s, dist, num)) return 0;
     if(!no_edge_Vm_Vf(g, dist)) return 0;
@@ -269,7 +269,7 @@ int shortest_paths_locale_step2(Graph *g, unsigned int s, int *c, unsigned int *
 }
 
 int shortest_paths_locale_step3(Graph *g, unsigned int s, int *c, unsigned int *num, int *pred, ENInt *dist, Cycle_set *cse, int *parent_edge) {
-    if(shortest_paths_locale_step2(g, s, c, num, pred, dist) == 0) return 0;
+    if(shortest_paths_locale_step2(g, s, c, num, pred, dist, parent_edge) == 0) return 0;
     if(C_se(g, cse, c, dist) == 0) return 0;
     if(int_neg_cyc(g, s, dist, cse, c, parent_edge, num) == 0) return 0;
     return 1;
