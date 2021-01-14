@@ -12,6 +12,9 @@ autocorres "shortest_path_neg_checker.c"
 
 context shortest_path_neg_checker begin
 
+
+(* Implementation types *)
+
 type_synonym IVertex = "32 word"
 type_synonym IEdge_Id = "32 word"
 type_synonym IEdge = "IVertex \<times> IVertex"
@@ -22,9 +25,13 @@ type_synonym ICost = "IEdge_Id \<Rightarrow> 32 signed word"
 type_synonym IGraph = "32 word \<times> 32 word \<times> (IEdge_Id \<Rightarrow> IEdge)"
 (* for locale 3 *)
 type_synonym IPath = "32 word \<Rightarrow> IEdge_Id"
-type_synonym ICycle = "32 word \<times> 32 word \<times> (IPath)"
+type_synonym ICycle = "IVertex \<times> 32 word \<times> IPath"
 type_synonym ICycle_Id = "32 word"
-type_synonym ICycle_Set = "32 word \<times> ICycle"
+type_synonym ICycle_Set = "32 word \<times> (ICycle_Id \<Rightarrow> ICycle)"
+
+type_synonym IPathPtr = "32 word ptr"
+type_synonym ICycle' = "IVertex \<times> 32 word \<times> IPathPtr"
+type_synonym ICycle_Set' = "32 word \<times> (ICycle_Id \<Rightarrow> ICycle')"
 
 abbreviation ivertex_cnt :: 
   "IGraph \<Rightarrow> 32 word"
@@ -51,20 +58,56 @@ abbreviation is_inf_d ::
 where 
   "is_inf_d f v \<equiv>  sint (snd (f v))"
 
-abbreviation cycle_start ::
+abbreviation icycle_start ::
   "ICycle \<Rightarrow> 32 word"
 where
-  "cycle_start C \<equiv> fst C"
+  "icycle_start C \<equiv> fst C"
 
-abbreviation cycle_length ::
+abbreviation icycle_length ::
   "ICycle \<Rightarrow> 32 word"
 where
-  "cycle_length C \<equiv> fst (snd C)"
+  "icycle_length C \<equiv> fst (snd C)"
 
-abbreviation cycle_path ::
+abbreviation icycle_path ::
   "ICycle \<Rightarrow> IPath"
 where
-  "cycle_path C \<equiv> snd (snd C)"
+  "icycle_path C \<equiv> snd (snd C)"
+
+abbreviation icycle'_start ::
+  "ICycle' \<Rightarrow> 32 word"
+where
+  "icycle'_start C \<equiv> fst C"
+
+abbreviation icycle'_length ::
+  "ICycle' \<Rightarrow> 32 word"
+where
+  "icycle'_length C \<equiv> fst (snd C)"
+
+abbreviation icycle'_path ::
+  "ICycle' \<Rightarrow> IPathPtr"
+where
+  "icycle'_path C \<equiv> snd (snd C)"
+
+abbreviation icycles_num ::
+  "ICycle_Set \<Rightarrow> 32 word"
+where
+  "icycles_num CS \<equiv> fst CS"
+
+abbreviation icycles :: "ICycle_Set \<Rightarrow> ICycle_Id \<Rightarrow> ICycle"
+where
+  "icycles CS \<equiv> snd CS"
+
+abbreviation icycles'_num ::
+  "ICycle_Set' \<Rightarrow> 32 word"
+where
+  "icycles'_num CS \<equiv> fst CS"
+
+abbreviation icycles' :: "ICycle_Set' \<Rightarrow> ICycle_Id \<Rightarrow> ICycle'"
+where
+  "icycles' CS \<equiv> snd CS"
+
+
+(* Implementation functions to lists *)
 
 fun bool :: 
   "32 word \<Rightarrow> bool" 
@@ -87,7 +130,7 @@ where
   "mk_list'_temp 0 _ _ = []" |
   "mk_list'_temp (Suc x) f i = (f (of_nat i)) # mk_list'_temp x f (Suc i)"
 
-(* Make graph lists *)
+  (* Make graph lists *)
 fun mk_iedge_list :: 
   "IGraph \<Rightarrow> IEdge list"
 where 
@@ -112,13 +155,25 @@ fun mk_icost_list ::
   "IGraph \<Rightarrow> ICost \<Rightarrow> 32 signed word list"
 where
   "mk_icost_list G cost = mk_list' (unat (iedge_cnt G)) cost"
-(*
-fun mk_icycle_path_list ::
-  "ICycle \<Rightarrow> IPath list"
-where
-  "mk_icycle_path_list C = mk_list' (unat (cycle_length C)) (cycle_path C)"
-*)
-(* Equate to Implementation *)
+
+  (* Make cycle lists *)
+fun mk_ipath_list :: 
+  "ICycle \<Rightarrow> IEdge_Id list"
+where 
+  "mk_ipath_list C = mk_list' (unat (icycle_length C)) (icycle_path C)"
+
+fun mk_icycle_list :: 
+  "ICycle_Set \<Rightarrow> ICycle list"
+where 
+  "mk_icycle_list CS = mk_list' (unat (icycles_num CS)) (icycles CS)"
+
+
+fun mk_icycle'_list :: 
+  "ICycle_Set' \<Rightarrow> ICycle' list"
+where 
+  "mk_icycle'_list CS = mk_list' (unat (icycles'_num CS)) (icycles' CS)"
+
+(*Helper word lemmas*)
 
 lemma sint_ucast: 
   "sint (ucast (x ::word32) :: sword32) = sint x"
@@ -128,6 +183,39 @@ lemma long_ucast:
   "unat (ucast (x ::word32) :: word64) = unat x"
   by (simp add: is_up uint_up_ucast unat_def)
 
+
+fun cast_long :: 
+  "32 word \<Rightarrow> 64 word"
+where 
+  "cast_long x = ucast x"
+
+fun cast_signed_long ::
+  "32 signed word \<Rightarrow> 64 signed word"
+  where
+  "cast_signed_long x = scast x"
+
+(* Lemmas for unat and of_nat *)
+lemma eq_of_nat_conv:
+  assumes "unat w1 = n"
+  shows "w2 = of_nat n \<longleftrightarrow> w2 = w1"
+  using assms by auto
+
+lemma less_unat_plus1: 
+  assumes "a < unat (b + 1)"
+  shows "a < unat b \<or> a = unat b"
+  apply (subgoal_tac  "b + 1 \<noteq> 0 ")
+  using assms unat_minus_one add_diff_cancel 
+  by fastforce+
+
+lemma unat_minus_plus1_less:
+  fixes a b
+  assumes "a < b"
+  shows "unat (b - (a + 1)) < unat (b - a)"
+  by (metis (no_types) ab_semigroup_add_class.add_ac(1) right_minus_eq measure_unat
+      add_diff_cancel2 assms is_num_normalize(1) zadd_diff_inverse linorder_neq_iff)
+
+
+(* Refinement function from implementation types using lists to C types *)
 fun to_edge :: 
   "IEdge \<Rightarrow> Edge_C"
 where
@@ -141,20 +229,15 @@ lemma t_C_pte[simp]:
   "second_C (to_edge e) = snd e"
   by (cases e) auto
 
-fun cast_long :: 
-  "32 word \<Rightarrow> 64 word"
-where 
-  "cast_long x = ucast x"
-
-fun cast_signed_long ::
-  "32 signed word \<Rightarrow> 64 signed word"
-  where
-  "cast_signed_long x = scast x"
-
 fun to_enint :: 
   "(32 signed word \<times> 32 signed word) \<Rightarrow> ENInt_C"
 where
   "to_enint p = ENInt_C (fst p) (snd p)"
+
+fun to_cycle ::
+  "ICycle' \<Rightarrow> Cycle_C"
+where
+  "to_cycle (s,l, p) = Cycle_C s l p"
 
 lemma ENInt_val_C_pte[simp]:
   "ENInt_C.val_C (to_enint p) = fst p"
@@ -192,30 +275,80 @@ where
 (* the following needs clarification... *)
 definition is_cost
 where
-  "is_cost h iG iC (p :: 32 signed word ptr) \<equiv> arrlist (\<lambda>p. UCAST(32 \<rightarrow> 32 signed) (heap_w32 h (ptr_coerce p))) 
+  "is_cost h iG iC (p :: 32 signed word ptr) \<equiv> 
+        arrlist (\<lambda>p. UCAST(32 \<rightarrow> 32 signed) (heap_w32 h (ptr_coerce p))) 
         (\<lambda>p. is_valid_w32 h (ptr_coerce p)) (mk_icost_list iG iC) p"
 
-(* Lemmas for unat and of_nat *)
-lemma eq_of_nat_conv:
-  assumes "unat w1 = n"
-  shows "w2 = of_nat n \<longleftrightarrow> w2 = w1"
-  using assms by auto
 
-(* More Lemmas for unat and of_nat *)
-lemma less_unat_plus1: 
-  assumes "a < unat (b + 1)"
-  shows "a < unat b \<or> a = unat b"
-  apply (subgoal_tac  "b + 1 \<noteq> 0 ")
-  using assms unat_minus_one add_diff_cancel 
-  by fastforce+
+fun to_ipath_list :: 
+  "'a lifted_globals_scheme \<Rightarrow> 32 word \<Rightarrow> 32 word ptr \<Rightarrow> IEdge_Id list" 
+where
+  "to_ipath_list h l p = map (heap_w32 h)(array_addrs p (unat l))"
 
-lemma unat_minus_plus1_less:
-  fixes a b
-  assumes "a < b"
-  shows "unat (b - (a + 1)) < unat (b - a)"
-  by (metis (no_types) ab_semigroup_add_class.add_ac(1) right_minus_eq measure_unat
-      add_diff_cancel2 assms is_num_normalize(1) zadd_diff_inverse linorder_neq_iff)
+fun to_icycle_path_list::  
+  "'a lifted_globals_scheme \<Rightarrow> ICycle' \<Rightarrow> (IVertex \<times> 32 word \<times> IEdge_Id list)" 
+where
+  "to_icycle_path_list h (s, l, p) = (s, l, to_ipath_list h l p)"
 
+abbreviation is_path
+where
+  "is_path h iC p \<equiv> 
+        arrlist (heap_w32 h) (is_valid_w32 h) (mk_ipath_list iC) p"
+
+definition is_cycle'
+where
+  "is_cycle' h iC' p \<equiv>
+    is_valid_Cycle_C h p \<and> 
+    icycle'_start iC' = start_C (heap_Cycle_C h p) \<and> 
+    icycle'_length iC' = length_C (heap_Cycle_C h p) \<and>
+    icycle'_path iC' = path_C (heap_Cycle_C h p)"
+
+
+definition from_icycle'_to_icycle_list
+  where
+   "from_icycle'_to_icycle h iC' iC \<equiv>
+    icycle_start iC = icycle'_start iC' \<and> 
+    icycle_length iC = icycle'_length iC' \<and>
+    is_path h iC (icycle'_path iC')"
+  
+
+definition is_cycle where
+  "is_cycle h iC p \<equiv>
+    is_valid_Cycle_C h p \<and> 
+    icycle_start iC = start_C (heap_Cycle_C h p) \<and> 
+    icycle_length iC = length_C (heap_Cycle_C h p) \<and>
+    is_path h iC (path_C (heap_Cycle_C h p))"
+
+(*give  array_addrs*)
+
+(*
+definition is_cycle'
+where
+  "is_cycle' h iC p \<equiv>
+    is_valid_Cycle_C h p \<and> 
+    icycle'_start iC = start_C (heap_Cycle_C h p) \<and> 
+    icycle'_length iC = length_C (heap_Cycle_C h p) \<and>
+    icycle'_path iC = (path_C (heap_Cycle_C h p))"
+ 
+definition is_cycle_set
+where
+  "is_cycle_set h iS p iC \<equiv>
+    is_valid_Cycle_set_C h p \<and> 
+    icycles_num iS = no_cycles_C (heap_Cycle_set_C h p) \<and> 
+    arrlist (heap_Cycle_C h) (is_valid_Cycle_C h)
+      ( (mk_icycle'_list iS)) (cyc_obj_C (heap_Cycle_set_C h p))"
+
+*)
+
+(*
+function from  iCycle to Cycle_C
+
+Operator:  arrlist (heap_Cycle_C h) (is_valid_Cycle_C h) ::
+  Cycle_C list \<Rightarrow> Cycle_C ptr \<Rightarrow> bool
+Operand:   mk_icycle_list iS :: (32 word \<times> 32 word \<times> (32 word \<Rightarrow> 32 word)) list
+
+    icycles iS = is_cycle h (abs_) (cyc_obj_C (heap_Cycle_set_C h p))"
+*)
 (* Abstract Graph *)
 
 definition no_loops :: 
@@ -270,6 +403,9 @@ lemma Some_abs_pedgeI[simp]:
   "(\<exists>e. abs_IPedge p v = Some e) =  (~ (msb (p v)))"
   using None_not_eq None_abs_pedgeI 
   by (metis abs_IPedge_def)
+
+
+
 
 (*Helper Lemmas*)
 
@@ -565,17 +701,8 @@ lemma two_comp_arrlist_heap:
   using arrlist_heap 
   by (metis (no_types, hide_lams) comp_apply comp_assoc)
 
-lemma two_comp_to_eint_arrlist_heap:
-  "\<lbrakk> arrlist h v (map (to_eint \<circ> (iL \<circ> of_nat)) [0..<unat n]) l;
-  i < n\<rbrakk> \<Longrightarrow> to_eint (iL i) = h (l +\<^sub>p (int (unat i)))" 
-  using arrlist_heap 
-  by (metis (no_types, hide_lams) comp_apply comp_assoc)
-
-lemma two_comp_to_edge_arrlist_heap:
-  "\<lbrakk> arrlist h v (map (to_edge \<circ> (iL \<circ> of_nat)) [0..<unat n]) l;
-  i < n\<rbrakk> \<Longrightarrow> to_edge (iL i) = h (l +\<^sub>p (int (unat i)))" 
-  using arrlist_heap 
-  by (metis (no_types, hide_lams) comp_apply comp_assoc)
+lemmas two_comp_to_edge_arrlist_heap = 
+  two_comp_arrlist_heap[where f=to_edge]
 
 lemma two_comp_to_enint_arrlist_d_heap:
   "\<lbrakk> arrlist h v (map (to_enint \<circ> (iL \<circ> (of_int \<circ> int))) [0..<unat n]) l;
@@ -604,6 +731,10 @@ lemma is_inf_d_heap:
   is_inf_d f e =  sint (ENInt_C.isInf_C (h (ep +\<^sub>p (uint e))))"
   using to_enint.simps  ENInt_isInf_C_pte
   by (metis int_unat two_comp_arrlist_heap)
+
+
+
+
 
 definition is_wellformed_inv :: "IGraph \<Rightarrow> 32 word \<Rightarrow> bool" where
   "is_wellformed_inv G i \<equiv> \<forall>k < i. ivertex_cnt G > fst (iedges G k)
@@ -1171,7 +1302,7 @@ lemma check_basic_just_sp_spc_intermediate:
     apply (rule impI, rule conjI, rule impI, rule impI, rule disjI2)
      apply (unfold just_inv_def is_graph_def is_dist_def, clarsimp simp del: Word_Lemmas.sint_0)[1]
      apply (rule_tac x=sc in exI, clarsimp simp del: Word_Lemmas.sint_0)
-     apply (metis not_le ENInt_isInf_C_pte two_comp_to_eint_arrlist_heap)
+     apply (metis not_le ENInt_isInf_C_pte two_comp_arrlist_heap)
     apply (unfold is_graph_def is_dist_def)[1]
     apply (clarsimp simp: if_bool_eq_conj)+
     apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
@@ -1196,7 +1327,7 @@ lemma check_basic_just_sp_spc_intermediate:
    apply (rule impI, rule conjI, rule impI, rule impI, rule disjI2)
      apply (unfold just_inv_def is_graph_def is_dist_def, clarsimp simp del: Word_Lemmas.sint_0)[1]
      apply (rule_tac x=sc in exI, clarsimp simp del: Word_Lemmas.sint_0)
-    apply (metis not_le ENInt_isInf_C_pte two_comp_to_eint_arrlist_heap)
+    apply (metis not_le ENInt_isInf_C_pte two_comp_arrlist_heap)
   apply (unfold is_graph_def is_dist_def)[1]
     apply (clarsimp simp: if_bool_eq_conj)+
    apply (rule arrlist_nth, (simp add: uint_nat unat_mono )+)
@@ -1808,7 +1939,7 @@ lemma no_edge_Vm_Vf_spc':
           apply (drule no_edge_Vm_Vf_inv_step[where G=iG and d=iD])
           apply (clarsimp simp del: Word_Lemmas.sint_0)
           apply (metis (no_types, hide_lams) Word_Lemmas.sint_0 ENInt_isInf_C_pte head_heap 
-                 two_comp_to_eint_arrlist_heap wellformed_iGraph uint_nat)
+                 two_comp_arrlist_heap wellformed_iGraph uint_nat)
          apply (metis max_word_max not_le word_le_less_eq)
         apply (metis inc_le)
        apply (rule conjI, simp add: is_graph_def unat_minus_plus1_less)
@@ -1853,10 +1984,10 @@ lemma no_edge_Vm_Vf_inv_eq_maths:
   unfolding no_edge_Vm_Vf_inv_def abs_IDist_def abs_IGraph_def by auto
 
 definition shortest_paths_locale_step2_inv :: 
-  "IGraph \<Rightarrow> IVertex \<Rightarrow> ICost \<Rightarrow> IEInt \<Rightarrow> IPEdge \<Rightarrow> IENInt \<Rightarrow> bool" where
-  "shortest_paths_locale_step2_inv G sc c n p d \<equiv>
+  "IGraph \<Rightarrow> IVertex \<Rightarrow> ICost \<Rightarrow> IEInt \<Rightarrow> IPEdge \<Rightarrow> IENInt \<Rightarrow> IPEdge \<Rightarrow> bool" where
+  "shortest_paths_locale_step2_inv G sc c n p d pred  \<equiv>
    shortest_paths_locale_step1_inv G sc n p d \<and>
-   basic_just_sp_inv G d c sc n p \<and>
+   basic_just_sp_inv G d c sc n pred \<and>
    source_val_inv G sc d n (ivertex_cnt G)\<and>
    no_edge_Vm_Vf_inv G d (iedge_cnt G)"
 
@@ -1866,11 +1997,12 @@ lemma shortest_paths_locale_step2_spc_intermediate:
           is_dist s iG iD d \<and>
           is_numm s iG iN n \<and>
           is_cost s iG iC c \<and>
-          is_pedge s iG iP p)\<rbrace>
-   shortest_paths_locale_step2' g sc c n p d p
+          is_pedge s iG iP p \<and>
+          is_pedge s iG iPred pred)\<rbrace>
+   shortest_paths_locale_step2' g sc c n pred d p
    \<lbrace> (\<lambda>_ s. P s) And 
      (\<lambda>rr s. rr \<noteq> 0  \<longleftrightarrow> 
-        shortest_paths_locale_step2_inv iG sc iC iN iP iD)\<rbrace>!"
+        shortest_paths_locale_step2_inv iG sc iC iN iP iD iPred)\<rbrace>!"
   apply (clarsimp simp: shortest_paths_locale_step2'_def shortest_paths_locale_step2_inv_def)
   apply wp
       apply (rule_tac P1=" P and 
@@ -1879,8 +2011,9 @@ lemma shortest_paths_locale_step2_spc_intermediate:
           is_numm s iG iN n \<and>
           is_cost s iG iC c \<and>
           is_pedge s iG iP p \<and>
+          is_pedge s iG iPred pred \<and>
           shortest_paths_locale_step1_inv iG sc iN iP iD \<and> 
-          basic_just_sp_inv iG iD iC sc iN iP \<and>
+          basic_just_sp_inv iG iD iC sc iN iPred \<and>
           source_val_inv iG sc iD iN (fst iG))" 
       in validNF_post_imp[OF _ no_edge_Vm_Vf_spc'])
       apply fastforce  
@@ -1890,8 +2023,9 @@ lemma shortest_paths_locale_step2_spc_intermediate:
           is_numm s iG iN n \<and>
           is_cost s iG iC c \<and>
           is_pedge s iG iP p \<and>
+          is_pedge s iG iPred pred \<and>
           shortest_paths_locale_step1_inv iG sc iN iP iD \<and> 
-          basic_just_sp_inv iG iD iC sc iN iP)" 
+          basic_just_sp_inv iG iD iC sc iN iPred)" 
       in validNF_post_imp[OF _ source_val_spc'])
      apply (unfold basic_just_sp_inv_def, fastforce simp: wf_inv_is_wf_digraph)[1]
     apply (rule_tac P1=" P and 
@@ -1900,6 +2034,7 @@ lemma shortest_paths_locale_step2_spc_intermediate:
           is_numm s iG iN n \<and>
           is_cost s iG iC c \<and>
           is_pedge s iG iP p \<and>
+          is_pedge s iG iPred pred \<and>
           shortest_paths_locale_step1_inv iG sc iN iP iD)" 
       in validNF_post_imp[OF _ check_basic_just_sp_spc_intermediate])
     apply (unfold shortest_paths_locale_step1_inv_def s_assms_inv_def, fastforce simp: wf_inv_is_wf_digraph)[1]
@@ -1908,7 +2043,8 @@ lemma shortest_paths_locale_step2_spc_intermediate:
           is_dist s iG iD d \<and>
           is_cost s iG iC c \<and>
           is_numm s iG iN n \<and>
-          is_pedge s iG iP p)" 
+          is_pedge s iG iP p \<and>
+          is_pedge s iG iPred pred)" 
       in validNF_post_imp[OF _ shortest_paths_locale_step1_spc_intermediate])
    apply (clarsimp, unfold shortest_paths_locale_step1_inv_def s_assms_inv_def, fast) 
   apply blast
@@ -1917,28 +2053,28 @@ lemma shortest_paths_locale_step2_spc_intermediate:
 lemma abs_INat_to_abs_INum:
     "shortest_paths_locale_step1
     (abs_IGraph G) s (abs_INat n)
-    (abs_IPedge p) (abs_IDist d) \<Longrightarrow> (shortest_paths_locale_step1.enum (abs_INat n) (abs_IDist d)) = (abs_INum n d)"
+    (abs_IPedge pred) (abs_IDist d) \<Longrightarrow> (shortest_paths_locale_step1.enum (abs_INat n) (abs_IDist d)) = (abs_INum n d)"
   using shortest_paths_locale_step1.enum_def[where
       ?G="(abs_IGraph G)" and ?s=s and ?num="(abs_INat n)" and
-      ?parent_edge="(abs_IPedge p)" and ?dist="(abs_IDist d)"]
+      ?parent_edge="(abs_IPedge pred)" and ?dist="(abs_IDist d)"]
   unfolding abs_INum_def abs_IDist_def abs_INat_def
   by auto
 
 lemma shortest_paths_locale_step2_eq_maths:
-  "\<And>G d s c n p.
-    shortest_paths_locale_step2_inv G s c n p d
+  "\<And>G s c n p d pred.
+    shortest_paths_locale_step2_inv G s c n p d pred
     =
     shortest_paths_locale_step2_pred
     (abs_IGraph G) s (abs_ICost c) (abs_INat n)
-    (abs_IPedge p) (abs_IDist d) (abs_IPedge p)"
+    (abs_IPedge p) (abs_IDist d) (abs_IPedge pred)"
 proof -
-  fix G d c s n p 
+  fix G c s n p d pred
   let ?aG = "abs_IGraph G"
   let ?ad = "abs_IDist d"
   let ?ac = "abs_ICost c"
   let ?an = "abs_INat n"
   let ?ap = "abs_IPedge p"
-  show "?thesis G d s c n p"
+  show "?thesis G s c n p d pred"
     unfolding  shortest_paths_locale_step2_inv_def 
       shortest_paths_locale_step2_pred_def 
       shortest_paths_locale_step2_pred_axioms_def
@@ -1946,7 +2082,24 @@ proof -
       basic_just_sp_eq_maths shortest_paths_locale_step1_inv_eq_maths source_val_inv_eq_maths verts_absI 
       shortest_paths_locale_step1.s_assms(1))
 qed
-                                       
+
+lemma shortest_paths_locale_step2_spc:
+  "\<lbrace> P and 
+     (\<lambda>s. is_graph s iG g \<and>
+          is_dist s iG iD d \<and>
+          is_numm s iG iN n \<and>
+          is_cost s iG iC c \<and>
+          is_pedge s iG iP p \<and>
+          is_pedge s iG iPred pred)\<rbrace>
+   shortest_paths_locale_step2' g sc c n pred d p
+   \<lbrace> (\<lambda>_ s. P s) And 
+     (\<lambda>rr s. rr \<noteq> 0  \<longleftrightarrow> 
+        shortest_paths_locale_step2_pred
+    (abs_IGraph iG) sc (abs_ICost iC) (abs_INat iN)
+    (abs_IPedge iP) (abs_IDist iD) (abs_IPedge iPred))\<rbrace>!"
+     using validNF_post_imp[OF _ shortest_paths_locale_step2_spc_intermediate] 
+        shortest_paths_locale_step2_eq_maths 
+  by simp  
 end
 
 end
