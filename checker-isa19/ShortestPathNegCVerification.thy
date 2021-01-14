@@ -1867,7 +1867,7 @@ lemma shortest_paths_locale_step2_spc_intermediate:
           is_numm s iG iN n \<and>
           is_cost s iG iC c \<and>
           is_pedge s iG iP p)\<rbrace>
-   shortest_paths_locale_step2' g sc c n p d
+   shortest_paths_locale_step2' g sc c n p d p
    \<lbrace> (\<lambda>_ s. P s) And 
      (\<lambda>rr s. rr \<noteq> 0  \<longleftrightarrow> 
         shortest_paths_locale_step2_inv iG sc iC iN iP iD)\<rbrace>!"
