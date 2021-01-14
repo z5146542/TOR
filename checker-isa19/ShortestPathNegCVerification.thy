@@ -24,14 +24,14 @@ type_synonym IEInt = "IVertex \<Rightarrow> 32 word"
 type_synonym ICost = "IEdge_Id \<Rightarrow> 32 signed word"
 type_synonym IGraph = "32 word \<times> 32 word \<times> (IEdge_Id \<Rightarrow> IEdge)"
 (* for locale 3 *)
-type_synonym IPath = "32 word \<Rightarrow> IEdge_Id"
+type_synonym IPath = "IEdge_Id list"
 type_synonym ICycle = "IVertex \<times> 32 word \<times> IPath"
 type_synonym ICycle_Id = "32 word"
-type_synonym ICycle_Set = "32 word \<times> (ICycle_Id \<Rightarrow> ICycle)"
+type_synonym ICycle_Set = "32 word \<times> (ICycle list)"
 
 type_synonym IPathPtr = "32 word ptr"
 type_synonym ICycle' = "IVertex \<times> 32 word \<times> IPathPtr"
-type_synonym ICycle_Set' = "32 word \<times> (ICycle_Id \<Rightarrow> ICycle')"
+type_synonym ICycle_Set' = "32 word \<times> (ICycle' list)"
 
 abbreviation ivertex_cnt :: 
   "IGraph \<Rightarrow> 32 word"
@@ -306,7 +306,7 @@ where
 
 definition from_icycle'_to_icycle_list
   where
-   "from_icycle'_to_icycle h iC' iC \<equiv>
+   "from_icycle'_to_icycle_list h iC' iC \<equiv>
     icycle_start iC = icycle'_start iC' \<and> 
     icycle_length iC = icycle'_length iC' \<and>
     is_path h iC (icycle'_path iC')"
