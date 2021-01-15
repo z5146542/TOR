@@ -26,7 +26,6 @@ type_synonym IGraph = "32 word \<times> 32 word \<times> (IEdge_Id \<Rightarrow>
 (* for locale 3 *)
 type_synonym IPath = "IEdge_Id list"
 type_synonym ICycle = "IVertex \<times> 32 word \<times> IPath"
-type_synonym ICycle_Id = "32 word"
 type_synonym ICycle_Set = "32 word \<times> (ICycle list)"
 
 type_synonym IPathPtr = "32 word ptr"
@@ -93,16 +92,16 @@ abbreviation icycles_num ::
 where
   "icycles_num CS \<equiv> fst CS"
 
-abbreviation icycles :: "ICycle_Set \<Rightarrow> ICycle_Id \<Rightarrow> ICycle"
+abbreviation icycles :: "ICycle_Set \<Rightarrow> ICycle list"
 where
   "icycles CS \<equiv> snd CS"
-
+       
 abbreviation icycles'_num ::
   "ICycle_Set' \<Rightarrow> 32 word"
 where
   "icycles'_num CS \<equiv> fst CS"
 
-abbreviation icycles' :: "ICycle_Set' \<Rightarrow> ICycle_Id \<Rightarrow> ICycle'"
+abbreviation icycles' :: "ICycle_Set' \<Rightarrow> ICycle' list"
 where
   "icycles' CS \<equiv> snd CS"
 
@@ -157,21 +156,44 @@ where
   "mk_icost_list G cost = mk_list' (unat (iedge_cnt G)) cost"
 
   (* Make cycle lists *)
+(*
 fun mk_ipath_list :: 
-  "ICycle \<Rightarrow> IEdge_Id list"
+  "ICycle \<Rightarrow> IPath"
 where 
   "mk_ipath_list C = mk_list' (unat (icycle_length C)) (icycle_path C)"
+*)
+fun mk_ipath_list ::
+  "ICycle \<Rightarrow> IPath"
+where
+  "mk_ipath_list C = icycle_path C"
 
+fun mk_ipath'_list ::
+  "'a lifted_globals_scheme \<Rightarrow> ICycle' \<Rightarrow> IPath"
+where
+  "mk_ipath'_list h C = map (heap_w32 h) (array_addrs (icycle'_path C) (unat (icycle'_length C)))"
+
+(*
 fun mk_icycle_list :: 
   "ICycle_Set \<Rightarrow> ICycle list"
 where 
   "mk_icycle_list CS = mk_list' (unat (icycles_num CS)) (icycles CS)"
+*)
 
-
+fun mk_icycle_list ::
+  "ICycle_Set \<Rightarrow> ICycle list"
+where
+  "mk_icycle_list CS = icycles CS"
+(*
 fun mk_icycle'_list :: 
   "ICycle_Set' \<Rightarrow> ICycle' list"
 where 
   "mk_icycle'_list CS = mk_list' (unat (icycles'_num CS)) (icycles' CS)"
+*)
+
+fun mk_icycle'_list ::
+"ICycle_Set' \<Rightarrow> ICycle' list"
+where
+"mk_icycle'_list CS = icycles' CS"
 
 (*Helper word lemmas*)
 
@@ -279,16 +301,10 @@ where
         arrlist (\<lambda>p. UCAST(32 \<rightarrow> 32 signed) (heap_w32 h (ptr_coerce p))) 
         (\<lambda>p. is_valid_w32 h (ptr_coerce p)) (mk_icost_list iG iC) p"
 
-
-fun to_ipath_list :: 
-  "'a lifted_globals_scheme \<Rightarrow> 32 word \<Rightarrow> 32 word ptr \<Rightarrow> IEdge_Id list" 
+fun to_icycle_path_list ::  
+  "'a lifted_globals_scheme \<Rightarrow> ICycle' \<Rightarrow> ICycle" 
 where
-  "to_ipath_list h l p = map (heap_w32 h)(array_addrs p (unat l))"
-
-fun to_icycle_path_list::  
-  "'a lifted_globals_scheme \<Rightarrow> ICycle' \<Rightarrow> (IVertex \<times> 32 word \<times> IEdge_Id list)" 
-where
-  "to_icycle_path_list h (s, l, p) = (s, l, to_ipath_list h l p)"
+  "to_icycle_path_list h (s, l, p) = (s, l, mk_ipath'_list h (s, l, p))"
 
 abbreviation is_path
 where
@@ -305,20 +321,29 @@ where
 
 
 definition from_icycle'_to_icycle_list
-  where
+where
    "from_icycle'_to_icycle_list h iC' iC \<equiv>
     icycle_start iC = icycle'_start iC' \<and> 
     icycle_length iC = icycle'_length iC' \<and>
     is_path h iC (icycle'_path iC')"
   
 
-definition is_cycle where
+definition is_cycle 
+where
   "is_cycle h iC p \<equiv>
     is_valid_Cycle_C h p \<and> 
     icycle_start iC = start_C (heap_Cycle_C h p) \<and> 
     icycle_length iC = length_C (heap_Cycle_C h p) \<and>
     is_path h iC (path_C (heap_Cycle_C h p))"
 
+definition final_is_cycle
+where
+  "final_is_cycle h iC' p \<equiv>
+    is_valid_Cycle_C h p \<and>
+    icycle'_start iC' = start_C (heap_Cycle_C h p) \<and>
+    icycle'_length iC' = length_C (heap_Cycle_C h p) \<and>
+    is_path h (to_icycle_path_list h iC') (path_C (heap_Cycle_C h p))"
+                           
 (*give  array_addrs*)
 
 (*
@@ -394,6 +419,16 @@ definition abs_IPedge ::
   "IPEdge \<Rightarrow> IVertex \<Rightarrow> 32 word option" 
 where
   "abs_IPedge p v \<equiv> if msb (p v) then None else Some (p v)"
+
+definition abs_IPath ::
+  "IPath \<Rightarrow> 32 word awalk"
+where
+  "abs_IPath \<equiv> id"
+
+definition abs_ICycle :: 
+  "ICycle_Set \<Rightarrow> (32 word \<times> (32 word awalk)) set"
+where
+  "abs_ICycle CS \<equiv> set (map (\<lambda> C. (icycle_start C, icycle_path C)) (icycles CS))"
 
 lemma None_abs_pedgeI[simp]:
   "(abs_IPedge p v = None) = msb (p v)"
