@@ -170,7 +170,8 @@ where
 fun mk_ipath'_list ::
   "'a lifted_globals_scheme \<Rightarrow> ICycle' \<Rightarrow> IPath"
 where
-  "mk_ipath'_list h C = map (heap_w32 h) (array_addrs (icycle'_path C) (unat (icycle'_length C)))"
+  "mk_ipath'_list h C = map (heap_w32 h) 
+                         (array_addrs (icycle'_path C) (unat (icycle'_length C)))"
 
 (*
 fun mk_icycle_list :: 
@@ -237,219 +238,12 @@ lemma unat_minus_plus1_less:
       add_diff_cancel2 assms is_num_normalize(1) zadd_diff_inverse linorder_neq_iff)
 
 
-(* Refinement function from implementation types using lists to C types *)
-fun to_edge :: 
-  "IEdge \<Rightarrow> Edge_C"
-where
-  "to_edge (u,v) = Edge_C u v"
-
-lemma s_C_pte[simp]:
-  "first_C (to_edge e) = fst e"
-  by (cases e) auto
-
-lemma t_C_pte[simp]:
-  "second_C (to_edge e) = snd e"
-  by (cases e) auto
-
-fun to_enint :: 
-  "(32 signed word \<times> 32 signed word) \<Rightarrow> ENInt_C"
-where
-  "to_enint p = ENInt_C (fst p) (snd p)"
-
-fun to_cycle ::
-  "ICycle' \<Rightarrow> Cycle_C"
-where
-  "to_cycle (s,l, p) = Cycle_C s l p"
-
-lemma ENInt_val_C_pte[simp]:
-  "ENInt_C.val_C (to_enint p) = fst p"
-  by (case_tac "p") auto
-
-lemma ENInt_isInf_C_pte[simp]:
-  "ENInt_C.isInf_C (to_enint p) = snd p"
-  by (cases p) auto
-
-definition is_graph
-where
-  "is_graph h iG p \<equiv>
-    is_valid_Graph_C h p \<and> 
-    ivertex_cnt iG = num_vertices_C (heap_Graph_C h p) \<and> 
-    iedge_cnt iG = num_edges_C (heap_Graph_C h p) \<and>
-    arrlist (heap_Edge_C h) (is_valid_Edge_C h)
-      (map to_edge (mk_iedge_list iG)) (arcs_C (heap_Graph_C h p))"
-
-definition is_numm
-where
-  "is_numm h iG iN p \<equiv> 
-        arrlist (heap_w32 h) (is_valid_w32 h) (mk_inum_list iG iN) p"
-
-definition is_pedge
-where
-  "is_pedge h iG iP (p:: 32 signed word ptr) \<equiv> arrlist (\<lambda>p. heap_w32 h (ptr_coerce p))
-        (\<lambda>p. is_valid_w32 h (ptr_coerce p)) (mk_ipedge_list iG iP) p"
-
-definition is_dist
-where
-  "is_dist h iG iD p \<equiv> 
-        arrlist (\<lambda>p. heap_ENInt_C h p) (\<lambda>p. is_valid_ENInt_C h p) 
-        (map to_enint (mk_idist_list iG iD)) p"
-                              
-(* the following needs clarification... *)
-definition is_cost
-where
-  "is_cost h iG iC (p :: 32 signed word ptr) \<equiv> 
-        arrlist (\<lambda>p. UCAST(32 \<rightarrow> 32 signed) (heap_w32 h (ptr_coerce p))) 
-        (\<lambda>p. is_valid_w32 h (ptr_coerce p)) (mk_icost_list iG iC) p"
-
-fun to_icycle_path_list ::  
-  "'a lifted_globals_scheme \<Rightarrow> ICycle' \<Rightarrow> ICycle" 
-where
-  "to_icycle_path_list h (s, l, p) = (s, l, mk_ipath'_list h (s, l, p))"
-
-abbreviation is_path
-where
-  "is_path h iC p \<equiv> 
-        arrlist (heap_w32 h) (is_valid_w32 h) (mk_ipath_list iC) p"
-
-definition is_cycle'
-where
-  "is_cycle' h iC' p \<equiv>
-    is_valid_Cycle_C h p \<and> 
-    icycle'_start iC' = start_C (heap_Cycle_C h p) \<and> 
-    icycle'_length iC' = length_C (heap_Cycle_C h p) \<and>
-    icycle'_path iC' = path_C (heap_Cycle_C h p)"
-
-
-definition from_icycle'_to_icycle_list
-where
-   "from_icycle'_to_icycle_list h iC' iC \<equiv>
-    icycle_start iC = icycle'_start iC' \<and> 
-    icycle_length iC = icycle'_length iC' \<and>
-    is_path h iC (icycle'_path iC')"
-  
-
-definition is_cycle 
-where
-  "is_cycle h iC p \<equiv>
-    is_valid_Cycle_C h p \<and> 
-    icycle_start iC = start_C (heap_Cycle_C h p) \<and> 
-    icycle_length iC = length_C (heap_Cycle_C h p) \<and>
-    is_path h iC (path_C (heap_Cycle_C h p))"
-
-definition final_is_cycle
-where
-  "final_is_cycle h iC' p \<equiv>
-    is_valid_Cycle_C h p \<and>
-    icycle'_start iC' = start_C (heap_Cycle_C h p) \<and>
-    icycle'_length iC' = length_C (heap_Cycle_C h p) \<and>
-    is_path h (to_icycle_path_list h iC') (path_C (heap_Cycle_C h p))"
-                           
-(*give  array_addrs*)
-
-(*
-definition is_cycle'
-where
-  "is_cycle' h iC p \<equiv>
-    is_valid_Cycle_C h p \<and> 
-    icycle'_start iC = start_C (heap_Cycle_C h p) \<and> 
-    icycle'_length iC = length_C (heap_Cycle_C h p) \<and>
-    icycle'_path iC = (path_C (heap_Cycle_C h p))"
- 
-definition is_cycle_set
-where
-  "is_cycle_set h iS p iC \<equiv>
-    is_valid_Cycle_set_C h p \<and> 
-    icycles_num iS = no_cycles_C (heap_Cycle_set_C h p) \<and> 
-    arrlist (heap_Cycle_C h) (is_valid_Cycle_C h)
-      ( (mk_icycle'_list iS)) (cyc_obj_C (heap_Cycle_set_C h p))"
-
-*)
-
-(*
-function from  iCycle to Cycle_C
-
-Operator:  arrlist (heap_Cycle_C h) (is_valid_Cycle_C h) ::
-  Cycle_C list \<Rightarrow> Cycle_C ptr \<Rightarrow> bool
-Operand:   mk_icycle_list iS :: (32 word \<times> 32 word \<times> (32 word \<Rightarrow> 32 word)) list
-
-    icycles iS = is_cycle h (abs_) (cyc_obj_C (heap_Cycle_set_C h p))"
-*)
-(* Abstract Graph *)
-
-definition no_loops :: 
-  "('a, 'b) pre_digraph \<Rightarrow> bool" 
-where
-  "no_loops G \<equiv> \<forall>e \<in> arcs G. tail G e \<noteq> head G e"
-
-definition abs_IGraph :: 
-  "IGraph \<Rightarrow> (32 word, 32 word) pre_digraph" 
-where
-  "abs_IGraph G \<equiv> \<lparr> verts = {0..<ivertex_cnt G}, arcs = {0..<iedge_cnt G},
-    tail = fst o iedges G, head = snd o iedges G \<rparr>"
-
-lemma verts_absI[simp]: "verts (abs_IGraph G) = {0..<ivertex_cnt G}"
-  and edges_absI[simp]: "arcs (abs_IGraph G) = {0..<iedge_cnt G}"
-  and start_absI[simp]: "tail (abs_IGraph G) e = fst (iedges G e)"
-  and target_absI[simp]: "head (abs_IGraph G) e = snd (iedges G e)"
-  by (auto simp: abs_IGraph_def)
-
-definition abs_ICost :: 
-  "(IEdge_Id \<Rightarrow> 32 signed word) \<Rightarrow> IEdge_Id \<Rightarrow> real"
-where
-  "abs_ICost c e \<equiv> real_of_int (sint (c e))"
-
-definition abs_IDist :: 
-  "IENInt \<Rightarrow> IVertex \<Rightarrow> ereal"
-where
-  "abs_IDist d v \<equiv> if sint (snd (d v)) > 0 then PInfty
-         else if sint (snd (d v)) < 0 then MInfty else
-         real_of_int (sint (fst (d v)))"
-
-definition abs_INum :: 
-  "IEInt \<Rightarrow> IENInt \<Rightarrow> IVertex \<Rightarrow> enat"
-where
-  "abs_INum n d v \<equiv> if sint (snd (d v)) \<noteq> 0 then \<infinity> else unat (n v)"
-
-definition abs_INat :: 
-  "IEInt \<Rightarrow> IVertex \<Rightarrow> nat"
-where
-  "abs_INat n v \<equiv> unat (n v)"
-
-definition abs_IPedge :: 
-  "IPEdge \<Rightarrow> IVertex \<Rightarrow> 32 word option" 
-where
-  "abs_IPedge p v \<equiv> if msb (p v) then None else Some (p v)"
-
-definition abs_IPath ::
-  "IPath \<Rightarrow> 32 word awalk"
-where
-  "abs_IPath \<equiv> id"
-
-definition abs_ICycle :: 
-  "ICycle_Set \<Rightarrow> (32 word \<times> (32 word awalk)) set"
-where
-  "abs_ICycle CS \<equiv> set (map (\<lambda> C. (icycle_start C, icycle_path C)) (icycles CS))"
-
-lemma None_abs_pedgeI[simp]:
-  "(abs_IPedge p v = None) = msb (p v)"
-  using abs_IPedge_def by auto
-
-lemma Some_abs_pedgeI[simp]: 
-  "(\<exists>e. abs_IPedge p v = Some e) =  (~ (msb (p v)))"
-  using None_not_eq None_abs_pedgeI 
-  by (metis abs_IPedge_def)
-
 
 
 
 (*Helper Lemmas*)
 
-lemma wellformed_iGraph:
-  assumes "wf_digraph (abs_IGraph G)"
-  shows "\<And>e. e < iedge_cnt G \<Longrightarrow> 
-        fst (iedges G e) < ivertex_cnt G \<and> 
-        snd (iedges G e) < ivertex_cnt G" 
-  using assms unfolding wf_digraph_def by simp
+
 
 lemma unat_image_upto:
   fixes n :: "32 word"
@@ -665,7 +459,254 @@ proof-
   show ?thesis
     using \<open>-4294967296 \<le> sint(x) + sint(y)\<close> by linarith
 qed
-  
+
+lemma ptr_coerce_ptr_add_uint[simp]:
+  "ptr_coerce (p +\<^sub>p uint x) =  p +\<^sub>p  (uint x)"
+  by auto
+
+
+
+(* Refinement function from implementation types using lists to C types *)
+fun to_edge :: 
+  "IEdge \<Rightarrow> Edge_C"
+where
+  "to_edge (u,v) = Edge_C u v"
+
+lemma s_C_pte[simp]:
+  "first_C (to_edge e) = fst e"
+  by (cases e) auto
+
+lemma t_C_pte[simp]:
+  "second_C (to_edge e) = snd e"
+  by (cases e) auto
+
+fun to_enint :: 
+  "(32 signed word \<times> 32 signed word) \<Rightarrow> ENInt_C"
+where
+  "to_enint p = ENInt_C (fst p) (snd p)"
+
+fun to_cycle ::
+  "ICycle' \<Rightarrow> Cycle_C"
+where
+  "to_cycle C = Cycle_C (fst C) (fst (snd C)) (snd (snd C))"
+
+lemma ENInt_val_C_pte[simp]:
+  "ENInt_C.val_C (to_enint p) = fst p"
+  by (case_tac "p") auto
+
+lemma ENInt_isInf_C_pte[simp]:
+  "ENInt_C.isInf_C (to_enint p) = snd p"
+  by (cases p) auto
+
+definition is_graph
+where
+  "is_graph h iG p \<equiv>
+    is_valid_Graph_C h p \<and> 
+    ivertex_cnt iG = num_vertices_C (heap_Graph_C h p) \<and> 
+    iedge_cnt iG = num_edges_C (heap_Graph_C h p) \<and>
+    arrlist (heap_Edge_C h) (is_valid_Edge_C h)
+      (map to_edge (mk_iedge_list iG)) (arcs_C (heap_Graph_C h p))"
+
+definition is_numm
+where
+  "is_numm h iG iN p \<equiv> 
+        arrlist (heap_w32 h) (is_valid_w32 h) (mk_inum_list iG iN) p"
+
+definition is_pedge
+where
+  "is_pedge h iG iP (p:: 32 signed word ptr) \<equiv> arrlist (\<lambda>p. heap_w32 h (ptr_coerce p))
+        (\<lambda>p. is_valid_w32 h (ptr_coerce p)) (mk_ipedge_list iG iP) p"
+
+definition is_dist
+where
+  "is_dist h iG iD p \<equiv> 
+        arrlist (\<lambda>p. heap_ENInt_C h p) (\<lambda>p. is_valid_ENInt_C h p) 
+        (map to_enint (mk_idist_list iG iD)) p"
+                              
+(* the following needs clarification... *)
+definition is_cost
+where
+  "is_cost h iG iC (p :: 32 signed word ptr) \<equiv> 
+        arrlist (\<lambda>p. UCAST(32 \<rightarrow> 32 signed) (heap_w32 h (ptr_coerce p))) 
+        (\<lambda>p. is_valid_w32 h (ptr_coerce p)) (mk_icost_list iG iC) p"
+
+fun abs_ICycle' ::  
+  "'a lifted_globals_scheme \<Rightarrow> ICycle' \<Rightarrow> ICycle" 
+where
+  "abs_ICycle' h iC' = 
+        (icycle'_start iC', 
+         icycle'_length iC', 
+         mk_ipath'_list h iC')"
+
+abbreviation is_path
+where
+  "is_path h iC p \<equiv> 
+        arrlist (heap_w32 h) (is_valid_w32 h) (mk_ipath_list iC) p"
+
+definition is_cycle'
+where
+  "is_cycle' h iC' p \<equiv>
+    is_valid_Cycle_C h p \<and> 
+    icycle'_start iC' = start_C (heap_Cycle_C h p) \<and> 
+    icycle'_length iC' = length_C (heap_Cycle_C h p) \<and>
+    icycle'_path iC' = path_C (heap_Cycle_C h p)"
+
+
+definition from_icycle'_to_icycle_list
+where
+   "from_icycle'_to_icycle_list h iC' iC \<equiv>
+    icycle_start iC = icycle'_start iC' \<and> 
+    icycle_length iC = icycle'_length iC' \<and>
+    is_path h iC (icycle'_path iC')"
+
+definition is_cycle 
+where
+  "is_cycle h iC p \<equiv>
+    is_valid_Cycle_C h p \<and> 
+    icycle_start iC = start_C (heap_Cycle_C h p) \<and> 
+    icycle_length iC = length_C (heap_Cycle_C h p) \<and>
+    is_path h iC (path_C (heap_Cycle_C h p))"
+
+definition final_is_cycle
+where
+  "final_is_cycle h iC' p \<equiv>
+    is_valid_Cycle_C h p \<and>
+    icycle'_start iC' = start_C (heap_Cycle_C h p) \<and>
+    icycle'_length iC' = length_C (heap_Cycle_C h p) \<and>
+    is_path h (abs_ICycle' h iC') (path_C (heap_Cycle_C h p))"
+
+definition abs_ICycles' :: 
+  "'a lifted_globals_scheme \<Rightarrow> ICycle_Set' \<Rightarrow> ICycle_Set"
+where
+  "abs_ICycles' h CS' \<equiv> 
+    (icycles'_num CS', 
+     map (abs_ICycle' h) (icycles' CS'))"
+
+definition are_cycles'
+where
+  "are_cycles' h iCS' p \<equiv>
+    is_valid_Cycle_set_C h p \<and>
+    icycles'_num iCS' = no_cycles_C (heap_Cycle_set_C h p) \<and> 
+    arrlist (heap_Cycle_C h) (is_valid_Cycle_C h)
+       (map to_cycle (icycles' iCS'))  (cyc_obj_C (heap_Cycle_set_C h p))"
+
+(*
+definition are_cycles
+where
+  "are_cycles h iCS p \<equiv>
+    is_valid_Cycle_set_C h p \<and>
+    icycles'_num iCS' = no_cycles_C (heap_Cycle_set_C h p) \<and> 
+    arrlist (heap_Cycle_C h) (is_valid_Cycle_C h)
+       (map to_cycle (icycles' iCS'))  (cyc_obj_C (heap_Cycle_set_C h p))"
+*)
+(*give  array_addrs*)
+
+(*
+definition is_cycle'
+where
+  "is_cycle' h iC p \<equiv>
+    is_valid_Cycle_C h p \<and> 
+    icycle'_start iC = start_C (heap_Cycle_C h p) \<and> 
+    icycle'_length iC = length_C (heap_Cycle_C h p) \<and>
+    icycle'_path iC = (path_C (heap_Cycle_C h p))"
+ 
+definition is_cycle_set
+where
+  "is_cycle_set h iS p iC \<equiv>
+    is_valid_Cycle_set_C h p \<and> 
+    icycles_num iS = no_cycles_C (heap_Cycle_set_C h p) \<and> 
+    arrlist (heap_Cycle_C h) (is_valid_Cycle_C h)
+      ( (mk_icycle'_list iS)) (cyc_obj_C (heap_Cycle_set_C h p))"
+
+*)
+
+(*
+function from  iCycle to Cycle_C
+
+Operator:  arrlist (heap_Cycle_C h) (is_valid_Cycle_C h) ::
+  Cycle_C list \<Rightarrow> Cycle_C ptr \<Rightarrow> bool
+Operand:   mk_icycle_list iS :: (32 word \<times> 32 word \<times> (32 word \<Rightarrow> 32 word)) list
+
+    icycles iS = is_cycle h (abs_) (cyc_obj_C (heap_Cycle_set_C h p))"
+*)
+(* Abstract Graph *)
+
+definition no_loops :: 
+  "('a, 'b) pre_digraph \<Rightarrow> bool" 
+where
+  "no_loops G \<equiv> \<forall>e \<in> arcs G. tail G e \<noteq> head G e"
+
+definition abs_IGraph :: 
+  "IGraph \<Rightarrow> (32 word, 32 word) pre_digraph" 
+where
+  "abs_IGraph G \<equiv> \<lparr> verts = {0..<ivertex_cnt G}, arcs = {0..<iedge_cnt G},
+    tail = fst o iedges G, head = snd o iedges G \<rparr>"
+
+lemma verts_absI[simp]: "verts (abs_IGraph G) = {0..<ivertex_cnt G}"
+  and edges_absI[simp]: "arcs (abs_IGraph G) = {0..<iedge_cnt G}"
+  and start_absI[simp]: "tail (abs_IGraph G) e = fst (iedges G e)"
+  and target_absI[simp]: "head (abs_IGraph G) e = snd (iedges G e)"
+  by (auto simp: abs_IGraph_def)
+
+definition abs_ICost :: 
+  "(IEdge_Id \<Rightarrow> 32 signed word) \<Rightarrow> IEdge_Id \<Rightarrow> real"
+where
+  "abs_ICost c e \<equiv> real_of_int (sint (c e))"
+
+definition abs_IDist :: 
+  "IENInt \<Rightarrow> IVertex \<Rightarrow> ereal"
+where
+  "abs_IDist d v \<equiv> if sint (snd (d v)) > 0 then PInfty
+         else if sint (snd (d v)) < 0 then MInfty else
+         real_of_int (sint (fst (d v)))"
+
+definition abs_INum :: 
+  "IEInt \<Rightarrow> IENInt \<Rightarrow> IVertex \<Rightarrow> enat"
+where
+  "abs_INum n d v \<equiv> if sint (snd (d v)) \<noteq> 0 then \<infinity> else unat (n v)"
+
+definition abs_INat :: 
+  "IEInt \<Rightarrow> IVertex \<Rightarrow> nat"
+where
+  "abs_INat n v \<equiv> unat (n v)"
+
+definition abs_IPedge :: 
+  "IPEdge \<Rightarrow> IVertex \<Rightarrow> 32 word option" 
+where
+  "abs_IPedge p v \<equiv> if msb (p v) then None else Some (p v)"
+(*
+definition abs_IPath ::
+  "IPath \<Rightarrow> 32 word awalk"
+where
+  "abs_IPath \<equiv> id"
+*)
+
+
+definition abs_ICycle :: 
+  "ICycle_Set \<Rightarrow> (32 word \<times> (32 word awalk)) set"
+where
+  "abs_ICycle CS \<equiv> set (map (\<lambda> C. (icycle_start C, icycle_path C)) (icycles CS))"
+
+lemma None_abs_pedgeI[simp]:
+  "(abs_IPedge p v = None) = msb (p v)"
+  using abs_IPedge_def by auto
+
+lemma Some_abs_pedgeI[simp]: 
+  "(\<exists>e. abs_IPedge p v = Some e) =  (~ (msb (p v)))"
+  using None_not_eq None_abs_pedgeI 
+  by (metis abs_IPedge_def)
+
+
+
+
+
+(* Helper lemmas *)
+lemma wellformed_iGraph:
+  assumes "wf_digraph (abs_IGraph G)"
+  shows "\<And>e. e < iedge_cnt G \<Longrightarrow> 
+        fst (iedges G e) < ivertex_cnt G \<and> 
+        snd (iedges G e) < ivertex_cnt G" 
+  using assms unfolding wf_digraph_def by simp
 
 lemma path_length:
   assumes "vpath p (abs_IGraph iG)"
@@ -687,9 +728,8 @@ proof -
     unfolding vpath_def vwalk_def by simp
 qed
 
-lemma ptr_coerce_ptr_add_uint[simp]:
-  "ptr_coerce (p +\<^sub>p uint x) =  p +\<^sub>p  (uint x)"
-  by auto
+
+
 
 lemma heap_ptr_coerce:
   "\<lbrakk>arrlist (\<lambda>p. h (ptr_coerce p)) (\<lambda>p. v (ptr_coerce p)) 
@@ -767,6 +807,142 @@ lemma is_inf_d_heap:
   using to_enint.simps  ENInt_isInf_C_pte
   by (metis int_unat two_comp_arrlist_heap)
 
+
+
+
+(*helpers for icycle intermediate abstraction *)
+
+fun mk_ipath ::
+  "'a lifted_globals_scheme \<Rightarrow> IPathPtr \<Rightarrow> nat \<Rightarrow> IPath"
+where
+  "mk_ipath h p l = map (heap_w32 h) (array_addrs p l)"
+
+
+lemma array_addrs_length: "length (array_addrs p l) = l"
+apply (induct l arbitrary: p) 
+  by (simp add:array_addrs.simps(2)) +
+
+lemma mk_ipath_length:
+  "length (mk_ipath h p l) = l"
+  using array_addrs_length 
+  by auto 
+  
+lemma ipathptr_ipath_simp:
+  "is_valid_w32 h p \<Longrightarrow> arrlist (heap_w32 h) (is_valid_w32 h) (mk_ipath h p l) p"
+  apply (induct l arbitrary: p)
+   apply simp
+  apply (case_tac l)
+  apply (simp)
+  apply (simp add:array_addrs.simps(2))+
+  apply (erule_tac x=p in meta_allE)
+  apply (rule conjI)
+apply (simp add:array_addrs.simps(2))
+   apply (drule arrlist_nth_valid [where i=0]) 
+     apply simp
+(*TODO finish this, we are here*)
+  sorry
+
+
+
+
+
+
+
+
+
+
+
+
+lemma ipathptr_ipath_simp:
+  "is_path h (mk_ipath'_list h iC') (icycle'_path iC')"
+  apply simp 
+
+  oops
+
+lemma icycle'_to_icycle_simp:
+  "from_icycle'_to_icycle_list h iC' (abs_ICycle' h iC')"
+  unfolding from_icycle'_to_icycle_list_def 
+  apply safe 
+    apply simp+ 
+
+  oops
+
+(* Try structure for locale 3 **)
+(*
+if(shortest_paths_locale_step2(g, s, c, num, pred, dist, parent_edge) == 0) return 0;
+    if(C_se(g, cse, c, dist) == 0) return 0;
+    if(int_neg_cyc(g, s, dist, cse, c, parent_edge, num) == 0) return 0;
+*)
+
+thm awalk'_def
+
+definition C_se_inv :: 
+  "IGraph \<Rightarrow> ICycle_Set' \<Rightarrow> ICost \<Rightarrow>  IENInt \<Rightarrow> 32 word \<Rightarrow> bool" 
+where
+  (*FIXME*)
+  "C_se_inv G cse c d k \<equiv>
+   \<forall>i < k.  is_inf_d d (icycle'_start ((icycles' cse ! unat i))) \<le> 0 \<and> 
+   True"
+
+lemma C_se_spc':
+  "\<lbrace> P and 
+     (\<lambda>s. is_graph s iG g \<and>
+          are_cycles' s ICS' cse  \<and>
+          
+          is_cost s iG iC c \<and>
+          is_dist s iG iD d )\<rbrace>
+   C_se' g cse c d 
+   \<lbrace> (\<lambda>_ s. P s) And 
+     (\<lambda>rr s. rr \<noteq> 0  \<longleftrightarrow> 
+         C_se_inv iG (abs_ICycles' s ICS') iC iN iP iD iPred)\<rbrace>!"
+  sorry
+
+
+lemma shortest_paths_locale_step3_eq_maths:
+  "\<And>G s c n p d pred.
+    shortest_paths_locale_step3_inv G s c n p d pred
+    =
+    shortest_paths_locale_step3_pred
+    (abs_IGraph G) s (abs_ICost c) (abs_INat n)
+    (abs_IPedge p) (abs_IDist d) (abs_IPedge pred)"
+  sorry
+
+lemma shortest_paths_locale_step3_spc:
+  "\<lbrace> P and 
+     (\<lambda>s. is_graph s iG g \<and>
+          is_dist s iG iD d \<and>
+          is_numm s iG iN n \<and>
+          is_cost s iG iC c \<and>
+          is_pedge s iG iP p \<and>
+          is_pedge s iG iPred pred)\<rbrace>
+   shortest_paths_locale_step2' g sc c n pred d p
+   \<lbrace> (\<lambda>_ s. P s) And 
+     (\<lambda>rr s. rr \<noteq> 0  \<longleftrightarrow> 
+        shortest_paths_locale_step2_pred
+    (abs_IGraph iG) sc (abs_ICost iC) (abs_INat iN)
+    (abs_IPedge iP) (abs_IDist iD) (abs_IPedge iPred))\<rbrace>!"
+  sorry
+
+
+
+definition int_neg_cyc_inv :: 
+  "IGraph \<Rightarrow> IVertex \<Rightarrow> IENInt \<Rightarrow> ICycle_Set' \<Rightarrow> ICost \<Rightarrow> IPEdge \<Rightarrow> 
+   IEInt \<Rightarrow> 32 word \<Rightarrow>  bool" 
+where
+  (*FIXME*)
+  "int_neg_cyc_inv G sc d cse c p n k \<equiv>
+   True"
+
+definition shortest_paths_locale_step3_inv :: 
+  "IGraph \<Rightarrow> IVertex \<Rightarrow> ICost \<Rightarrow> IEInt \<Rightarrow> IPEdge \<Rightarrow> 
+   IENInt \<Rightarrow> IPEdge \<Rightarrow> ICycle_Set' \<Rightarrow> bool" 
+where
+  (*add shortest_paths_locale_step2_inv G sc c n p d pred*)
+  "shortest_paths_locale_step3_inv G sc c n p d pred cse \<equiv>
+   C_se_inv G cse c d (icycles'_num cse) \<and>
+   int_neg_cyc_inv G sc d cse c p n (ivertex_cnt G)"
+
+(****)
 
 
 
