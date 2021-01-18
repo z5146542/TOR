@@ -113,19 +113,6 @@ locale sp_trian_just =
         pred v = Some e \<and> 
         v = head G e \<and>
         dist v = dist (tail G e) + c e"
-
-lemma (in sp_trian_just) just_pred:
-  "\<And>v. \<lbrakk>v \<in> U_finite; v \<noteq> s\<rbrakk> \<Longrightarrow>
-    \<exists> k. \<exists> e \<in> arcs G. v = head G e \<and>
-      dist v = dist (tail G e) + c e  \<and>
-      (c e = 0 \<longrightarrow> k (tail G e) < k v)" 
-  apply (frule just; clarsimp)
-  unfolding U_finite_def
-  apply (case_tac "pred s"; clarsimp)
-  apply (rule exI)
-  apply (rule_tac x=e in bexI)
-  apply clarsimp 
-  oops
   
 lemma tail_value_helper:
   assumes "hd p = last p"
@@ -150,7 +137,7 @@ definition (in basic_sp) V_plus :: "'a set" where
   "V_plus = {v\<in>verts G. \<mu> c s v= \<infinity> }"
 
 lemma (in basic_sp) V_partition: 
-  "verts G = (V_minus \<union> V_finite \<union> V_plus) \<and>
+  "verts G = (V_minus \<union> V_finite \<union> V_plus)
    disjnt V_plus V_minus \<and>
    disjnt V_plus V_finite \<and>
    disjnt V_minus V_finite" 
@@ -202,4 +189,16 @@ lemma (in basic_sp) s_in_Uf:
   using apath_Nil_iff s_in_verts
   by (fastforce simp: U_finite_def)
 
+lemma (in sp_trian_just) just_pred:
+  "\<And>v. \<lbrakk>v \<in> U_finite; v \<noteq> s\<rbrakk> \<Longrightarrow>
+    \<exists> k. \<exists> e \<in> arcs G. v = head G e \<and>
+      dist v = dist (tail G e) + c e  \<and>
+      (c e = 0 \<longrightarrow> k (tail G e) < k v)" 
+  apply (frule just; clarsimp)
+  unfolding U_finite_def
+  apply (case_tac "pred s"; clarsimp)
+  apply (rule exI)
+  apply (rule_tac x=e in bexI)
+  apply clarsimp 
+  oops
 end

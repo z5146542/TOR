@@ -24,6 +24,7 @@ lemma (in sp_axioms) Us_in_verts:
 proof (rule subsetI)
   fix v
   assume vG: "v \<in> verts G"
+  then have "V_partition"
   show  "v \<in> U_minus \<union> U_finite \<union> U_plus"
   proof (cases "v = s")
     case True
@@ -31,36 +32,11 @@ proof (rule subsetI)
       by (case_tac "pred s"; simp add: s_in_Uf s_in_Um) 
   next
     case False
-      then show ?thesis using vG
+       
+      then show ?thesis using vG sorry
   qed 
-
-
-  }
-  then have v_in_a_U: "v \<in> U_minus \<or> v \<in> U_finite \<or> v \<in> U_plus" sorry
-  moreover 
-  { 
-    assume  "v\<in>U_minus" 
-    then have "v \<in> verts G" 
-      unfolding U_minus_def cycle_def awalk_def pred_edges_def apath_def
-      by clarsimp (metis (no_types, hide_lams) awalk_verts_in_verts 
-          awalk_verts_ne_eq awlast_in_verts awlast_if_cas)
-  }
-  moreover 
-  { 
-    assume  "v\<in>U_finite" 
-    then have "v \<in> verts G" 
-      unfolding U_finite_def 
-      by (case_tac "pred s") (fastforce dest: awalkI_apath)+ 
-  }
-  ultimately show "v\<in> verts G" unfolding U_plus_def by blast
 qed
-  proof (rule subsetI)
-  apply (rename_tac v)
-  apply (case_tac "v = s")
-   apply  
-  apply ()
 
-  oops
 
 
 
