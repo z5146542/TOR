@@ -698,8 +698,6 @@ lemma Some_abs_pedgeI[simp]:
 
 
 
-
-
 (* Helper lemmas *)
 lemma wellformed_iGraph:
   assumes "wf_digraph (abs_IGraph G)"
@@ -826,20 +824,38 @@ lemma mk_ipath_length:
   "length (mk_ipath h p l) = l"
   using array_addrs_length 
   by auto 
-  
+
+lemma arrlist_next_item:
+  assumes "arrlist h v (x # xs) p"
+  shows "arrlist h v xs (p +\<^sub>p 1)"
+  using assms by simp
+
 lemma ipathptr_ipath_simp:
-  "is_valid_w32 h p \<Longrightarrow> arrlist (heap_w32 h) (is_valid_w32 h) (mk_ipath h p l) p"
-  apply (induct l arbitrary: p)
+  "\<lbrakk> hp = heap_w32 h; v = is_valid_w32 h; (x # xs) = mk_ipath h p l; 
+     v p \<rbrakk> \<Longrightarrow> arrlist hp v xs p"
+  apply clarsimp
+  apply (induct hp v xs p arbitrary: p l rule: arrlist.induct)
    apply simp
+  apply clarsimp
+  apply safe
+   apply (metis array_addrs.simps(2) length_Cons list.inject array_addrs_length)
+  apply (erule_tac x="pa" in meta_allE)
+  apply (erule_tac x="l" in meta_allE)
+  apply clarsimp
+
+
+  sorry
+lemma ipathptr_ipath_simp2:
+  "\<lbrakk> heap_w32 h p; is_valid_w32 h p \<rbrakk> \<Longrightarrow> arrlist (heap_w32 h) (is_valid_w32 h) (mk_ipath h p l) p"
+  apply (induct "(mk_ipath h p l)" arbitrary: p)
+   apply clarsimp
+  
   apply (case_tac l)
-  apply (simp)
+   apply (simp)
   apply (simp add:array_addrs.simps(2))+
-  apply (erule_tac x=p in meta_allE)
-  apply (rule conjI)
-apply (simp add:array_addrs.simps(2))
-   apply (drule arrlist_nth_valid [where i=0]) 
-     apply simp
-(*TODO finish this, we are here*)
+  apply (erule_tac x="p" in meta_allE)
+   apply (simp add:array_addrs.simps(2))
+  apply(metis (no_types) array_addrs.simps(2) arrlist.simps(2) list.simps(9) ipathptr_ipath_simp mk_ipath.simps)
   sorry
 
 
@@ -854,9 +870,8 @@ apply (simp add:array_addrs.simps(2))
 
 
 lemma ipathptr_ipath_simp:
-  "is_path h (mk_ipath'_list h iC') (icycle'_path iC')"
-  apply simp 
-
+  "is_path h (abs_ICycle' h iC') (icycle'_path iC')"
+  apply simp
   oops
 
 lemma icycle'_to_icycle_simp:

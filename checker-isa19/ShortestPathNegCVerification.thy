@@ -842,6 +842,7 @@ lemma ipathptr_ipath_simp:
   apply (erule_tac x="pa" in meta_allE)
   apply (erule_tac x="l" in meta_allE)
   apply clarsimp
+  (* HERE *)
 
 
   sorry
