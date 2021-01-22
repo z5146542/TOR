@@ -14,17 +14,73 @@ locale sp_axioms =
   assumes s_in_Um:
   "pred s \<noteq> None \<Longrightarrow> s \<in> U_minus"
 
-lemma (in sp_axioms) s_in_Um:
+lemma (in sp_axioms) Some_s_in_Um:
   "pred s = Some e  \<Longrightarrow> s \<in> U_minus"
   using s_in_Um 
   by simp 
 
+(*Uf  \<union> U− = Vf  \<union> V−*)
+lemma (in sp_axioms) Umf_not_\<mu>_inf:
+  "U_minus \<union> U_finite \<subseteq> {v \<in> verts G. \<mu> c s v < \<infinity>}"
+  unfolding Un_def
+  apply (subst Collect_cong[where Q="\<lambda>v. v \<in> verts G \<and> \<mu> c s v < \<infinity>"])
+  prefer 2 
+   apply simp 
+  apply (rename_tac v)
+  apply (case_tac "v = s")
+   apply (subgoal_tac "(s \<in> U_minus \<or> s \<in> U_finite)") 
+    apply simp
+    using s_in_verts
+    apply (fastforce dest: mu_le_zero[where v=s and f=c])
+     apply (case_tac "pred s"; simp add: s_in_Uf s_in_Um)
+    apply (rule iffI)
+    apply (rule conjI)
+    using Us_in_verts apply fast
+     apply (erule disjE)
+      
+    unfolding U_minus_def 
+      apply simp
+    apply (elim exE conjE disjE )
+      apply (subst neg_cycle_imp_inf_\<mu>, simp_all) 
+
+
+
+   
+     apply (simp only: \<mu>_reach_conv)
+    
+    unfolding cycle_def awalk_def pred_edges_def apath_def
+
+
+    
+    using  awalk_verts_in_verts 
+          awalk_verts_ne_eq awlast_in_verts awlast_if_cas
+
+    using pred_some_mu 
+   
+
+    oops
+
+lemma (in sp_plus) Umf_Vmf_eq:
+  "U_minus \<union> U_finite = V_minus \<union> V_finite" 
+  unfolding V_minus_def V_finite_def
+  apply (subst conjunct1[OF V_partition])+
+  using reach_plus \<mu>_reach_conv shortest_path_inf V_partition Up_Vp_eq Us_in_verts
+  oops
+
+  
+lemma (in sp_plus) U_minus_U_finite_eq_V_minus_V_finite:
+  fixes v :: 'a
+  shows "(U_finite \<union> U_minus) = V_finite \<union> V_minus"
+
+proof - 
+
+  oops
 lemma (in sp_axioms) Us_in_verts:
   "verts G \<subseteq> U_minus \<union> U_finite \<union> U_plus"
 proof (rule subsetI)
   fix v
   assume vG: "v \<in> verts G"
-  then have "V_partition"
+  with V_partition have ""  
   show  "v \<in> U_minus \<union> U_finite \<union> U_plus"
   proof (cases "v = s")
     case True
@@ -40,38 +96,7 @@ qed
 
 
 
-lemma (in sp_plus) Umf_not_\<mu>_inf:
-  "U_minus \<union> U_finite = {v \<in> verts G. \<mu> c s v < \<infinity>}"
-  unfolding Un_def
-  apply (subst Collect_cong[where Q="\<lambda>v. v \<in> verts G \<and> \<mu> c s v < \<infinity>"])
-  prefer 2 
-   apply simp 
-  apply (rename_tac v)
-  
-  apply (case_tac "v = s")
-   apply (subgoal_tac "(s \<in> U_minus \<or> s \<in> U_finite)") 
-    apply simp
-    using s_in_verts
-    apply (fastforce dest: mu_le_zero[where v=s and f=c])
-   apply (case_tac "pred s")
-    apply (fastforce dest: s_in_Uf)
-  apply (rule disjI1)
-    oops
 
-lemma (in sp_plus) Umf_Vmf_eq:
-  "U_minus \<union> U_finite = V_minus \<union> V_finite" 
-  unfolding V_minus_def V_finite_def
-  apply (subst conjunct1[OF V_partition])+
-  using reach_plus \<mu>_reach_conv  shortest_path_inf V_partition Up_Vp_eq Us_in_verts
-  oops
-
-  
-lemma (in sp_plus) U_minus_U_finite_eq_V_minus_V_finite:
-  fixes v :: 'a
-  shows "(U_finite \<union> U_minus) = V_finite \<union> V_minus"
-proof - 
-
-  oops
 
 
 (*

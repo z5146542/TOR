@@ -137,7 +137,7 @@ definition (in basic_sp) V_plus :: "'a set" where
   "V_plus = {v\<in>verts G. \<mu> c s v= \<infinity> }"
 
 lemma (in basic_sp) V_partition: 
-  "verts G = (V_minus \<union> V_finite \<union> V_plus)
+  "verts G = (V_minus \<union> V_finite \<union> V_plus) \<and>
    disjnt V_plus V_minus \<and>
    disjnt V_plus V_finite \<and>
    disjnt V_minus V_finite" 
@@ -189,16 +189,48 @@ lemma (in basic_sp) s_in_Uf:
   using apath_Nil_iff s_in_verts
   by (fastforce simp: U_finite_def)
 
+context sp_trian_just
+begin
+
+thm U_finite_def
+thm V_finite_def
+thm just
+
+function pwalk :: "'a \<Rightarrow> 'b list" 
+where
+  "pwalk v = 
+    (if (v = s \<or> dist v = \<infinity> \<or>  v \<notin> verts G)
+      then [] 
+      else pwalk (tail G (the (pred v))) @ [the (pred v)]
+    )" 
+  by simp+
+termination (in sp_trian_just) 
+  using just  
+  by (relation "measure num", simp, fastforce)  
+
+fun 
+  num :: "'a \<Rightarrow> nat"
+  where 
+  "num v = (if (v \<in> U_finite \<and> v \<noteq> s) then 
+               
+               {v. \<exists>p. apath s p v \<and> set p \<subseteq> pred_edges} else 0)"
+end
+
 lemma (in sp_trian_just) just_pred:
   "\<And>v. \<lbrakk>v \<in> U_finite; v \<noteq> s\<rbrakk> \<Longrightarrow>
-    \<exists> k. \<exists> e \<in> arcs G. v = head G e \<and>
-      dist v = dist (tail G e) + c e  \<and>
-      (c e = 0 \<longrightarrow> k (tail G e) < k v)" 
+    \<exists> (k :: 'a \<Rightarrow> nat). 
+      \<exists> e \<in> arcs G. 
+        v = head G e \<and>
+        dist v = dist (tail G e) + c e  \<and>
+        (c e = 0 \<longrightarrow> k (tail G e) < k v)" 
   apply (frule just; clarsimp)
   unfolding U_finite_def
   apply (case_tac "pred s"; clarsimp)
-  apply (rule exI)
+  apply (rule_tac x="\<lambda>v. if (c e = 0 \<and> v = head G e ) 
+         then 1" in exI)
   apply (rule_tac x=e in bexI)
-  apply clarsimp 
+   apply simp
+   apply (rule impI)
+
   oops
 end
