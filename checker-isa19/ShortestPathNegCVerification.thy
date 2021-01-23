@@ -929,26 +929,60 @@ if(shortest_paths_locale_step2(g, s, c, num, pred, dist, parent_edge) == 0) retu
 
 thm awalk'_def
 
+definition awalk_inv ::
+  "IGraph \<Rightarrow> ICycle \<Rightarrow> 32 word \<Rightarrow> bool"
+where
+  "awalk_inv G C k \<equiv>
+   \<forall> i < k. icycle_start C < ivertex_cnt G \<and>
+           (\<forall> z < icycle_length C. icycle_path C ! unat z  < iedge_cnt G) \<and>
+           (\<forall> z < icycle_length C - 1. snd (iedges G z) = fst (iedges G (z + 1))) \<and>
+            snd (iedges G (icycle_length C - 1)) = icycle_start C"
+
+lemma awalk_spc':
+    "\<lbrace> P and 
+     (\<lambda>s. wf_digraph (abs_IGraph iG) \<and>
+          is_graph s iG g \<and>
+          is_cycle' s iY' y  \<and>
+          is_cost s iG iC c \<and>
+          is_dist s iG iD d )\<rbrace>
+   awalk' g y
+   \<lbrace> (\<lambda>_ s. P s) And 
+     (\<lambda>rr s. rr \<noteq> 0  \<longleftrightarrow> 
+         C_se_inv iG (abs_ICycle' s iY') iC iD (icycle'_length iY'))\<rbrace>!"
+
 definition C_se_inv :: 
-  "IGraph \<Rightarrow> ICycle_Set' \<Rightarrow> ICost \<Rightarrow>  IENInt \<Rightarrow> 32 word \<Rightarrow> bool" 
+  "IGraph \<Rightarrow> ICycle_Set \<Rightarrow> ICost \<Rightarrow>  IENInt \<Rightarrow> 32 word \<Rightarrow> bool" 
 where
   (*FIXME*)
   "C_se_inv G cse c d k \<equiv>
-   \<forall>i < k.  is_inf_d d (icycle'_start ((icycles' cse ! unat i))) \<le> 0 \<and> 
+   \<forall>i < k.  is_inf_d d (icycle_start (icycles cse ! unat i)) \<le> 0 \<and> 
    True"
 
 lemma C_se_spc':
   "\<lbrace> P and 
-     (\<lambda>s. is_graph s iG g \<and>
-          are_cycles' s ICS' cse  \<and>
-          
+     (\<lambda>s. wf_digraph (abs_IGraph iG) \<and>
+          is_graph s iG g \<and>
+          are_cycles' s iY' cse  \<and>
           is_cost s iG iC c \<and>
           is_dist s iG iD d )\<rbrace>
    C_se' g cse c d 
    \<lbrace> (\<lambda>_ s. P s) And 
      (\<lambda>rr s. rr \<noteq> 0  \<longleftrightarrow> 
-         C_se_inv iG (abs_ICycles' s ICS') iC iN iP iD iPred)\<rbrace>!"
-  sorry
+         C_se_inv iG (abs_ICycles' s iY') iC iD (icycles'_num iY'))\<rbrace>!"
+  apply (clarsimp simp: C_se'_def)
+  apply (subst whileLoopE_add_inv [where 
+        M="\<lambda>(cc, s). unat (icycles'_num iY' - cc)" and
+        I="\<lambda>cc s. P s \<and> C_se_inv iG (abs_ICycles' s iY') iC iD cc \<and> 
+                   cc \<le> icycles'_num iY' \<and> 
+                   wf_digraph (abs_IGraph iG) \<and>
+                   is_graph s iG g \<and>
+                   are_cycles' s iY' cse  \<and>
+                   is_cost s iG iC c \<and>
+                   is_dist s iG iD d "])
+  apply (simp add: skipE_def)
+  apply wp 
+     
+  sorry                     
 
 
 lemma shortest_paths_locale_step3_eq_maths:
@@ -962,7 +996,8 @@ lemma shortest_paths_locale_step3_eq_maths:
 
 lemma shortest_paths_locale_step3_spc:
   "\<lbrace> P and 
-     (\<lambda>s. is_graph s iG g \<and>
+     (\<lambda>s. wf_digraph (abs_IGraph iG) \<and>
+          is_graph s iG g \<and>
           is_dist s iG iD d \<and>
           is_numm s iG iN n \<and>
           is_cost s iG iC c \<and>
