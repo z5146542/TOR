@@ -566,6 +566,7 @@ where
   "is_cycle h iC p \<equiv>
     is_valid_Cycle_C h p \<and> 
     icycle_start iC = start_C (heap_Cycle_C h p) \<and> 
+    unat (icycle_length iC) = length (icycle_path iC) \<and>
     icycle_length iC = length_C (heap_Cycle_C h p) \<and>
     is_path h iC (path_C (heap_Cycle_C h p))"
 
@@ -807,7 +808,11 @@ lemma is_inf_d_heap:
   using to_enint.simps  ENInt_isInf_C_pte
   by (metis int_unat two_comp_arrlist_heap)
 
-
+lemma arrlist_cycle_path_heap:
+  "\<lbrakk>arrlist h v (icycle_path iY) p; 
+  unat i < length (icycle_path iY)\<rbrakk> \<Longrightarrow>
+    icycle_path iY ! unat i = h (p +\<^sub>p int (unat i))"
+  using arrlist_nth_value by fastforce
 
 
 (*helpers for icycle intermediate abstraction *)
@@ -971,20 +976,18 @@ where
   "awalk_cost_neg_inv iC iY ee \<equiv> 
      sint (sum_list (map iC (take (unat ee) (icycle_path iY))))"
 
-lemma sum_list_step:                        
-  "sum_list (take (i + 1) xs) = sum_list (take i xs) + xs ! i"
+lemma sum_list_step:
+  assumes "(i + 1) \<le> length xs" 
+  shows "sum_list (take (i + 1) xs) = sum_list (take i xs) + xs ! i"
   sorry
 
 lemma awalk_cost_neg_inv_step:
   assumes i_less_max: "i < (max_word::32 word)"
-  
   shows "awalk_cost_neg_inv iC iY (i + 1) = awalk_cost_neg_inv iC iY i +
   sint (iC (icycle_path iY ! unat i))"
   apply (unfold awalk_cost_neg_inv_def)
   sorry
 
-
-lemma awalk_cost_neg_spc':
 (*
   "wf_digraph (abs_IGraph iG) \<Longrightarrow>
    is_graph s iG g \<Longrightarrow>
@@ -1001,46 +1004,53 @@ lemma awalk_cost_neg_spc':
   apply clarsimp
    apply (subst if_bool_eq_conj)+
 *)
-"ovalid (\<lambda> s. wf_digraph (abs_IGraph iG) \<and>
+
+lemma awalk_cost_neg_spc':
+  "ovalid (\<lambda> s. awalk_inv iG iY (icycle_length iY) \<and> 
+   wf_digraph (abs_IGraph iG) \<and>
    is_graph s iG g \<and>
    is_cost s iG iC c \<and>
-   is_cycle' s iY' y') (awalk_cost_neg' c y') (\<lambda>r s. r = awalk_cost_neg_inv iC (abs_ICycle' s iY') (icycle'_length iY'))"
+   is_cycle s iY y) (awalk_cost_neg' c y) (\<lambda>r s. r = awalk_cost_neg_inv iC iY (icycle_length iY))"
   apply (unfold awalk_cost_neg_inv_def awalk_cost_neg'_def)[1]
-  apply (subst owhile_add_inv[where M="\<lambda> (ee, total) s. unat (icycle'_length iY' - ee)" and
+  apply (subst owhile_add_inv[where M="\<lambda> (ee, total) s. unat (icycle_length iY - ee)" and
          I="\<lambda> (ee, total) s. 
-              ee \<le> icycle'_length iY' \<and>
+              awalk_inv iG iY (icycle_length iY) \<and>
+              ee \<le> icycle_length iY \<and>
               wf_digraph (abs_IGraph iG) \<and>
               is_graph s iG g \<and>
               is_cost s iG iC c \<and>
-              is_cycle' s iY' y' \<and>
-              total = awalk_cost_neg_inv iC (abs_ICycle' s iY') ee"])
+              is_cycle s iY y \<and>
+              total = awalk_cost_neg_inv iC iY ee"])
   apply wpsimp
-  
-  defer
+    apply (subgoal_tac "a < (max_word::32 word)")
+   apply (drule awalk_cost_neg_inv_step[where iC=iC and iY="iY"])
+   apply (unfold awalk_cost_neg_inv_def)[1] 
+   apply clarsimp
+   apply (rule conjI)
+    apply (simp add: inc_le is_cycle_def)
+   apply (unfold is_cycle_def is_cost_def)
+   apply clarsimp
+   apply (subst (asm) (1) arrlist_heap[where iL=iC]) 
+     apply blast
+    apply (unfold awalk_inv_def, auto)[1]
+   apply (simp add: uint_nat) 
+   apply (subst arrlist_heap[where iL=iC])
+     apply blast
+    apply (unfold awalk_inv_def, auto)[1]
+   apply (subst (asm) arrlist_cycle_path_heap)
+     apply blast 
+    apply (metis not_le word_le_nat_alt)
+   apply (subgoal_tac "unat a < length (icycle_path iY)")
+    apply (simp add: arrlist_cycle_path_heap)
+   apply (simp add: word_less_nat_alt)
+  apply (metis max_word_max not_le order.not_eq_order_implies_strict)
     apply (unfold awalk_cost_neg_inv_def)[1]
     apply clarsimp
-  apply (simp add: shortest_path_neg_checker.is_cycle'_def)
-    apply (unfold is_cycle'_def)[1]
-    apply clarsimp
-
+    apply (simp add: is_cycle_def)
    apply wpsimp
-  apply (unfold awalk_cost_neg_inv_def)[1] 
+   apply (unfold awalk_cost_neg_inv_def)[1] 
    apply clarsimp
-   apply (subgoal_tac "a < (max_word::32 word)")
-    apply (drule awalk_cost_neg_inv_step[where iC=iC and iY="(abs_ICycle' s iY')"])
-    apply (unfold awalk_cost_neg_inv_def)[1] 
-   apply clarsimp
-  apply (rule conjI)
-    apply (simp add: inc_le is_cycle'_def)
-   defer
-   apply (metis max_word_max not_le order.not_eq_order_implies_strict)
-  apply (unfold is_cycle'_def is_cost_def)
-  apply clarsimp
-  apply (subst (asm) (1) arrlist_heap[where iL=iC]) 
-    apply blast
-   defer
-  apply (simp add: uint_nat) sledgehammer
-  sorry
+  done
 
 definition C_se_inv :: 
   "IGraph \<Rightarrow> ICycle_Set \<Rightarrow> ICost \<Rightarrow>  IENInt \<Rightarrow> 32 word \<Rightarrow> bool" 
