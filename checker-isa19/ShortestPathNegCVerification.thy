@@ -942,13 +942,92 @@ lemma awalk_spc':
     "\<lbrace> P and 
      (\<lambda>s. wf_digraph (abs_IGraph iG) \<and>
           is_graph s iG g \<and>
-          is_cycle' s iY' y  \<and>
-          is_cost s iG iC c \<and>
-          is_dist s iG iD d )\<rbrace>
+          is_cycle s iY y)\<rbrace>
    awalk' g y
    \<lbrace> (\<lambda>_ s. P s) And 
      (\<lambda>rr s. rr \<noteq> 0  \<longleftrightarrow> 
-         C_se_inv iG (abs_ICycle' s iY') iC iD (icycle'_length iY'))\<rbrace>!"
+         awalk_inv iG (abs_ICycle' s iY') (icycle'_length iY'))\<rbrace>!"
+  apply (clarsimp simp: awalk'_def)
+  apply (subst whileLoopE_add_inv [where 
+        M="\<lambda>(yy, s). unat (icycle'_length iY' - yy - 1)" and
+        I="\<lambda>yy s. P s \<and> awalk_inv iG (abs_ICycle' s iY') yy \<and> 
+                   yy \<le> icycle'_length iY' \<and> 
+                   wf_digraph (abs_IGraph iG) \<and>
+                   is_graph s iG g \<and>
+                   is_cycle s iY y"])
+  apply (simp add: skipE_def)
+
+  apply wp
+      apply (subst if_bool_eq_conj)+
+      apply safe
+                 apply (unfold awalk_inv_def is_graph_def is_cycle_def)[1]
+                 apply clarsimp
+                 apply auto[1]
+  sorry
+
+definition awalk_cost_neg_inv ::
+  "ICost \<Rightarrow> ICycle \<Rightarrow> 32 word \<Rightarrow> int"
+where
+  "awalk_cost_neg_inv iC iY ee \<equiv> 
+     sint (sum_list (map cast_signed_long (map iC (take (unat ee) (icycle_path iY)))))"
+
+lemma sum_list_step:                        
+  "sum_list (take (i + 1) xs) = sum_list (take i xs) + xs ! i"
+  sorry
+
+lemma awalk_cost_neg_inv_step:
+  assumes i_less_max: "i < (max_word::32 word)"
+  
+  shows "awalk_cost_neg_inv iC iY (i + 1) = awalk_cost_neg_inv iC iY i +
+  sint (cast_signed_long (iC (icycle_path iY ! unat i)))"
+  apply (unfold awalk_cost_neg_inv_def)
+  sorry
+
+
+lemma awalk_cost_neg_spc':
+(*
+  "wf_digraph (abs_IGraph iG) \<Longrightarrow>
+   is_graph s iG g \<Longrightarrow>
+   is_cost s iG iC c \<Longrightarrow>
+   is_cycle s iY y \<Longrightarrow>
+   awalk_cost_neg' c y s = 
+   Some (awalk_cost_neg_spec iC iY)"
+  apply (unfold awalk_cost_neg_spec_def awalk_cost_neg'_def)[1]
+  apply (subst owhile_add_inv[where I="\<lambda> (e, total) s. e < icycle_length iY"])
+  apply wpsimp
+   apply (unfold ocondition_def oguard_def ogets_def oreturn_def obind_def)[1]
+   apply wpsimp
+   apply (rule conjI, rule impI)
+  apply clarsimp
+   apply (subst if_bool_eq_conj)+
+*)
+"ovalid (\<lambda> s. wf_digraph (abs_IGraph iG) \<and>
+   is_graph s iG g \<and>
+   is_cost s iG iC c \<and>
+   is_cycle s iY y) (awalk_cost_neg' c y) (\<lambda>r s. r = awalk_cost_neg_inv iC iY (icycle_length iY))"
+  apply (unfold awalk_cost_neg_inv_def awalk_cost_neg'_def)[1]
+  apply (subst owhile_add_inv[where M="\<lambda> (ee, total) s. unat (icycle_length iY - ee)" and
+         I="\<lambda> (ee, total) s. 
+              ee \<le> icycle_length iY \<and>
+              wf_digraph (abs_IGraph iG) \<and>
+              is_graph s iG g \<and>
+              is_cost s iG iC c \<and>
+              is_cycle s iY y \<and>
+              total = awalk_cost_neg_inv iC iY ee"])
+  apply wpsimp
+  
+  defer
+    apply (unfold awalk_cost_neg_inv_def)[1]
+    apply clarsimp
+    apply (unfold is_cycle_def)[1]
+    apply clarsimp
+
+   apply wpsimp
+  apply (unfold awalk_cost_neg_inv_def)[1] 
+   apply clarsimp
+  apply safe
+
+  sorry
 
 definition C_se_inv :: 
   "IGraph \<Rightarrow> ICycle_Set \<Rightarrow> ICost \<Rightarrow>  IENInt \<Rightarrow> 32 word \<Rightarrow> bool" 
@@ -956,7 +1035,8 @@ where
   (*FIXME*)
   "C_se_inv G cse c d k \<equiv>
    \<forall>i < k.  is_inf_d d (icycle_start (icycles cse ! unat i)) \<le> 0 \<and> 
-   True"
+   awalk_inv G (icycles cse ! unat i) (icycle_length (icycles cse ! unat i)) \<and>
+   awalk_cost_neg_inv c (icycles cse ! unat i) (icycle_length (icycles cse ! unat i)) < 0"
 
 lemma C_se_spc':
   "\<lbrace> P and 

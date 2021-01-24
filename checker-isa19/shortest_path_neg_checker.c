@@ -162,29 +162,30 @@ int no_edge_Vm_Vf(Graph *g, ENInt *dist) {
 
 // helpers
 
-int awalk(Graph *g, Cycle C) {
+int awalk(Graph *g, Cycle *C) {
     // u \in verts G
-    if (C.start >= vertex_cnt(g)) return 0;
+    if (C->start >= vertex_cnt(g)) return 0;
 
-    for(unsigned int z = 0; z < C.length; z++) {
-        if(C.path[z] >= edge_cnt(g)) return 0;
+    for(unsigned int z = 0; z < C->length - 1; z++) {
+        if(C->path[z] >= edge_cnt(g)) return 0;
+        if(z != C->length - 1) {
+            if(C->path[z+1] >= edge_cnt(g)) return 0;
+            if(arcs(g, C->path[z]).second != arcs(g, C->path[z+1]).first) return 0;
+        }
+        else {
+            if(arcs(g, C->path[z]).second != C->start) return 0;
+        }
     }
-
-    for(unsigned int z = 0; z < C.length - 1; z++) {
-        if(arcs(g, C.path[z]).second != arcs(g, C.path[z+1]).first) return 0;
-    }
-    
-    if(arcs(g, C.path[C.length - 1]).second != C.start) return 0;
 
     return 1;
 }
 
 // returns the total cost of the path
 
-long awalk_cost(int *c, unsigned int *path, unsigned int length) {
+long awalk_cost_neg(int *c, Cycle *C) {
     long total = 0;
-    for(unsigned int e = 0; e < length; e++) {
-        total = total + (long) c[path[e]];
+    for(unsigned int e = 0; e < C->length; e++) {
+        total = total + (long) c[C->path[e]];
     }
     return total;
 }
@@ -195,8 +196,8 @@ long awalk_cost(int *c, unsigned int *path, unsigned int length) {
 int C_se(Graph *g, Cycle_set *cse, int *c, ENInt *dist) {
     for(unsigned int y = 0; y < cse->no_cycles; y++) {
         if(dist[cse->cyc_obj[y].start].isInf > 0) return 0;
-        if(awalk(g, cse->cyc_obj[y]) == 0) return 0;
-        if(awalk_cost(c, cse->cyc_obj[y].path, cse->cyc_obj[y].length) >= 0) return 0;
+        if(awalk(g, &(cse->cyc_obj[y])) == 0) return 0;
+        if(awalk_cost_neg(c, &(cse->cyc_obj[y])) >= 0) return 0;
     }
     return 1;
 }

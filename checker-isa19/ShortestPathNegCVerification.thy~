@@ -552,7 +552,9 @@ where
     icycle'_path iC' = path_C (heap_Cycle_C h p)"
 
 
-definition from_icycle'_to_icycle_list
+definition 
+  from_icycle'_to_icycle_list ::
+  "'a lifted_globals_scheme \<Rightarrow> ICycle'\<Rightarrow> ICycle \<Rightarrow> bool"
 where
    "from_icycle'_to_icycle_list h iC' iC \<equiv>
     icycle_start iC = icycle'_start iC' \<and> 
@@ -833,6 +835,7 @@ lemma arrlist_next_item:
 lemma ipathptr_ipath_simp:
   "\<lbrakk> hp = heap_w32 h; v = is_valid_w32 h; (x # xs) = mk_ipath h p l; 
      v p \<rbrakk> \<Longrightarrow> arrlist hp v xs p"
+(*
   apply clarsimp
   apply (induct hp v xs p arbitrary: p l rule: arrlist.induct)
    apply simp
@@ -842,9 +845,12 @@ lemma ipathptr_ipath_simp:
   apply (erule_tac x="pa" in meta_allE)
   apply (erule_tac x="l" in meta_allE)
   apply clarsimp
+*)
+  (* HERE *)
 
 
   sorry
+(*
 lemma ipathptr_ipath_simp2:
   "\<lbrakk> heap_w32 h p; is_valid_w32 h p \<rbrakk> \<Longrightarrow> arrlist (heap_w32 h) (is_valid_w32 h) (mk_ipath h p l) p"
   apply (induct "(mk_ipath h p l)" arbitrary: p)
@@ -858,29 +864,61 @@ lemma ipathptr_ipath_simp2:
   apply(metis (no_types) array_addrs.simps(2) arrlist.simps(2) list.simps(9) ipathptr_ipath_simp mk_ipath.simps)
   sorry
 
-
-
-
-
-
-
+*)
 
 
 
 
 
 lemma ipathptr_ipath_simp:
-  "is_path h (abs_ICycle' h iC') (icycle'_path iC')"
-  apply simp
+  "\<lbrakk> hp = heap_w32 h; v = is_valid_w32 h; (x # xs) = mk_ipath h p l; 
+     v p \<rbrakk> \<Longrightarrow> arrlist hp v xs p"
+(*
+  apply clarsimp
+  apply (induct hp v xs p arbitrary: p l rule: arrlist.induct)
+   apply simp
+  apply clarsimp
+  apply safe
+   apply (metis array_addrs.simps(2) length_Cons list.inject array_addrs_length)
+  apply (erule_tac x="pa" in meta_allE)
+  apply (erule_tac x="l" in meta_allE)
+  apply clarsimp
+*)
   oops
+
+
+lemma arrlist_array_addrs:
+  "\<lbrakk>\<forall>i<n. v (p +\<^sub>p int i); xs= map h (array_addrs p n)\<rbrakk> \<Longrightarrow> arrlist h v xs p"
+  apply (induct n arbitrary: p xs) 
+   apply simp
+  apply (simp add: array_addrs.simps(2)) 
+  apply (erule_tac x="p +\<^sub>p 1" in meta_allE)
+  apply (frule_tac x=0 in spec, simp)
+  by force
+
+(*
+lemma temp:
+  "arrlist (heap_w32 h) (is_valid_w32 h) 
+    (map (heap_w32 h)   
+      (array_addrs (icycle'_path iC') 
+     (unat (icycle'_length iC'))))
+     (icycle'_path iC')"
+  sorry
+*)
+lemma is_path_absICycle': (*ipathptr_ipath_simp:*)
+  "\<forall>i<unat (icycle'_length iC'). 
+       is_valid_w32 h ((icycle'_path iC') +\<^sub>p int i) \<Longrightarrow>
+       is_path h (abs_ICycle' h iC') (icycle'_path iC')"
+  by (simp add: arrlist_array_addrs)
+
 
 lemma icycle'_to_icycle_simp:
-  "from_icycle'_to_icycle_list h iC' (abs_ICycle' h iC')"
+  "\<forall>i<unat (icycle'_length iC'). 
+       is_valid_w32 h ((icycle'_path iC') +\<^sub>p int i) \<Longrightarrow>
+   from_icycle'_to_icycle_list h iC' (abs_ICycle' h iC')"
   unfolding from_icycle'_to_icycle_list_def 
-  apply safe 
-    apply simp+ 
-
-  oops
+  using is_path_absICycle'
+  by force
 
 (* Try structure for locale 3 **)
 (*
