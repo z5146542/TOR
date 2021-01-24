@@ -969,7 +969,7 @@ definition awalk_cost_neg_inv ::
   "ICost \<Rightarrow> ICycle \<Rightarrow> 32 word \<Rightarrow> int"
 where
   "awalk_cost_neg_inv iC iY ee \<equiv> 
-     sint (sum_list (map cast_signed_long (map iC (take (unat ee) (icycle_path iY)))))"
+     sint (sum_list (map iC (take (unat ee) (icycle_path iY))))"
 
 lemma sum_list_step:                        
   "sum_list (take (i + 1) xs) = sum_list (take i xs) + xs ! i"
@@ -979,7 +979,7 @@ lemma awalk_cost_neg_inv_step:
   assumes i_less_max: "i < (max_word::32 word)"
   
   shows "awalk_cost_neg_inv iC iY (i + 1) = awalk_cost_neg_inv iC iY i +
-  sint (cast_signed_long (iC (icycle_path iY ! unat i)))"
+  sint (iC (icycle_path iY ! unat i))"
   apply (unfold awalk_cost_neg_inv_def)
   sorry
 
@@ -1004,29 +1004,42 @@ lemma awalk_cost_neg_spc':
 "ovalid (\<lambda> s. wf_digraph (abs_IGraph iG) \<and>
    is_graph s iG g \<and>
    is_cost s iG iC c \<and>
-   is_cycle s iY y) (awalk_cost_neg' c y) (\<lambda>r s. r = awalk_cost_neg_inv iC iY (icycle_length iY))"
+   is_cycle' s iY' y') (awalk_cost_neg' c y') (\<lambda>r s. r = awalk_cost_neg_inv iC (abs_ICycle' s iY') (icycle'_length iY'))"
   apply (unfold awalk_cost_neg_inv_def awalk_cost_neg'_def)[1]
-  apply (subst owhile_add_inv[where M="\<lambda> (ee, total) s. unat (icycle_length iY - ee)" and
+  apply (subst owhile_add_inv[where M="\<lambda> (ee, total) s. unat (icycle'_length iY' - ee)" and
          I="\<lambda> (ee, total) s. 
-              ee \<le> icycle_length iY \<and>
+              ee \<le> icycle'_length iY' \<and>
               wf_digraph (abs_IGraph iG) \<and>
               is_graph s iG g \<and>
               is_cost s iG iC c \<and>
-              is_cycle s iY y \<and>
-              total = awalk_cost_neg_inv iC iY ee"])
+              is_cycle' s iY' y' \<and>
+              total = awalk_cost_neg_inv iC (abs_ICycle' s iY') ee"])
   apply wpsimp
   
   defer
     apply (unfold awalk_cost_neg_inv_def)[1]
     apply clarsimp
-    apply (unfold is_cycle_def)[1]
+  apply (simp add: shortest_path_neg_checker.is_cycle'_def)
+    apply (unfold is_cycle'_def)[1]
     apply clarsimp
 
    apply wpsimp
   apply (unfold awalk_cost_neg_inv_def)[1] 
    apply clarsimp
-  apply safe
-
+   apply (subgoal_tac "a < (max_word::32 word)")
+    apply (drule awalk_cost_neg_inv_step[where iC=iC and iY="(abs_ICycle' s iY')"])
+    apply (unfold awalk_cost_neg_inv_def)[1] 
+   apply clarsimp
+  apply (rule conjI)
+    apply (simp add: inc_le is_cycle'_def)
+   defer
+   apply (metis max_word_max not_le order.not_eq_order_implies_strict)
+  apply (unfold is_cycle'_def is_cost_def)
+  apply clarsimp
+  apply (subst (asm) (1) arrlist_heap[where iL=iC]) 
+    apply blast
+   defer
+  apply (simp add: uint_nat) sledgehammer
   sorry
 
 definition C_se_inv :: 

@@ -185,7 +185,7 @@ int awalk(Graph *g, Cycle *C) {
 long awalk_cost_neg(int *c, Cycle *C) {
     long total = 0;
     for(unsigned int e = 0; e < C->length; e++) {
-        total = total + (long) c[C->path[e]];
+        total = total + (signed long) c[C->path[e]];
     }
     return total;
 }
