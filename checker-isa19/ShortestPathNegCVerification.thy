@@ -652,7 +652,7 @@ lemma verts_absI[simp]: "verts (abs_IGraph G) = {0..<ivertex_cnt G}"
   by (auto simp: abs_IGraph_def)
 
 definition abs_ICost :: 
-  "(IEdge_Id \<Rightarrow> 32 signed word) \<Rightarrow> IEdge_Id \<Rightarrow> real"
+  "ICost \<Rightarrow> IEdge_Id \<Rightarrow> real"
 where
   "abs_ICost c e \<equiv> real_of_int (sint (c e))"
 
@@ -974,21 +974,77 @@ definition awalk_cost_neg_inv ::
   "ICost \<Rightarrow> ICycle \<Rightarrow> 32 word \<Rightarrow> int"
 where
   "awalk_cost_neg_inv iC iY ee \<equiv> 
-     sint (sum_list (map iC (take (unat ee) (icycle_path iY))))"
+      sum_list (map (sint \<circ> iC) (take (unat ee) (icycle_path iY)))"
 
 lemma sum_list_step:
   assumes "(i + 1) \<le> length xs" 
+  assumes "xs \<noteq> []"
   shows "sum_list (take (i + 1) xs) = sum_list (take i xs) + xs ! i"
-  sorry
+proof -
+  have "\<forall>n. n + 1 = Suc n"
+    by simp
+  then show ?thesis
+    by (metis (no_types) add.right_neutral assms(1) le_less_trans lessI not_le sum_list.Cons sum_list.Nil sum_list_append take_Suc_conv_app_nth)
+qed
+
+lemma sum_list_step_sint:
+  assumes "(i + 1) \<le> length xs" 
+  assumes "xs \<noteq> []"
+  shows "sum_list (map sint (take (i + 1) xs)) = sum_list (map sint (take i xs)) + sint (xs ! i)"
+proof -
+  have "sum_list (take i (map sint xs)) + sint (xs ! i) = sum_list (take (i + 1) (map sint xs))"
+    by (metis (no_types) add.commute assms(1) discrete gen_length_code(1) gen_length_def length_map not_add_less1 nth_map sum_list_step)
+  then show ?thesis
+    by (simp add: take_map)
+qed
 
 lemma awalk_cost_neg_inv_step:
   assumes i_less_max: "i < (max_word::32 word)"
+    and "is_cycle s iY y"
+    and "(i + 1) \<le> icycle_length iY"
+    and "icycle_path iY \<noteq> []"
+  shows "awalk_cost_neg_inv iC iY (i + 1) = awalk_cost_neg_inv iC iY i +
+  sint (map iC (icycle_path iY) ! unat i)"
+  apply (insert assms)
+  apply (unfold awalk_cost_neg_inv_def)
+  apply (subgoal_tac "sum_list (map sint (take (unat (i + 1)) (map iC (snd (snd iY))))) =
+        sum_list (map sint (take (unat i) (map iC (snd (snd iY))))) + sint (map iC (icycle_path iY) ! unat i)")
+  apply (simp add: take_map)
+  apply (unfold is_cycle_def)
+  apply clarsimp
+  apply (subgoal_tac "\<forall>w. (w::32 word) = 0 \<or> \<not> unat w < 1 + unat (0::32 word)")
+   apply (subgoal_tac "1 + unat (0::32 word) = 1 \<or> (0::32 word) = 1")
+    apply (subgoal_tac "\<not> fst (snd iY) < i + 1")
+     apply (metis (no_types) Nil_is_map_conv add.commute length_map less_is_non_zero_p1 not_le unat_simp 
+            sum_list_step_sint unat_1 word_less_nat_alt word_not_simps(1))
+    apply simp
+   apply simp
+  apply (metis add.commute discrete less_linear not_le word_less_nat_alt word_not_simps(1))
+  done
+
+lemma awalk_cost_neg_inv_step2:
+  assumes i_less_max: "i < (max_word::32 word)"
+    and "is_cycle s iY y"
+    and "(i + 1) \<le> icycle_length iY"
+    and "icycle_path iY \<noteq> []"
   shows "awalk_cost_neg_inv iC iY (i + 1) = awalk_cost_neg_inv iC iY i +
   sint (iC (icycle_path iY ! unat i))"
+  apply (insert assms)
   apply (unfold awalk_cost_neg_inv_def)
-  sorry
-
-(*
+  apply (subgoal_tac "sum_list (map sint (take (unat (i + 1)) (map iC (snd (snd iY))))) =
+        sum_list (map sint (take (unat i) (map iC (snd (snd iY))))) + sint (iC (icycle_path iY ! unat i))")
+   apply (simp add: take_map)
+  apply (unfold is_cycle_def)
+  apply clarsimp
+  apply (subgoal_tac "sint (iC (icycle_path iY ! unat i)) = sint (map iC (icycle_path iY) ! unat i)")
+   apply clarsimp
+   apply (subgoal_tac "awalk_cost_neg_inv iC iY i + sint (map iC (snd (snd iY)) ! unat i) = 
+                       awalk_cost_neg_inv iC iY (i + 1)")
+    apply (simp add: awalk_cost_neg_inv_def take_map)
+   apply (metis (no_types) assms(2) awalk_cost_neg_inv_step)
+  apply (metis max_word_max not_le nth_map word_Suc_le word_less_nat_alt)
+  done
+    (*
   "wf_digraph (abs_IGraph iG) \<Longrightarrow>
    is_graph s iG g \<Longrightarrow>
    is_cost s iG iC c \<Longrightarrow>
@@ -1023,34 +1079,39 @@ lemma awalk_cost_neg_spc':
               total = awalk_cost_neg_inv iC iY ee"])
   apply wpsimp
     apply (subgoal_tac "a < (max_word::32 word)")
-   apply (drule awalk_cost_neg_inv_step[where iC=iC and iY="iY"])
-   apply (unfold awalk_cost_neg_inv_def)[1] 
-   apply clarsimp
-   apply (rule conjI)
-    apply (simp add: inc_le is_cycle_def)
-   apply (unfold is_cycle_def is_cost_def)
-   apply clarsimp
-   apply (subst (asm) (1) arrlist_heap[where iL=iC]) 
-     apply blast
-    apply (unfold awalk_inv_def, auto)[1]
-   apply (simp add: uint_nat) 
-   apply (subst arrlist_heap[where iL=iC])
-     apply blast
-    apply (unfold awalk_inv_def, auto)[1]
-   apply (subst (asm) arrlist_cycle_path_heap)
-     apply blast 
-    apply (metis not_le word_le_nat_alt)
-   apply (subgoal_tac "unat a < length (icycle_path iY)")
-    apply (simp add: arrlist_cycle_path_heap)
-   apply (simp add: word_less_nat_alt)
-  apply (metis max_word_max not_le order.not_eq_order_implies_strict)
-    apply (unfold awalk_cost_neg_inv_def)[1]
-    apply clarsimp
-    apply (simp add: is_cycle_def)
+     apply (drule awalk_cost_neg_inv_step2[where iC=iC and iY="iY"])
+        apply (unfold awalk_cost_neg_inv_def)[1] 
+        apply blast
+       apply (simp add: inc_le is_cycle_def)
+      apply (unfold is_cycle_def, clarsimp)[1]
+      apply (simp add: word_less_nat_alt)
+     apply (rule conjI)
+      apply (simp add: inc_le is_cycle_def)
+     apply (unfold is_cycle_def is_cost_def)[1]
+     apply clarsimp 
+     apply (subst arrlist_heap[where iL=iC]) 
+       apply blast 
+      apply (unfold awalk_inv_def, auto)[1]
+     apply (simp add: arrlist_cycle_path_heap)
+     apply (simp add: arrlist_cycle_path_heap uint_nat word_less_nat_alt)
+    apply (metis max_word_not_less not_le word_minus_one_le)
    apply wpsimp
-   apply (unfold awalk_cost_neg_inv_def)[1] 
-   apply clarsimp
+   apply (simp add: is_cycle_def awalk_cost_neg_inv_def)
+  apply wpsimp
+  apply (unfold awalk_cost_neg_inv_def)
+  apply clarsimp
   done
+
+thm wf_digraph.awalk_cost_def
+
+lemma awalk_cost_eq_math:
+  assumes "wf_digraph (abs_IGraph iG)"
+  assumes "is_cycle s iY y"
+  shows "real_of_int (awalk_cost_neg_inv iC iY (icycle_length iY)) = wf_digraph.awalk_cost (abs_ICost iC) (icycle_path iY)"
+  apply (insert assms)                                                   
+  apply (unfold awalk_inv_def awalk_cost_neg_inv_def wf_digraph.awalk_cost_def abs_ICost_def is_cycle_def)
+  apply clarsimp
+  sorry
 
 definition C_se_inv :: 
   "IGraph \<Rightarrow> ICycle_Set \<Rightarrow> ICost \<Rightarrow>  IENInt \<Rightarrow> 32 word \<Rightarrow> bool" 
