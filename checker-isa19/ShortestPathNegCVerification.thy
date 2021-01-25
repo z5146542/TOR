@@ -939,9 +939,10 @@ definition awalk_inv ::
 where
   "awalk_inv G C k \<equiv>
    \<forall> i < k. icycle_start C < ivertex_cnt G \<and>
-           (\<forall> z < icycle_length C. icycle_path C ! unat z  < iedge_cnt G) \<and>
-           (\<forall> z < icycle_length C - 1. snd (iedges G z) = fst (iedges G (z + 1))) \<and>
-            snd (iedges G (icycle_length C - 1)) = icycle_start C"
+            icycle_path C ! unat i  < iedge_cnt G \<and>
+            (k \<noteq> icycle_length C  \<longrightarrow> (icycle_path C ! unat (i + 1)  < iedge_cnt G \<and>
+               snd (iedges G i) = fst (iedges G (i + 1)))) \<and>
+            (k = icycle_length C \<longrightarrow> snd (iedges G (icycle_length C - 1)) = icycle_start C)"
 
 lemma awalk_spc':
     "\<lbrace> P and 
@@ -951,12 +952,12 @@ lemma awalk_spc':
    awalk' g y
    \<lbrace> (\<lambda>_ s. P s) And 
      (\<lambda>rr s. rr \<noteq> 0  \<longleftrightarrow> 
-         awalk_inv iG (abs_ICycle' s iY') (icycle'_length iY'))\<rbrace>!"
+         awalk_inv iG iY (icycle_length iY))\<rbrace>!"
   apply (clarsimp simp: awalk'_def)
   apply (subst whileLoopE_add_inv [where 
-        M="\<lambda>(yy, s). unat (icycle'_length iY' - yy - 1)" and
-        I="\<lambda>yy s. P s \<and> awalk_inv iG (abs_ICycle' s iY') yy \<and> 
-                   yy \<le> icycle'_length iY' \<and> 
+        M="\<lambda>(yy, s). unat (icycle_length iY - yy)" and
+        I="\<lambda>yy s. P s \<and> awalk_inv iG iY yy \<and> 
+                   yy \<le> icycle_length iY \<and> 
                    wf_digraph (abs_IGraph iG) \<and>
                    is_graph s iG g \<and>
                    is_cycle s iY y"])
@@ -964,10 +965,26 @@ lemma awalk_spc':
 
   apply wp
       apply (subst if_bool_eq_conj)+
-      apply safe
-                 apply (unfold awalk_inv_def is_graph_def is_cycle_def)[1]
-                 apply clarsimp
-                 apply auto[1]
+      apply (rule conjI)+
+          apply (rule impI)
+          apply clarsimp
+          apply (unfold is_graph_def is_cycle_def awalk_inv_def)[1]
+          apply (erule_tac x=yy in allE) back
+          apply (metis not_le arrlist_cycle_path_heap mk_ipath_list.elims uint_nat word_less_nat_alt)
+         apply (rule impI, rule conjI, rule conjI, rule impI, rule conjI, rule conjI, rule conjI, rule impI)
+              apply clarsimp
+              apply (unfold is_graph_def is_cycle_def awalk_inv_def)[1]
+              apply (erule_tac x=yy in allE, clarsimp)
+              apply (metis add.commute add_diff_cancel_left' inc_le leD order.not_eq_order_implies_strict 
+                     arrlist_cycle_path_heap uint_nat word_less_nat_alt)
+             apply (rule impI, rule conjI, rule conjI, rule conjI, rule conjI, rule conjI, rule conjI, rule conjI, rule impI)
+                    apply clarsimp
+                  
+                    apply (unfold is_graph_def is_cycle_def awalk_inv_def)[1]
+  apply (erule_tac x=yy in allE) back
+
+
+
   sorry
 
 definition awalk_cost_neg_inv ::
@@ -1067,7 +1084,8 @@ lemma awalk_cost_neg_spc':
      apply clarsimp 
      apply (subst arrlist_heap[where iL=iC]) 
        apply blast 
-      apply (unfold awalk_inv_def, auto)[1]
+      apply (unfold awalk_inv_def)[1]
+      apply clarsimp
      apply (simp add: arrlist_cycle_path_heap)
      apply (simp add: arrlist_cycle_path_heap uint_nat word_less_nat_alt)
     apply (metis max_word_not_less not_le word_minus_one_le)
