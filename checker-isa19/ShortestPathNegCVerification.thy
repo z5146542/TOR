@@ -1031,35 +1031,11 @@ lemma awalk_cost_neg_inv_step2:
   sint (iC (icycle_path iY ! unat i))"
   apply (insert assms)
   apply (unfold awalk_cost_neg_inv_def)
-  apply (subgoal_tac "sum_list (map sint (take (unat (i + 1)) (map iC (snd (snd iY))))) =
-        sum_list (map sint (take (unat i) (map iC (snd (snd iY))))) + sint (iC (icycle_path iY ! unat i))")
-   apply (simp add: take_map)
-  apply (unfold is_cycle_def)
-  apply clarsimp
   apply (subgoal_tac "sint (iC (icycle_path iY ! unat i)) = sint (map iC (icycle_path iY) ! unat i)")
-   apply clarsimp
-   apply (subgoal_tac "awalk_cost_neg_inv iC iY i + sint (map iC (snd (snd iY)) ! unat i) = 
-                       awalk_cost_neg_inv iC iY (i + 1)")
-    apply (simp add: awalk_cost_neg_inv_def take_map)
-   apply (metis (no_types) assms(2) awalk_cost_neg_inv_step)
-  apply (metis max_word_max not_le nth_map word_Suc_le word_less_nat_alt)
+   apply clarsimp 
+  apply (metis awalk_cost_neg_inv_def awalk_cost_neg_inv_step)
+  apply (metis (no_types, hide_lams) is_cycle_def max_word_not_less nth_map word_Suc_le word_less_nat_alt)
   done
-    (*
-  "wf_digraph (abs_IGraph iG) \<Longrightarrow>
-   is_graph s iG g \<Longrightarrow>
-   is_cost s iG iC c \<Longrightarrow>
-   is_cycle s iY y \<Longrightarrow>
-   awalk_cost_neg' c y s = 
-   Some (awalk_cost_neg_spec iC iY)"
-  apply (unfold awalk_cost_neg_spec_def awalk_cost_neg'_def)[1]
-  apply (subst owhile_add_inv[where I="\<lambda> (e, total) s. e < icycle_length iY"])
-  apply wpsimp
-   apply (unfold ocondition_def oguard_def ogets_def oreturn_def obind_def)[1]
-   apply wpsimp
-   apply (rule conjI, rule impI)
-  apply clarsimp
-   apply (subst if_bool_eq_conj)+
-*)
 
 lemma awalk_cost_neg_spc':
   "ovalid (\<lambda> s. awalk_inv iG iY (icycle_length iY) \<and> 
@@ -1102,16 +1078,28 @@ lemma awalk_cost_neg_spc':
   apply clarsimp
   done
 
-thm wf_digraph.awalk_cost_def
+lemma int_real_add_simp: "foldr (+) (map (real_of_int \<circ> sint) xs) 0 = real_of_int (foldr (+) (map sint xs) 0)"
+  apply (induct xs)
+   apply simp
+  apply clarsimp
+  done
+
+lemma acc_list_simp: "real_of_int (awalk_cost_neg_inv iC iY (icycle_length iY)) = 
+       sum_list (map (real_of_int \<circ> sint \<circ> iC) (take (unat (fst (snd iY))) (icycle_path iY)))"
+  apply (unfold awalk_cost_neg_inv_def)
+  using int_real_add_simp 
+  by (metis (no_types, hide_lams) map_map sum_list.eq_foldr)
 
 lemma awalk_cost_eq_math:
   assumes "wf_digraph (abs_IGraph iG)"
   assumes "is_cycle s iY y"
   shows "real_of_int (awalk_cost_neg_inv iC iY (icycle_length iY)) = wf_digraph.awalk_cost (abs_ICost iC) (icycle_path iY)"
-  apply (insert assms)                                                   
+  apply (insert assms)
+  apply (simp add: acc_list_simp)
   apply (unfold awalk_inv_def awalk_cost_neg_inv_def wf_digraph.awalk_cost_def abs_ICost_def is_cycle_def)
   apply clarsimp
-  sorry
+  using acc_list_simp
+  by (metis comp_apply)
 
 definition C_se_inv :: 
   "IGraph \<Rightarrow> ICycle_Set \<Rightarrow> ICost \<Rightarrow>  IENInt \<Rightarrow> 32 word \<Rightarrow> bool" 
