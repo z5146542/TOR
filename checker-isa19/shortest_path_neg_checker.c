@@ -164,13 +164,15 @@ int no_edge_Vm_Vf(Graph *g, ENInt *dist) {
 
 int awalk(Graph *g, Cycle *C) {
     // u \in verts G
-    if (C->start >= vertex_cnt(g)) return 0;
+    if(C->start >= vertex_cnt(g)) return 0;
 
-    for(unsigned int z = 0; z < C->length; z++) {
+    if(C->length != 0)
+        if(C->path[0] >= edge_cnt(g)) return 0;
+    for(unsigned int z = 1; z < C->length; z++) {
         if(C->path[z] >= edge_cnt(g)) return 0;
         if(z != C->length - 1) {
-            if(C->path[z+1] >= edge_cnt(g)) return 0;
-            if(arcs(g, C->path[z]).second != arcs(g, C->path[z+1]).first) return 0;
+            if(C->path[z] >= edge_cnt(g)) return 0;
+            if(arcs(g, C->path[z - 1]).second != arcs(g, C->path[z]).first) return 0;
         }
     }
 
