@@ -166,17 +166,17 @@ int awalk(Graph *g, Cycle *C) {
     // u \in verts G
     if(C->start >= vertex_cnt(g)) return 0;
 
-    if(C->length != 0)
+    if(C->length != 0) {
         if(C->path[0] >= edge_cnt(g)) return 0;
-    for(unsigned int z = 1; z < C->length; z++) {
-        if(C->path[z] >= edge_cnt(g)) return 0;
-        if(z != C->length - 1) {
+        if(arcs(g, C->path[C->length - 1]).second != C->start) return 0;
+    }
+    for(unsigned int z = 0; z < C->length; z++) {
+        if(z > 0) {
+            if(C->path[z - 1] >= edge_cnt(g)) return 0;
             if(C->path[z] >= edge_cnt(g)) return 0;
             if(arcs(g, C->path[z - 1]).second != arcs(g, C->path[z]).first) return 0;
         }
     }
-
-    if(arcs(g, C->path[C->length - 1]).second != C->start) return 0;
 
     return 1;
 }

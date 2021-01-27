@@ -937,23 +937,33 @@ if(shortest_paths_locale_step2(g, s, c, num, pred, dist, parent_edge) == 0) retu
     if(int_neg_cyc(g, s, dist, cse, c, parent_edge, num) == 0) return 0;
 *)
 
+find_theorems(128) name: awalk
+
 definition awalk_inv ::
-  "IGraph \<Rightarrow> ICycle \<Rightarrow> 32 word \<Rightarrow> bool"
+  "IGraph \<Rightarrow> ICycle \<Rightarrow> nat \<Rightarrow> bool"
 where
   "awalk_inv G C k \<equiv>
-   (k = 0 \<longrightarrow> 
-      icycle_start C < ivertex_cnt G) \<and>
-   (k > 0 \<and> k \<noteq> icycle_length C \<longrightarrow> 
-      icycle_start C < ivertex_cnt G \<and>
-      (\<forall> i < k. icycle_path C ! unat (i - 1) < iedge_cnt G \<and>
-           icycle_path C ! unat i < iedge_cnt G \<and>
-           snd (iedges G (icycle_path C ! unat (i - 1))) = fst (iedges G (icycle_path C ! unat i)))) \<and>
-   (k = icycle_length C \<longrightarrow>
-      icycle_start C < ivertex_cnt G \<and>
-      (\<forall> i < k. icycle_path C ! unat (i - 1) < iedge_cnt G \<and>
-           icycle_path C ! unat i < iedge_cnt G \<and>
-           snd (iedges G (icycle_path C ! unat (i - 1))) = fst (iedges G (icycle_path C ! unat i))) \<and>
-      snd (iedges G (last (icycle_path C))) = icycle_start C)"
+   Arc_Walk.pre_digraph.awalk (abs_IGraph G) 
+   (icycle_start C) 
+   (take k (icycle_path C)) 
+   (snd (iedges G (last (take k (icycle_path C)))))"
+
+lemma awalk_inv_step:
+  assumes i_less_max: "k < unat (max_word::32 word)"
+    and "unat (fst (snd iY)) = length (snd (snd iY))"
+    and "(k + 1) \<le> unat (icycle_length iY)"
+    and "icycle_path iY \<noteq> []"
+  shows "awalk_inv iG iY (k + 1) = awalk_inv iG iY k \<and>
+     Arc_Walk.pre_digraph.awalk (abs_IGraph iG) 
+     (icycle_start iY) 
+     (take k (icycle_path iY)) 
+     (snd (iedges iG (last (take k (icycle_path iY)))))"
+  apply (insert assms)
+  apply (unfold awalk_inv_def) 
+  apply clarsimp
+  apply safe
+  sledgehammer
+  sorry
 
 lemma awalk_spc':
     "\<lbrace> P and 
@@ -977,29 +987,21 @@ lemma awalk_spc':
         apply (subst if_bool_eq_conj)+ 
         apply safe
                                    apply (unfold is_graph_def awalk_inv_def is_cycle_def, clarsimp)[1]
-                                   apply (erule_tac x=yy in allE)
-                                   apply (metis not_le arrlist_cycle_path_heap uint_nat word_le_nat_alt)
+                                   apply (metis (full_types) int_unat arrlist_cycle_path_heap word_gt_a_gt_0 word_less_nat_alt word_not_le)
                                   apply (unfold is_graph_def awalk_inv_def is_cycle_def, clarsimp)[1]
-                                  apply (erule_tac x=yy in allE)
-                                  apply (erule impE, blast, clarsimp)
-                                  apply (subst (asm) (4) arrlist_cycle_path_heap)
-                                    apply blast
-                                   apply (simp add: word_less_nat_alt)
-                                  apply (subst (asm) (3) arrlist_cycle_path_heap)
-                                    apply blast 
-                                   apply (subgoal_tac "yy \<noteq> 0") 
-                                    apply (metis word_less_arith_simp word_less_nat_alt)
-                                   apply blast
-                                  apply (subst (asm) (2) head_heap)
-                                    apply blast
-                                   apply (metis arrlist_cycle_path_heap word_less_arith_simp word_less_nat_alt)
-                                  apply (subst (asm) tail_heap)
-                                    apply blast
-                                   apply (metis arrlist_cycle_path_heap  word_less_nat_alt)
-                                  apply (simp add: uint_nat)
+                                  apply (subgoal_tac "0 < length_C (heap_Cycle_C s y)", clarsimp)
+                                   apply (erule_tac x=yy in allE, clarsimp)
+                                   apply (subst (asm) (4) arrlist_cycle_path_heap, blast, metis not_le word_le_nat_alt)
+                                   apply (subst (asm) (3) arrlist_cycle_path_heap, blast, metis less_1_simp word_less_nat_alt)
+                                   apply (subst (asm) (2) head_heap, blast, metis less_1_simp not_le arrlist_cycle_path_heap word_le_nat_alt)
+                                   apply (subst (asm) tail_heap, blast, metis not_le arrlist_cycle_path_heap word_le_nat_alt)
+                                   apply (simp add: uint_nat)
+                                  apply (blast intro: word_gt_a_gt_0)
                                  apply (unfold is_graph_def awalk_inv_def is_cycle_def, clarsimp)[1]
-                                 apply (insert less_is_non_zero_p1, blast)
+                                 apply (metis add.commute add_diff_cancel_left' less_1_simp)
 
+
+ 
 
 
   sorry
@@ -1034,7 +1036,7 @@ qed
 
 lemma awalk_cost_neg_inv_step:
   assumes i_less_max: "i < (max_word::32 word)"
-    and "is_cycle s iY y"
+    and "unat (fst (snd iY)) = length (snd (snd iY))"
     and "(i + 1) \<le> icycle_length iY"
     and "icycle_path iY \<noteq> []"
   shows "awalk_cost_neg_inv iC iY (i + 1) = awalk_cost_neg_inv iC iY i +
@@ -1044,8 +1046,6 @@ lemma awalk_cost_neg_inv_step:
   apply (subgoal_tac "sum_list (map sint (take (unat (i + 1)) (map iC (snd (snd iY))))) =
         sum_list (map sint (take (unat i) (map iC (snd (snd iY))))) + sint (map iC (icycle_path iY) ! unat i)")
   apply (simp add: take_map)
-  apply (unfold is_cycle_def)
-  apply clarsimp
   apply (subgoal_tac "\<forall>w. (w::32 word) = 0 \<or> \<not> unat w < 1 + unat (0::32 word)")
    apply (subgoal_tac "1 + unat (0::32 word) = 1 \<or> (0::32 word) = 1")
     apply (subgoal_tac "\<not> fst (snd iY) < i + 1")
@@ -1058,7 +1058,7 @@ lemma awalk_cost_neg_inv_step:
 
 corollary awalk_cost_neg_inv_step2:
   assumes i_less_max: "i < (max_word::32 word)"
-    and "is_cycle s iY y"
+    and "unat (fst (snd iY)) = length (snd (snd iY))"
     and "(i + 1) \<le> icycle_length iY"
     and "icycle_path iY \<noteq> []"
   shows "awalk_cost_neg_inv iC iY (i + 1) = awalk_cost_neg_inv iC iY i +
@@ -1068,7 +1068,7 @@ corollary awalk_cost_neg_inv_step2:
   apply (subgoal_tac "sint (iC (icycle_path iY ! unat i)) = sint (map iC (icycle_path iY) ! unat i)")
    apply clarsimp 
    apply (metis awalk_cost_neg_inv_def awalk_cost_neg_inv_step)
-  apply (metis (no_types, hide_lams) is_cycle_def max_word_not_less nth_map word_Suc_le word_less_nat_alt)
+  apply (metis (no_types, hide_lams) max_word_not_less nth_map word_Suc_le word_less_nat_alt)
   done
 
 lemma awalk_cost_neg_spc':
