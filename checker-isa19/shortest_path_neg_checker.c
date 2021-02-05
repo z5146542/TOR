@@ -166,18 +166,31 @@ int awalk(Graph *g, Cycle *C) {
     // u \in verts G
     if(C->start >= vertex_cnt(g)) return 0;
 
-    if(C->length != 0) {
-        if(C->path[0] >= edge_cnt(g)) return 0;
-        if(arcs(g, C->path[C->length - 1]).second != C->start) return 0;
-    }
-    for(unsigned int z = 0; z < C->length; z++) {
-        if(z > 0) {
-            if(C->path[z - 1] >= edge_cnt(g)) return 0;
-            if(C->path[z] >= edge_cnt(g)) return 0;
-            if(arcs(g, C->path[z - 1]).second != arcs(g, C->path[z]).first) return 0;
-        }
-    }
+    // set p \subsetof arcs G
+    for(unsigned int z = 0; z < C->length; z++)
+        if(C->path[z] >= edge_cnt(g)) return 0;
 
+    // cas u p v 
+    unsigned int u = C->start;
+    Edge e;
+    // e[0].first != C->start
+    // base case cas is checked here
+    for(unsigned int z = 0; z < C->length - 1; z++) {
+        // if(C->path[z] >= edge_cnt(g)) return 0;
+        e = arcs(g, C->path[z]);
+        // e' = arcs(g, C->path[z+1]);
+        if(e.first != u) return 0;
+
+        // if (e.second != e'.first) return 0;
+
+        u = e.second;
+
+        // base case for cas
+        if(z == C->length - 1)
+            if(u != C->start) return 0;
+        // at this point, we have checked tail G e = u as a loop invariant. 
+    }
+    
     return 1;
 }
 
