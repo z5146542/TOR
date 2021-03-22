@@ -194,6 +194,41 @@ int awalk(Graph *g, Cycle *C) {
     return 1;
 }
 
+
+int cyc_in_graph(Graph *g, Cycle *C) {
+  // u \in verts G
+    if(C->start >= vertex_cnt(g)) return 0;
+    // set p \subsetof arcs G
+    for(unsigned int z = 0; z < C->length; z++)
+        if(C->path[z] >= edge_cnt(g)) return 0;
+    return 1;
+}
+
+int cas(Graph *g, Cycle *C) {
+    // cas u p v 
+    Edge e1;
+    Edge e2;
+    if (C-> length == 0) return 1;
+    e1 = arcs(g, C->path[0]);
+    if(e1.first != C->start) return 0;
+    // base case cas is checked here
+    e2 = arcs(g, C->path[C->length -1]);
+    if(e2.second != C->start) return 0;
+
+    for(unsigned int z = 0; z < C->length - 1; z++) {
+        e1 = arcs(g, C->path[z]);
+        e2 = arcs(g, C->path[z+1]);
+        if (e1.second != e2.first) return 0;
+    }
+    
+    return 1;
+}
+
+int awalktwo(Graph *g, Cycle *C) {
+    if(!cyc_in_graph(g, C)) return 0;
+    if(!cas(g, C)) return 0;
+    return 1;
+}
 // returns the total cost of the path
 
 long awalk_cost_neg(int *c, Cycle *C) {
