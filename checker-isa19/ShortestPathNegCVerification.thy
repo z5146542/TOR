@@ -864,7 +864,7 @@ lemma arrlist_next_item:
   shows "arrlist h v xs (p +\<^sub>p 1)"
   using assms by simp
 
-lemma arrlist_array_addrs:
+lemma array_addrs_arrlist:
   "\<lbrakk>\<forall>i<n. v (p +\<^sub>p int i); xs= map h (array_addrs p n)\<rbrakk> \<Longrightarrow> arrlist h v xs p"
   apply (induct n arbitrary: p xs) 
    apply simp
@@ -873,11 +873,19 @@ lemma arrlist_array_addrs:
   apply (frule_tac x=0 in spec, simp)
   by force
 
+lemma arrlist_array_addrs:
+  assumes "arrlist h v xs p" 
+  assumes "n = length xs"
+  shows "xs= map h (array_addrs p n)"  
+  using assms   
+  by (induct n arbitrary: xs p, simp)
+     (case_tac xs; simp add: array_addrs.simps(2))
+
 lemma is_path_absICycle':
   "\<forall>i<unat (icycle'_length iC'). 
        is_valid_w32 h ((icycle'_path iC') +\<^sub>p int i) \<Longrightarrow>
        is_path h (icycle_path (abs_ICycle' h iC')) (icycle'_path iC')"
-  by (simp add: arrlist_array_addrs)
+  by (simp add: array_addrs_arrlist)
 
 lemma is_icycle'_is_icycle:
   "\<lbrakk>is_cycle' h iC' p\<rbrakk> \<Longrightarrow> is_cycle h (abs_ICycle' h iC') p"
@@ -2519,6 +2527,11 @@ lemma awalk_spc'_eq_awalk:
      (metis (no_types, hide_lams) atLeastLessThan_iff  
             subset_code(1) word_zero_le in_set_conv_nth)
 
+lemma drop_impl_conj_leftI: "\<lbrakk>Q; P \<longrightarrow> R;  P' \<longrightarrow> R'\<rbrakk> \<Longrightarrow> (P \<longrightarrow> Q \<and> R) \<and> (P' \<longrightarrow> Q \<and> R')"
+  by simp
+
+lemma drop_impl_conj_rightI: "\<lbrakk>P \<longrightarrow> Q;  P' \<longrightarrow> Q'; R\<rbrakk> \<Longrightarrow> (P \<longrightarrow> Q \<and> R) \<and> (P' \<longrightarrow> Q' \<and> R)"
+  by simp
 
 lemma cyc_in_graph_spc:
   "\<lbrace> P and 
@@ -2547,8 +2560,13 @@ lemma cyc_in_graph_spc:
      apply (metis dual_order.order_iff_strict is_cycle_def)
     apply wp+
   by (clarsimp simp: is_cycle_def is_graph_def awalk_edge_inv_def word_less_nat_alt)
-       
-lemma awalk_spc':
+
+lemma arrlistD : 
+  assumes "arrlist h v xs p"
+  shows "\<forall>i. i\<ge>0  \<longrightarrow> i <int (length xs) \<longrightarrow> v (p +\<^sub>p i) \<and> (xs ! nat i = h (p +\<^sub>p i))"
+  using assms by clarsimp
+
+lemma cas_spc':
   "\<lbrace> P and 
      (\<lambda>s. wf_digraph (abs_IGraph iG) \<and>
           is_graph s iG g \<and>
@@ -2560,32 +2578,99 @@ lemma awalk_spc':
      (\<lambda>rr s. rr \<noteq> 0  \<longleftrightarrow> 
          cas_cyc_inv iG iY (length (icycle_path iY))) \<rbrace>!"
   apply (simp add: cas'_def skipE_def)
-  apply wpsimp
-               apply (subst whileLoopE_add_inv [where 
-                        M="\<lambda>(r, s). length (icycle_path iY) - Suc r" and
-                        I="\<lambda>r s. P s \<and> 
+  apply (wpsimp simp: validNF_conj_prop)
+           apply (subst whileLoopE_add_inv [where 
+                    M="\<lambda>(r, s). length (icycle_path iY) - Suc r" and
+                    I="\<lambda>r s. P s \<and> 
                               wf_digraph (abs_IGraph iG) \<and> is_graph s iG g \<and> 
                               is_cycle s iY y \<and> icycle_start iY < ivertex_cnt iG \<and>
                               awalk_edge_inv iG iY (length (icycle_path iY)) \<and>
                               cas_cyc_inv iG iY (r+1) \<and>
                               length (icycle_path iY) > 1 \<and>
                               r \<le> length (icycle_path iY) - 1"])
-           
-           apply (wpsimp) defer
+           apply (wpsimp simp: validNF_conj_prop) defer
             apply (fastforce intro: cas_cyc_inv_le simp: is_cycle_def)
            apply wp+
-   apply (clarsimp cong: if_bool_eq_conj)
-   apply (rule conjI; clarsimp?)+
-     apply (simp add: cas_inv'_def is_cycle_def) 
-    apply (rule conjI; clarsimp?)+
-      apply (clarsimp simp: cas_inv'_def is_cycle_def)
-      apply (drule arrlist_cycle_path_heap[where i="length (icycle_path iY) - 1"]; simp)
+   apply clarsimp
+   apply (case_tac "length (icycle_path iY)") 
+    apply (clarsimp simp: is_cycle_def  cas_inv'_def)
+   apply (clarsimp simp: is_graph_def is_cycle_def awalk_edge_inv_def)
+   apply (frule arrlist_nth_valid[where i=0, simplified], fastforce) 
+   apply (frule head_heap[where e="icycle_path iY ! (length (icycle_path iY) - 1)"])
+     apply simp
+    apply (frule arrlistD)
+    apply (erule_tac x="int (unat(icycle_path iY ! 0))" in all_dupE)
+    apply (erule impE, simp add: word_less_nat_alt)
+    apply (erule_tac x="int (unat(icycle_path iY ! (length (icycle_path iY) - 1)))" in allE)
+    apply (erule impE, simp add: word_less_nat_alt, 
+      erule impE, simp, 
+      erule impE, simp add: int_unat word_less_alt[symmetric])
+   apply clarsimp
+  subgoal sorry
+ (*
+   apply (rule conjI; clarsimp)
+    defer
+    defer
 
   oops
-     apply (rule conjI; ())+ apply (clarsimp simp: is_cycle_def)
-  apply (simp add:  awalk_edge_inv_def) 
-  oops
-  find_theorems " nat (int (unat _))"
+      apply (clarsimp simp: cas_inv'_def) 
+      apply (metis nat_int last_conv_nth length_0_conv nat.distinct(1) 
+                   diff_Suc_1 diff_Suc_Suc diff_zero int_minus nat_int of_nat_1)
+     apply (fastforce dest: arrlist_cycle_path_heap simp: int_unat)
+    apply (rule conjI)
+     apply (metis diff_Suc_1 diff_Suc_Suc diff_zero int_minus int_unat nat_int of_nat_1)
+    apply (fastforce dest: arrlist_cycle_path_heap simp: int_unat)
+  apply (clarsimp simp: awalk_edge_inv_def is_graph_def is_cycle_def)
+  apply (frule arrlistD)
+    apply (erule_tac x="int (unat(icycle_path iY ! 0))" in all_dupE)
+    apply (erule impE, simp add: word_less_nat_alt)
+    apply (erule_tac x="int (unat(icycle_path iY ! (length (icycle_path iY) - 1)))" in allE)
+    apply (erule impE, simp add: word_less_nat_alt, 
+      erule impE, simp, 
+      erule impE, simp add: int_unat word_less_alt[symmetric])
+   apply (frule arrlist_nth_valid[where i=0, simplified], fastforce) 
+  apply clarsimp
+   apply (case_tac "length (icycle_path iY) = 1"; clarsimp)
+
+
+*)
+
+
+  apply (clarsimp simp: awalk_edge_inv_def is_graph_def is_cycle_def)
+  apply (subst conj_assoc[symmetric, where P="cas_inv' _ _ _ _ _"])
+  apply (frule_tac e="  (snd iY ! r)" in head_heap, simp)
+  apply (frule_tac e="(snd iY ! (r+1))" in tail_heap, simp) 
+  apply (frule arrlistD)
+  apply (erule_tac x="uint (icycle_path iY ! r)" in all_dupE)
+  apply (erule impE, simp add: word_less_nat_alt)
+  apply (erule impE, simp add:  int_unat) 
+   apply (meson Suc_less_SucD diff_less_Suc less_trans_Suc word_less_def)
+  apply (erule_tac x="uint ((icycle_path iY ! Suc r))" in allE)
+  apply (erule impE, simp add: word_less_nat_alt)+
+   apply (metis Suc_eq_plus1 int_unat less_diff_conv nat_1 nat_int of_nat_1 of_nat_less_iff)
+  apply (rule drop_impl_conj_rightI, clarsimp)
+    apply (clarsimp simp: cas_inv'_def cas_inv_def)
+    apply (erule_tac x=r in allE, simp)
+    apply (case_tac r; simp) 
+    apply (metis (no_types, hide_lams) add.commute add_2_eq_Suc' nat_int.Rep_inverse of_nat_add of_nat_numeral)
+   apply clarsimp
+   apply (rule conjI)
+    apply (clarsimp simp: cas_inv'_def cas_inv_def)
+    apply  (case_tac "i=r"; clarsimp) 
+  apply (metis nat_int.Rep_inverse of_nat_Suc)
+  apply (fastforce intro: diff_less_mono2)
+  apply (rule conjI; clarsimp)
+  apply (metis (no_types, hide_lams) INT_MIN_MAX_lemmas(12) diff_commute diff_is_0_eq' diff_less_mono not_less0 not_less_eq_eq zero_diff)
+  apply (metis nat_int of_nat_Suc)
+  done
+
+
+
+
+(*is_valid_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p uint (heap_w32 s (path_C (heap_Cycle_C s y))))*)
+  
+
+
   
 lemma awalk_spc':
   "\<lbrace> P and 
