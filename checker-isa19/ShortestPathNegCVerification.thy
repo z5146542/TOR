@@ -2586,7 +2586,7 @@ lemma cas_spc':
                               is_cycle s iY y \<and> icycle_start iY < ivertex_cnt iG \<and>
                               awalk_edge_inv iG iY (length (icycle_path iY)) \<and>
                               cas_cyc_inv iG iY (r+1) \<and>
-                              length (icycle_path iY) > 1 \<and>
+                              length (icycle_path iY) \<ge> 1 \<and>
                               r \<le> length (icycle_path iY) - 1"])
            apply (wpsimp simp: validNF_conj_prop) defer
             apply (fastforce intro: cas_cyc_inv_le simp: is_cycle_def)
@@ -2596,46 +2596,23 @@ lemma cas_spc':
     apply (clarsimp simp: is_cycle_def  cas_inv'_def)
    apply (clarsimp simp: is_graph_def is_cycle_def awalk_edge_inv_def)
    apply (frule arrlist_nth_valid[where i=0, simplified], fastforce) 
-   apply (frule head_heap[where e="icycle_path iY ! (length (icycle_path iY) - 1)"])
+   apply (frule head_heap[where e="icycle_path iY !(length (icycle_path iY) - 1)"])
      apply simp
     apply (frule arrlistD)
-    apply (erule_tac x="int (unat(icycle_path iY ! 0))" in all_dupE)
+    apply (erule_tac x="uint (icycle_path iY ! 0)" in all_dupE)
     apply (erule impE, simp add: word_less_nat_alt)
-    apply (erule_tac x="int (unat(icycle_path iY ! (length (icycle_path iY) - 1)))" in allE)
-    apply (erule impE, simp add: word_less_nat_alt, 
-      erule impE, simp, 
-      erule impE, simp add: int_unat word_less_alt[symmetric])
-   apply clarsimp
-  subgoal sorry
- (*
-   apply (rule conjI; clarsimp)
-    defer
-    defer
-
-  oops
-      apply (clarsimp simp: cas_inv'_def) 
-      apply (metis nat_int last_conv_nth length_0_conv nat.distinct(1) 
-                   diff_Suc_1 diff_Suc_Suc diff_zero int_minus nat_int of_nat_1)
-     apply (fastforce dest: arrlist_cycle_path_heap simp: int_unat)
-    apply (rule conjI)
-     apply (metis diff_Suc_1 diff_Suc_Suc diff_zero int_minus int_unat nat_int of_nat_1)
-    apply (fastforce dest: arrlist_cycle_path_heap simp: int_unat)
-  apply (clarsimp simp: awalk_edge_inv_def is_graph_def is_cycle_def)
-  apply (frule arrlistD)
-    apply (erule_tac x="int (unat(icycle_path iY ! 0))" in all_dupE)
-    apply (erule impE, simp add: word_less_nat_alt)
-    apply (erule_tac x="int (unat(icycle_path iY ! (length (icycle_path iY) - 1)))" in allE)
-    apply (erule impE, simp add: word_less_nat_alt, 
-      erule impE, simp, 
-      erule impE, simp add: int_unat word_less_alt[symmetric])
-   apply (frule arrlist_nth_valid[where i=0, simplified], fastforce) 
-  apply clarsimp
-   apply (case_tac "length (icycle_path iY) = 1"; clarsimp)
-
-
-*)
-
-
+    apply (erule_tac x="uint (icycle_path iY ! nat (int (length (icycle_path iY) - 1)))" in allE)
+    apply (erule impE, simp add: word_less_nat_alt uint_nat,
+           erule impE, simp,
+           erule impE, simp add: uint_nat word_less_nat_alt)
+    apply (frule arrlist_cycle_path_heap[where i=0], simp) 
+   apply (rule conjI; clarsimp simp: cas_inv'_def cas_inv_def)
+    apply (metis One_nat_def int_minus last_conv_nth list.size(3) nat.distinct(1) nat_int of_nat_1)
+   apply (rule conjI; clarsimp)  
+    apply (metis hd_conv_nth list.size(3) nat.distinct(1)  tail_heap zero_less_Suc)
+   apply (metis (no_types, hide_lams) One_nat_def hd_conv_nth int_minus last_conv_nth 
+                list.size(3) nat.distinct(1) nat_int of_nat_1 s_C_pte two_comp_arrlist_heap 
+                uint_nat zero_less_Suc)
   apply (clarsimp simp: awalk_edge_inv_def is_graph_def is_cycle_def)
   apply (subst conj_assoc[symmetric, where P="cas_inv' _ _ _ _ _"])
   apply (frule_tac e="  (snd iY ! r)" in head_heap, simp)
