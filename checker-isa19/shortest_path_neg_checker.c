@@ -245,7 +245,7 @@ long awalk_cost_neg(int *c, Cycle *C) {
 int C_se(Graph *g, Cycle_set *cse, int *c, ENInt *dist) {
     for(unsigned int y = 0; y < cse->no_cycles; y++) {
         if(dist[cse->cyc_obj[y].start].isInf > 0) return 0;
-        if(awalk(g, &(cse->cyc_obj[y])) == 0) return 0;
+        if(awalktwo(g, &(cse->cyc_obj[y])) == 0) return 0;
         if(awalk_cost_neg(c, &(cse->cyc_obj[y])) >= 0) return 0;
     }
     return 1;
