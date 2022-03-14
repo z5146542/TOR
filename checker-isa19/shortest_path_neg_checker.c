@@ -231,8 +231,8 @@ int awalktwo(Graph *g, Cycle *C) {
 }
 // returns the total cost of the path
 
-long awalk_cost_neg(int *c, Cycle *C) {
-    long total = 0;
+signed long awalk_cost_neg(int *c, Cycle *C) {
+    signed long total = 0;
     for(unsigned int e = 0; e < C->length; e++) {
         total = total + (signed long) c[C->path[e]];
     }
