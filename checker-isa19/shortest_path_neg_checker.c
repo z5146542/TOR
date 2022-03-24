@@ -251,6 +251,7 @@ int C_se(Graph *g, Cycle_set *cse, int *c, ENInt *dist) {
     return 1;
 }
 
+
 // checks if a vertex s is connected to the vertex v given a list of parent edges of each respective vertices
 /*
 int is_connected(Graph *g, unsigned int s, int *parent_edge, unsigned int v) {
@@ -271,8 +272,37 @@ int is_connected(Graph *g, unsigned int s, int *parent_edge, unsigned int v) {
 // maybe define pwalk internally?
 
 // note pedge defines the edgeid of parent edges of vertices
-int int_neg_cyc(Graph *g, unsigned int s, ENInt *dist, Cycle_set *cse, int *c, int *parent_edge, unsigned int *num) {
-    unsigned int is_neg_cycle;
+
+int vert_not_in_cycles_start(Cycle_set *cse, unsigned int v) {
+    for(unsigned int i = 0; i < cse->no_cycles; i++) {
+        if(v == cse->cyc_obj[i].start) return 0;
+    }
+    return 1;
+}
+
+int parents_not_in_cycles_start(Graph *g, Cycle_set *cse, int *parent_edge, unsigned int *num, unsigned int v) {
+    unsigned int u = v;
+    for(unsigned int j = 0; j <= num[v]; j++) {
+        if(vert_not_in_cycles_start(cse, u) == 0)
+            return 0;
+        // if(arcs(g, parent_edge[u]) < edge_cnt(g)) return 0;
+        // uncomment code above to simplify proof if short on time.
+        u = arcs(g, parent_edge[u]).first;
+     }
+    return 1;
+}
+
+int int_neg_cyc(Graph *g, ENInt *dist, Cycle_set *cse, int *parent_edge, unsigned int *num) {
+    for(unsigned int v = 0; v < vertex_cnt(g); v++) {
+        if(dist[v].isInf < 0) {
+            if(parents_not_in_cycles_start(g, cse, parent_edge, num, v) == 1) return 0;
+        }
+    }
+    return 1;
+}
+
+int int_neg_cyc_old(Graph *g, unsigned int s, ENInt *dist, Cycle_set *cse, int *c, int *parent_edge, unsigned int *num) {
+    unsigned int is_neg_cycle ;
     unsigned int no_cycles = cse->no_cycles;
     Cycle *cyc = cse->cyc_obj;
 
@@ -300,7 +330,7 @@ int int_neg_cyc(Graph *g, unsigned int s, ENInt *dist, Cycle_set *cse, int *c, i
             if(is_neg_cycle == 0) return 0;
         }
     }
-    return 0;
+    return 1;
 }
 
 int shortest_paths_locale_step1(Graph *g, unsigned int s, unsigned int *num, int *parent_edge, ENInt *dist) {
@@ -321,7 +351,7 @@ int shortest_paths_locale_step2(Graph *g, unsigned int s, int *c, unsigned int *
 int shortest_paths_locale_step3(Graph *g, unsigned int s, int *c, unsigned int *num, int *pred, ENInt *dist, Cycle_set *cse, int *parent_edge) {
     if(shortest_paths_locale_step2(g, s, c, num, pred, dist, parent_edge) == 0) return 0;
     if(C_se(g, cse, c, dist) == 0) return 0;
-    if(int_neg_cyc(g, s, dist, cse, c, parent_edge, num) == 0) return 0;
+    if(int_neg_cyc(g, dist, cse, parent_edge, num) == 0) return 0;
     return 1;
 }
 
