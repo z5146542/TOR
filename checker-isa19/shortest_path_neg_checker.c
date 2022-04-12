@@ -281,13 +281,14 @@ int vert_not_in_cycles_start(Cycle_set *cse, unsigned int v) {
 }
 
 int parents_not_in_cycles_start(Graph *g, Cycle_set *cse, int *parent_edge, unsigned int *num, unsigned int v) {
-    unsigned int u = v;
-    for(unsigned int j = 0; j <= num[v]; j++) {
+    unsigned int u;
+    if (vert_not_in_cycles_start(cse, v) == 0) return 0;
+    for(unsigned int j = 0; j < num[v]; j++) {
+        u = arcs(g, (unsigned int) parent_edge[u]).second;
         if(vert_not_in_cycles_start(cse, u) == 0)
             return 0;
         // if(arcs(g, parent_edge[u]) < edge_cnt(g)) return 0;
-        // uncomment code above to simplify proof if short on time.
-        u = arcs(g, parent_edge[u]).first;
+        // uncomment code above to simplify proof if short on time.  
      }
     return 1;
 }

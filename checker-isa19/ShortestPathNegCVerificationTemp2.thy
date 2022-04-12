@@ -1,11 +1,11 @@
 (* uses Isabelle2019 and autocorres version 1.6 *)
 theory ShortestPathNegCVerificationTemp2
-  imports
+imports
   "HOL-Library.Option_ord"
   "Library/Autocorres_Misc"
   "ShortestPath/ShortestPathNeg"
-  begin
-  
+begin 
+   
 install_C_file "shortest_path_neg_checker.c"
 autocorres [
   scope_depth = 2,
@@ -956,7 +956,9 @@ lemma vertex_not_in_cycles_start_spc:
    \<lbrace> (\<lambda>_ s. P s) And 
      (\<lambda>rr s. rr \<noteq> 0  \<longleftrightarrow> 
          vertex_not_in_cycles_start_inv iCS v (length iCS)) \<rbrace>!"   
-  (is "\<lbrace> ?pre  \<rbrace> ?prog \<lbrace> (\<lambda>_ s. P s) And (\<lambda>rr s. rr \<noteq> 0  \<longleftrightarrow>  ?inv (?ncycles:: nat)) \<rbrace>!" )
+  (is "\<lbrace> ?pre  \<rbrace> 
+       ?prog 
+       \<lbrace> (\<lambda>_ s. P s) And (\<lambda>rr s. rr \<noteq> 0  \<longleftrightarrow>  ?inv (?ncycles:: nat)) \<rbrace>!" )
   unfolding vert_not_in_cycles_start'_def
   apply wpsimp
     apply (subst whileLoopE_add_inv [where 
@@ -992,15 +994,15 @@ definition
 where
   "parents_not_in_cycles_start_inv G CS p v k = 
    (\<forall>i<k. vertex_not_in_cycles_start_inv CS 
-               (((\<lambda>v. fst (iedges G (p v)))^^ i) v) (length CS))"
+               (((\<lambda>v. snd (iedges G (p v)))^^ i) v) (length CS))"
 
 lemma parents_not_in_cycles_start_inv_step :
   "parents_not_in_cycles_start_inv G CS p v (Suc i) = 
            (vertex_not_in_cycles_start_inv CS 
-               (((\<lambda>v. fst (iedges G (p v)))^^ i) v) (length CS) \<and> 
+               (((\<lambda>v. snd (iedges G (p v)))^^  i) v) (length CS) \<and> 
            parents_not_in_cycles_start_inv G CS p v i)"
   unfolding parents_not_in_cycles_start_inv_def 
-  by (simp add: antisym less_Suc_eq)
+  by (auto simp: less_Suc_eq)
 
 lemma parents_not_in_cycles_start_inv_le :
   assumes "i\<le>j"
@@ -1019,42 +1021,75 @@ lemma parents_not_in_cycles_start_spc:
           is_cost s iG iC c \<and>
           is_dist s iG iD d \<and>
           is_numm s iG iN n \<and>
-          is_pedge s iG iP p)\<rbrace>
+          is_pedge s iG iP p \<and>
+          iN v \<noteq> max_word)\<rbrace>
    parents_not_in_cycles_start' g cse p n v
    \<lbrace> (\<lambda>_ s. P s) And 
      (\<lambda>rr s. rr \<noteq> 0  \<longleftrightarrow> 
          parents_not_in_cycles_start_inv iG iCS iP v (unat (iN v))) \<rbrace>!"   
-  (is "\<lbrace> ?pre  \<rbrace> ?prog \<lbrace> (\<lambda>_ s. P s) And (\<lambda>rr s. rr \<noteq> 0  \<longleftrightarrow>  ?inv (unat (?numv))) \<rbrace>!" )
+  (is "\<lbrace> ?pre  \<rbrace> ?prog \<lbrace> (\<lambda>_ s. P s) And (\<lambda>rr s. rr \<noteq> 0  \<longleftrightarrow> ?inv (unat ?numv)) \<rbrace>!" )
   unfolding parents_not_in_cycles_start'_def
   apply wpsimp
     apply (subst whileLoopE_add_inv [where 
-            M="\<lambda>((i, u), s).  ?numv - i" and
+            M="\<lambda>((i, u), s). ?numv + 1 - i" and
             I="\<lambda>(i, u) s. ?pre s \<and> 
-                          i \<le> ?numv \<and> 
+                           i \<le> ?numv + 1  \<and> 
                           u = ((\<lambda>v. fst (iedges iG (iP v)))^^ (unat i)) v \<and>
                           ?inv (unat i)" ])
     apply wpsimp
-    apply (rename_tac i' u' s i u)
-
-    apply (rule_tac P1="(\<lambda>s. P s \<and>  
-                   ?pre s \<and> 
-                   i = i' \<and> 
-                   u = u' \<and>
-                   i' < ?numv \<and> 
-                   u' = ((\<lambda>v. fst (iedges iG (iP v)))^^ (unat i')) v \<and>
-                   ?inv (unat i'))"
-                   and iCS1 ="iCS"
-          in validNF_post_imp[OF _ vertex_not_in_cycles_start_spc])
-    apply clarsimp
-    apply (rule conjI; clarsimp) 
-    using parents_not_in_cycles_start_inv_def unat_mono apply blast
-    apply (rule conjI) 
-    using inc_le apply blast
+      apply (rename_tac i' u' s i u)
+      apply (rule_tac P1="(\<lambda>s. P s \<and>  
+                     ?pre s \<and> 
+                     i' = i \<and> u' =  u \<and>
+                     i < ?numv + 1  \<and>
+                     u = ((\<lambda>v. fst (iedges iG (iP v)))^^ (unat i)) v \<and>
+                     ?inv (unat i))"
+                    and iCS1 ="iCS" and iCS'1="iCS'"
+            in validNF_post_imp[OF _ vertex_not_in_cycles_start_spc])
+      apply clarsimp 
+      apply (rule conjI; clarsimp) oops
+       apply (metis parents_not_in_cycles_start_inv_def Suc_eq_plus1 
+              not_less_zero unat_0 unat_mono word_overflow_unat) 
+      apply (rule conjI) 
+       apply (blast intro: inc_le)
+      apply (rule conjI)
+       apply (subst unat_Suc2, force, simp)
+       apply (clarsimp simp: is_pedge_def uint_nat)
+       apply (drule_tac i="((\<lambda>v. fst (snd (snd iG) (iP v))) ^^ unat i) v" in arrlist_heap)
+        subgoal sorry
+       apply (clarsimp simp: is_graph_def)
+       apply (drule_tac e="iP (((\<lambda>v. fst (snd (snd iG) (iP v))) ^^ unat i) v)" in tail_heap)
+        subgoal sorry
+        apply (clarsimp simp: uint_nat) 
+ 
+      apply (rule conjI)
+       apply (subst unat_Suc2, force)
+       apply (clarsimp simp: parents_not_in_cycles_start_inv_step) 
+      apply (rule conjI) 
+      apply (metis (no_types, hide_lams) add.commute add.right_neutral not_le
+              add_diff_cancel_left unat_leq_plus unat_minus_plus1_less unat_0)
+      subgoal sorry
     
-    oops
-    defer
-    apply clarsimp
-    defer
+     apply (safe, simp, simp)
+     unfolding is_numm_def apply simp 
+     apply (drule_tac i=" v" in arrlist_heap ) 
+      subgoal sorry
+     apply (metis (mono_tags, hide_lams) add.commute leD less_le neq_iff
+               long_ucast uint_nat word_le_nat_alt word_Suc_leq not_less)
+  
+     
+     using sint_0[symmetric]
+     find_theorems name: Word "_ < _ + 1" "_ \<le> _"
+     apply (simp add: uint_nat)
+     apply (rule plus_one_helper2, simp)
+       
+         apply (subst le_to_less_plus_one[symmetric] )using  try0
+         find_theorems "_ \<Longrightarrow> _ < _ + 1"
+         try0
+       apply simp
+     apply clarsimp
+      apply (rule conjI) 
+       oops
     apply clarsimp
      apply (clarsimp simp: are_cycles_valid)
      apply (rule conjI; clarsimp)
