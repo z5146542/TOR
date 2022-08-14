@@ -203,7 +203,7 @@ lemma unat_minus_plus1_less:
   fixes a b
   assumes "a < b"
   shows "unat (b - (a + 1)) < unat (b - a)"
-  by (metis (no_types) ab_semigroup_add_class.add_ac(1) right_minus_eq measure_unat
+  by (metis (no_types)  right_minus_eq measure_unat
       add_diff_cancel2 assms is_num_normalize(1) zadd_diff_inverse linorder_neq_iff)
 
 
@@ -947,7 +947,12 @@ lemma are_cycles_valid:
   using assms unfolding are_cycles''_def 
   by (force dest!: spec[where x="unat i" for i] 
             simp: int_unat unat_mono is_cycle'_def)+
-    
+term "\<lbrakk>frame \<sigma> l \<sigma>' l';
+        abs_upd_val \<Xi> au av n \<tau>s s r w \<sigma>; 
+          r \<inter> l = {};
+          w \<inter> l = {} \<rbrakk> \<Longrightarrow>  
+        abs_upd_val \<Xi> au av n \<tau>s s r w \<sigma>'"
+
 lemma vertex_not_in_cycles_start_spc:
   "\<lbrace> P and 
      (\<lambda>s. are_cycles'' s iCS' cse  \<and>
@@ -993,13 +998,21 @@ definition
   "IGraph\<Rightarrow> ICycle_Set \<Rightarrow> IPEdge \<Rightarrow> IVertex \<Rightarrow> nat \<Rightarrow> bool" 
 where
   "parents_not_in_cycles_start_inv G CS p v k = 
+   (vertex_not_in_cycles_start_inv CS v (length CS) \<and>
    (\<forall>i<k. vertex_not_in_cycles_start_inv CS 
-               (((\<lambda>v. snd (iedges G (p v)))^^ i) v) (length CS))"
+               (((\<lambda>v. snd (iedges G (p v)))^^ (Suc i)) v) (length CS)))"
+
+lemma parents_not_in_cycles_start_inv_stepD:
+  "parents_not_in_cycles_start_inv G CS p v i \<Longrightarrow>
+   vertex_not_in_cycles_start_inv CS (((\<lambda>v. snd (iedges G (p v)))^^  (Suc i)) v) (length CS) \<Longrightarrow> 
+  parents_not_in_cycles_start_inv G CS p v (Suc i)"
+  unfolding parents_not_in_cycles_start_inv_def 
+  by (auto simp: less_Suc_eq)
 
 lemma parents_not_in_cycles_start_inv_step :
   "parents_not_in_cycles_start_inv G CS p v (Suc i) = 
            (vertex_not_in_cycles_start_inv CS 
-               (((\<lambda>v. snd (iedges G (p v)))^^  i) v) (length CS) \<and> 
+               (((\<lambda>v. snd (iedges G (p v)))^^  (Suc i)) v) (length CS) \<and> 
            parents_not_in_cycles_start_inv G CS p v i)"
   unfolding parents_not_in_cycles_start_inv_def 
   by (auto simp: less_Suc_eq)
@@ -1011,6 +1024,8 @@ lemma parents_not_in_cycles_start_inv_le :
   using assms 
   by (induct j) 
      (auto simp add: parents_not_in_cycles_start_inv_def )
+
+lemmas unat_le_mono = word_le_nat_alt [THEN iffD1]
 
 lemma parents_not_in_cycles_start_spc:
   "\<lbrace> P and 
@@ -1030,24 +1045,115 @@ lemma parents_not_in_cycles_start_spc:
   (is "\<lbrace> ?pre  \<rbrace> ?prog \<lbrace> (\<lambda>_ s. P s) And (\<lambda>rr s. rr \<noteq> 0  \<longleftrightarrow> ?inv (unat ?numv)) \<rbrace>!" )
   unfolding parents_not_in_cycles_start'_def
   apply wpsimp
-    apply (subst whileLoopE_add_inv [where 
-            M="\<lambda>((i, u), s). ?numv + 1 - i" and
-            I="\<lambda>(i, u) s. ?pre s \<and> 
-                           i \<le> ?numv + 1  \<and> 
-                          u = ((\<lambda>v. fst (iedges iG (iP v)))^^ (unat i)) v \<and>
-                          ?inv (unat i)" ])
-    apply wpsimp
-      apply (rename_tac i' u' s i u)
-      apply (rule_tac P1="(\<lambda>s. P s \<and>  
-                     ?pre s \<and> 
-                     i' = i \<and> u' =  u \<and>
-                     i < ?numv + 1  \<and>
-                     u = ((\<lambda>v. fst (iedges iG (iP v)))^^ (unat i)) v \<and>
-                     ?inv (unat i))"
-                    and iCS1 ="iCS" and iCS'1="iCS'"
-            in validNF_post_imp[OF _ vertex_not_in_cycles_start_spc])
-      apply clarsimp 
-      apply (rule conjI; clarsimp) oops
+      apply (subst whileLoopE_add_inv [where 
+              M="\<lambda>((i, u), s). ?numv + 1 - i" and
+              I="\<lambda>(i, u) s. ?pre s \<and> 
+                            i \<le> ?numv \<and> 
+                            u = ((\<lambda>v. snd (iedges iG (iP v)))^^ (unat i)) v \<and>
+                            ?inv (unat i)" ])
+      apply wpsimp
+          apply (rename_tac u'' r i' u' s i ba u)
+          apply (rule_tac P1="(\<lambda>s. P s \<and>  
+                       ?pre s \<and>
+                       i + 1 \<le> ?numv  \<and>
+                       i  < ?numv  \<and>
+                       i = i' \<and> u = u' \<and> 
+                       u = ((\<lambda>v. snd (iedges iG (iP v)))^^ (unat (i + 1))) v \<and>  
+                       ?inv (unat i))"
+                      and iCS1 ="iCS" and iCS'1="iCS'"
+              in validNF_post_imp[OF _ vertex_not_in_cycles_start_spc])(*\<and> 
+                       i' = i \<and> u' =  u \<and>
+                       i \<le> ?numv  \<and>
+                       
+                       ?inv (unat i)*)
+          apply clarsimp 
+          apply (rename_tac i r s) 
+          apply (rule conjI; clarsimp)
+           apply (frule unat_le_mono)
+           apply (drule parents_not_in_cycles_start_inv_le, simp) 
+           apply (subst(asm) unat_Suc2) back  subgoal sorry 
+
+  apply (simp only:parents_not_in_cycles_start_inv_step)
+           apply (subst(asm) unat_Suc2)   subgoal sorry apply blast
+
+          apply (rule conjI )
+  apply (drule parents_not_in_cycles_start_inv_stepD)   
+            apply (metis unat_Suc2 word_not_simps(3))
+  using unat_Suc2 word_not_simps(3) 
+           apply metis 
+          apply (rule conjI)
+           apply (metis (no_types, hide_lams) add.commute add_diff_cancel_left' 
+                 add_diff_cancel_right' diff_add_eq diff_add_eq_diff_diff_swap 
+                 diff_diff_eq2 diff_numeral_special(12) less_1_simp max_word_max not_le 
+                 word_le_less_eq word_less_minus_mono_left)
+  unfolding is_numm_def apply(drule_tac i="uint v" in arrlist_nth_valid) subgoal sorry subgoal sorry 
+          apply simp
+  sorry
+          apply (drule inc_le)
+          apply clarsimp 
+  using inc_le apply blast 
+  apply (simp add: word_nat_simp ) 
+             apply (meson less_le_trans max_word_max)
+
+  using  parents_not_in_cycles_start_inv_step 
+  apply (simp add: word_nat_simp)
+  find_theorems "unat" "_ + 1" "Suc "
+  apply (frule parents_not_in_cycles_start_inv_step)
+  unfolding parents_not_in_cycles_start_inv_def  
+  using  parents_not_in_cycles_start_inv_def Suc_eq_plus1 
+              not_less_zero unat_0 unat_mono word_overflow_unat  
+  thm inc_le
+  oops
+      
+        apply (rule_tac P1="(\<lambda>s. P s \<and>  
+                       ?pre s \<and> 
+                       i' = i \<and> u' =  u \<and>
+                       i \<le> ?numv  \<and>
+                       u = ((\<lambda>v. fst (iedges iG (iP v)))^^ (unat i)) v \<and>
+                       ?inv (unat i))"
+                      and iCS1 ="iCS" and iCS'1="iCS'"
+              in validNF_post_imp[OF _ vertex_not_in_cycles_start_spc])
+          apply clarsimp 
+          apply (rename_tac i r s)
+  
+          apply (rule conjI, clarsimp)
+
+  apply (case_tac "i=iN v") try0  prefer 2 
+
+           apply (subgoal_tac "unat i\<le> unat (iN v)")  prefer 2  
+  using plus_one_helper word_le_nat_alt 
+
+  apply (frule parents_not_in_cycles_start_inv_le, simp)
+
+        apply (frule inc_le)
+
+
+  using inc_le
+          apply (frule inc_le)
+          apply (clarsimp dest!: inc_le)
+          apply (rule conjI, clarsimp)
+          
+
+          apply (subgoal_tac "(i + 1) \<le> (iN v + 1)"; 
+                (fastforce intro: inc_le simp: word_le_nat_alt; fail)?)
+          apply clarsimp  
+  apply (rule conjI, clarsimp)  find_theorems " (_:: ('a::len0) word) \<le>  _" "_ + 1"
+  using inc_le
+  apply(frule word_le_nat_alt[THEN iffD1])
+  apply (frule parents_not_in_cycles_start_inv_le)
+          apply (intro conjI impI)
+ using parents_not_in_cycles_start_inv_step  Suc_eq_plus1
+              not_less_zero unat_0 unat_mono word_overflow_unat word_le_nat_alt[THEN iffD1] word_overflow_unat
+
+              oops
+  apply clarsimp
+              apply (frule_tac i="unat i" in 
+                    parents_not_in_cycles_start_inv_le[rotated]) back
+  
+  using parents_not_in_cycles_start_inv_step  Suc_eq_plus1
+              not_less_zero unat_0 unat_mono word_overflow_unat 
+   
+   oops
        apply (metis parents_not_in_cycles_start_inv_def Suc_eq_plus1 
               not_less_zero unat_0 unat_mono word_overflow_unat) 
       apply (rule conjI) 
