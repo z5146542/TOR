@@ -1024,32 +1024,35 @@ thm is_numm_def
 
 lemma is_numm_arrlist_heap: 
   "is_numm s iG iN n \<Longrightarrow>  i < (ivertex_cnt iG) \<Longrightarrow>  iN i = heap_w32 s (n +\<^sub>p uint i)"  
-  by (fastforce dest!:arrlist_heap simp: is_numm_def uint_nat) 
+by (fastforce dest!:arrlist_heap simp: is_numm_def uint_nat)
+
+lemma is_numm_valid:
+  "is_numm s iG iN n \<Longrightarrow> i < ivertex_cnt iG \<Longrightarrow> is_valid_w32 s (n +\<^sub>p uint i)"
+by (fastforce dest!:arrlist_nth_valid simp: is_numm_def uint_nat word_less_def)
 
 lemma is_pedge_arrlist_eq: 
   "is_pedge s iG iP p \<Longrightarrow>i < (ivertex_cnt iG) \<Longrightarrow>  0 \<le> i \<Longrightarrow>  
      iP i = heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word)(p +\<^sub>p uint i))"  
-  by (fastforce dest!: heap_ptr_coerce simp:is_pedge_def uint_nat)
+by (fastforce dest!: heap_ptr_coerce simp:is_pedge_def uint_nat)
 
 lemma is_pedge_valid:
   "is_pedge s iG iP p \<Longrightarrow>i < (ivertex_cnt iG) \<Longrightarrow>  
     is_valid_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint i))"
-  by (fastforce intro: arrlist_nth_valid simp: is_pedge_def uint_nat word_less_def)
-  apply fast
-by (force dest!: arrlist_nth_valid simp: uint_nat unat_mono) 
+by (fastforce intro: arrlist_nth_valid simp: is_pedge_def uint_nat word_less_def)
+
 lemma is_graph_head_arrlist_eq: 
   "is_graph s iG g \<Longrightarrow> e < (iedge_cnt iG) \<Longrightarrow> 
     snd (snd (snd iG) e) = second_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p uint e))"     
-  by (fastforce simp: is_graph_def dest: head_heap)
+by (fastforce simp: is_graph_def dest: head_heap)
 
 lemma is_graph_valid_graph:
   "is_graph s iG g \<Longrightarrow> is_valid_Graph_C s g"
-  by (force dest!: arrlist_nth_valid simp:is_graph_def uint_nat unat_mono) 
+by (force dest!: arrlist_nth_valid simp:is_graph_def uint_nat unat_mono) 
 
 lemma is_graph_valid_edge:
   "\<lbrakk>is_graph s iG g; e < (iedge_cnt iG)\<rbrakk> \<Longrightarrow> 
    is_valid_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p uint e)"
-  by (force dest!: arrlist_nth_valid simp:is_graph_def uint_nat unat_mono) 
+by (force dest!: arrlist_nth_valid simp:is_graph_def uint_nat unat_mono) 
 
 lemma parents_not_in_cycles_start_spc:
   "\<lbrace> P and 
@@ -1088,8 +1091,6 @@ lemma parents_not_in_cycles_start_spc:
                        ?inv (unat i))"
                       and iCS1 ="iCS" and iCS'1="iCS'"
               in validNF_post_imp[OF _ vertex_not_in_cycles_start_spc])
-(*i + 1 < ?numv  \<and>
-                       i < ?numv  \<and>*)
           apply clarsimp 
           apply (rename_tac i r s) 
           apply (rule conjI; clarsimp) 
@@ -1100,151 +1101,40 @@ lemma parents_not_in_cycles_start_spc:
           apply (rule conjI)   
            apply (metis Suc_eq_plus1 less_is_non_zero_p1 
                   word_overflow_unat parents_not_in_cycles_start_inv_stepD)
-           apply (simp add: unat_minus_plus1_less word_less_nat_alt)
+          apply (simp add: unat_minus_plus1_less word_less_nat_alt)
           apply(fastforce dest!: arrlist_nth_valid simp: is_numm_def uint_nat word_less_def) 
          apply wp+
        apply clarsimp
        apply (rename_tac i s)
        apply(subgoal_tac "unat (i + 1) = unat i + 1", simp)
-       apply (frule_tac i="((\<lambda>v. snd (snd (snd iG) (iP v))) ^^ unat i) v" in  
-              is_pedge_arrlist_eq, simp_all)
-         subgoal sorry
-
-       apply (frule_tac e=" iP (((\<lambda>v. snd (snd (snd iG) (iP v))) ^^ unat i) v)" in 
-               is_graph_head_arrlist_eq)
-               
-
-        subgoal sorry
+        apply (frule_tac i="((\<lambda>v. snd (snd (snd iG) (iP v))) ^^ unat i) v" in 
+               is_pedge_arrlist_eq; simp?)
+         subgoal(*((\<lambda>v. snd (snd (snd iG) (iP v))) ^^ unat i) v < fst iG*) sorry
+         apply (frule_tac e=" iP (((\<lambda>v. snd (snd (snd iG) (iP v))) ^^ unat i) v)" in 
+               is_graph_head_arrlist_eq, simp)
+         subgoal (*heap_w32 s
+      (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint (((\<lambda>v. snd (snd (snd iG) (iP v))) ^^ unat i) v)))
+     < fst (snd iG)*) sorry
         apply (clarsimp simp: is_graph_valid_graph)
-       apply (rule conjI)
-              apply (simp add:is_numm_arrlist_heap  inc_le) 
-       apply (rule conjI)
-              apply (simp add: is_numm_arrlist_heap)
+        apply (rule conjI, simp add:is_numm_arrlist_heap  inc_le) 
+        apply (rule conjI, simp add: is_numm_arrlist_heap)
         apply (rule conjI)
-             apply (rule is_graph_valid_edge, simp) subgoal sorry
-             apply (rule is_pedge_valid, simp)subgoal sorry
-            apply (fastforce simp:less_le_trans)
-           apply clarsimp
-        
-        subgoal sorry
-          apply wp
-         apply (rule_tac P1="(\<lambda>s. ?pre s \<and> u=v)" and iCS1 ="iCS" and iCS'1="iCS'"
-              in validNF_post_imp[OF _ vertex_not_in_cycles_start_spc], clarsimp)
-         apply (rule conjI, clarsimp) unfolding parents_not_in_cycles_start_inv_def are
-        subgoal sorry
-
-        using 
-            apply (unfold is_graph_def, simp_all, clarsimp)[] using  
-
-              apply (subst head_heap
-                [where m="fst (snd iG)" and  ep="arcs_C (heap_Graph_C s g)" for s], simp)
-       try0
-       apply fastforce
-       apply(subst head_heap[where m="fst (snd iG)"], simp) 
-        subgoal sorry
-       apply fast
-            apply (rule conjI)
-        
-        apply simp
-          unfolding is_pedge_def uint_nat
-                 apply(subst arrlist_heap[where iL=iP, symmetric])
-          using two_comp_arrlist_heap
-
-          using
-        subgoal sorry
-
-    oops
-
-
-
-
-
-
-
-
-
-
-     apply (rule arg_cong[where f = snd]) 
-          apply (rule arg_cong[where f = " snd (snd iG)"])
-    using heap_
-    using two_comp_to_edge_arrlist_heap
-(*apply ( metis Word.sint_0 is_inf_d_heap s_C_pte two_comp_to_edge_arrlist_heap wellformed_iGraph uint_nat)
-  *)      
-unfolding is_pedge_def
-    using heap_ptr_coerce
-    apply (case_tac "unat a"; simp)
-     
-    apply (frule head_heap)
-    using arrlist_heap[where iL=iP]
- apply (clarsimp, subst (asm) (9) arrlist_heap[where iL=iP], fast, fast, simp add: uint_nat sint_ucast)
-
-    using heap_ptr_coerce
-    apply(drule heap_ptr_coerce)
-    thm 
-    apply ()
-  find_theorems name:Word "-1"
-
-(*
-           apply (frule unat_le_mono)
-           apply (subst(asm) unat_Suc2, metis dual_order.antisym max_word_max max_word_minus)
-
-
-  find_theorems "unat (_+ 1)"
-
-          apply (drule parents_not_in_cycles_start_inv_le, simp) 
-
-           apply (frule plus_one_helper2, fastforce dest: less_is_non_zero_p1 word_Suc_le) 
-*)
-           apply(drule Orderings.order_class.order.strict_implies_order) back 
-           apply (frule unat_le_mono)
-           apply (drule parents_not_in_cycles_start_inv_le, simp) 
-
-           apply (subst(asm) unat_Suc2, fastforce)+  
-           apply (simp only:parents_not_in_cycles_start_inv_step, simp) 
-          apply (rule conjI, simp add: inc_le) 
-           apply (drule parents_not_in_cycles_start_inv_stepD)  
-            apply (metis unat_Suc2 word_not_simps(3)) 
-          apply (rule conjI)
-           apply (metis unat_Suc2 word_not_simps(3)) 
-          apply (rule conjI)  
-           apply (simp add: unat_minus_plus1_less word_less_nat_alt)
-          apply(fastforce dest!: arrlist_nth_valid simp: is_numm_def uint_nat word_less_def) 
-         apply wp+
-       apply clarsimp
-       apply (rule conjI)
-  subgoal 
-    apply (frule word_Suc_leq[THEN iffD2])
-    apply assumption oops
-    find_theorems "_ + 1" max_word 
-    sorry
-    apply (rule conjI)
-  subgoal 
-    using \<open>\<And>s a. \<lbrakk>P s; a < heap_w32 s (n +\<^sub>p uint v); wf_digraph (abs_IGraph iG); is_graph s iG g; are_cycles'' s iCS' cse; iCS = abs_ICycles' s iCS'; is_cost s iG iC c; is_dist s iG iD d; is_numm s iG iN n; is_pedge s iG iP p; iN v \<noteq> max_word; v < fst iG; a \<le> iN v; parents_not_in_cycles_start_inv iG (abs_ICycles' s iCS') iP v (unat a)\<rbrakk> \<Longrightarrow> a + 1 < iN v\<close> less_x_plus_1 by fastforce
-
-    apply clarsimp
-     apply (clarsimp simp: are_cycles_valid)
-     apply (rule conjI; clarsimp)
-      apply (unfold vertex_not_in_cycles_start_inv_def[where k = "length _"])
-      apply (drule_tac x="unat i" in spec, simp add: uint_nat abs_ICycles'_def) 
-      apply (simp add: are_cycles''_def is_cycle'_def)
-     apply (rule conjI, metis not_le less_unat_plus1 unat_mono length_abs_ICycles' are_cycles''_def)
-     apply (rule conjI)
-      apply (subst unatSuc2, blast dest: less_is_non_zero_p1)
-      apply (subst vertex_not_in_cycles_start_inv_step) 
-       apply (simp add: word_less_nat_alt are_cycles''_def length_abs_ICycles') 
-      apply (frule are_cycles_is_icycle)
-      apply (simp add: is_cycle_def abs_ICycles'_def are_cycles''_def uint_nat word_less_nat_alt)
-     apply (simp add: are_cycles''_def length_abs_ICycles')
-     apply (metis (no_types, hide_lams) Suc_diff_Suc Suc_eq_plus1  
-              add.commute add.left_neutral less_add_eq_less  less_one 
-              word_less_nat_alt word_overflow_unat less_is_non_zero_p1)
-     apply (case_tac " unat i = length iCS"; 
-            clarsimp simp: are_cycles''_def length_abs_ICycles' word_less_nat_alt) 
-    apply (fastforce simp: word_le_nat_alt vertex_not_in_cycles_start_inv_def ) 
+         apply (rule is_graph_valid_edge, simp) 
+         subgoal (*heap_w32 s_
+     (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint (((\<lambda>v. snd (snd (snd iG) (iP v))) ^^ unat i_) v)))
+    < fst (snd iG)*)sorry
+        apply (rule is_pedge_valid, simp)
+        subgoal (*((\<lambda>v. snd (snd (snd iG) (iP v))) ^^ unat i) v < fst iG*) sorry
+       apply (fastforce simp:less_le_trans)
+      apply clarsimp
+      apply (case_tac "a=iN v"; simp add:is_numm_arrlist_heap)
+     apply wp
+    apply (rule_tac P1="(\<lambda>s. ?pre s \<and> u=v)" and iCS1 ="iCS" and iCS'1="iCS'"
+           in validNF_post_imp[OF _ vertex_not_in_cycles_start_spc])
+    apply (fastforce simp: parents_not_in_cycles_start_inv_def intro: is_numm_valid)
    apply wp
-  apply (clarsimp simp: vertex_not_in_cycles_start_inv_def are_cycles''_def)
-  done
-
+   apply clarsimp
+   done 
   
 definition pwalk_int_neg_cyc_nth_inv :: 
   "IGraph \<Rightarrow> IVertex \<Rightarrow> IENInt \<Rightarrow> ICycle_Set \<Rightarrow> ICost \<Rightarrow> IPEdge \<Rightarrow> 
