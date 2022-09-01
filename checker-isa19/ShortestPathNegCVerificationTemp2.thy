@@ -1054,6 +1054,26 @@ lemma is_graph_valid_edge:
    is_valid_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p uint e)"
 by (force dest!: arrlist_nth_valid simp:is_graph_def uint_nat unat_mono) 
 
+lemma parent_head_in_verts:
+  "\<lbrakk>wf_digraph (abs_IGraph iG); 
+    v < ivertex_cnt iG;
+    \<forall>i\<le>n. iP (((\<lambda>v. snd (snd (snd iG) (iP v))) ^^ unat (i::32 word)) v) < iedge_cnt iG;
+    i\<le>n;
+    j=unat i -1  \<rbrakk> \<Longrightarrow> 
+    ((\<lambda>v. snd (iedges iG (iP v))) ^^ unat i) v < ivertex_cnt iG"
+  apply (case_tac "i=0", simp)
+   apply (frule_tac e1="iP (((\<lambda>v. snd (snd (snd iG) (iP v))) ^^ j) v) " in
+          wellformed_iGraph[THEN conjunct2])
+  apply (metis less_1_simp unat_minus_one word_le_less_eq)
+  apply clarsimp
+  apply (erule_tac x="i - 1" in allE)
+  apply (subst (asm) unat_minus_one, simp)
+  apply (frule_tac e1="iP (((\<lambda>v. snd (snd (snd iG) (iP v))) ^^ j) v) " in
+          wellformed_iGraph[THEN conjunct2])
+  apply (simp add: less_1_simp word_le_less_eq)
+  apply (metis (mono_tags, lifting) Suc_pred funpow_simp_l unat_gt_0)
+  done
+
 lemma parents_not_in_cycles_start_spc:
   "\<lbrace> P and 
      (\<lambda>s. wf_digraph (abs_IGraph iG) \<and>
@@ -1064,9 +1084,8 @@ lemma parents_not_in_cycles_start_spc:
           is_dist s iG iD d \<and>
           is_numm s iG iN n \<and>
           is_pedge s iG iP p \<and>
-          iN v \<noteq> max_word \<and> 
-          iN v + 1\<noteq> max_word \<and> 
-          v < ivertex_cnt iG) \<rbrace>
+          v < ivertex_cnt iG \<and>
+          (\<forall>i\<le>iN v. iP (((\<lambda>v. snd (snd (snd iG) (iP v))) ^^ unat i) v) < iedge_cnt iG)) \<rbrace>
    parents_not_in_cycles_start' g cse p n v
    \<lbrace> (\<lambda>_ s. P s) And 
      (\<lambda>rr s. rr \<noteq> 0  \<longleftrightarrow> 
@@ -1107,24 +1126,17 @@ lemma parents_not_in_cycles_start_spc:
        apply clarsimp
        apply (rename_tac i s)
        apply(subgoal_tac "unat (i + 1) = unat i + 1", simp)
-        apply (frule_tac i="((\<lambda>v. snd (snd (snd iG) (iP v))) ^^ unat i) v" in 
-               is_pedge_arrlist_eq; simp?)
-         subgoal(*((\<lambda>v. snd (snd (snd iG) (iP v))) ^^ unat i) v < fst iG*) sorry
-         apply (frule_tac e=" iP (((\<lambda>v. snd (snd (snd iG) (iP v))) ^^ unat i) v)" in 
-               is_graph_head_arrlist_eq, simp)
-         subgoal (*heap_w32 s
-      (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint (((\<lambda>v. snd (snd (snd iG) (iP v))) ^^ unat i) v)))
-     < fst (snd iG)*) sorry
         apply (clarsimp simp: is_graph_valid_graph)
-        apply (rule conjI, simp add:is_numm_arrlist_heap  inc_le) 
+        apply (rule conjI, simp add:is_numm_arrlist_heap inc_le) 
         apply (rule conjI, simp add: is_numm_arrlist_heap)
+        apply (rule conjI, 
+               force dest!:parent_head_in_verts is_graph_head_arrlist_eq 
+                     simp: is_pedge_arrlist_eq)
         apply (rule conjI)
-         apply (rule is_graph_valid_edge, simp) 
-         subgoal (*heap_w32 s_
-     (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint (((\<lambda>v. snd (snd (snd iG) (iP v))) ^^ unat i_) v)))
-    < fst (snd iG)*)sorry
-        apply (rule is_pedge_valid, simp)
-        subgoal (*((\<lambda>v. snd (snd (snd iG) (iP v))) ^^ unat i) v < fst iG*) sorry
+         apply (rule is_graph_valid_edge, simp)
+         apply (force dest!:parent_head_in_verts is_graph_head_arrlist_eq 
+                     simp: is_pedge_arrlist_eq)
+        apply (fast intro: is_pedge_valid dest: parent_head_in_verts)
        apply (fastforce simp:less_le_trans)
       apply clarsimp
       apply (case_tac "a=iN v"; simp add:is_numm_arrlist_heap)
