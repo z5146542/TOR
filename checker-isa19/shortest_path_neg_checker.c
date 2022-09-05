@@ -302,38 +302,6 @@ int int_neg_cyc(Graph *g, ENInt *dist, Cycle_set *cse, int *parent_edge, unsigne
     return 1;
 }
 
-int int_neg_cyc_old(Graph *g, unsigned int s, ENInt *dist, Cycle_set *cse, int *c, int *parent_edge, unsigned int *num) {
-    unsigned int is_neg_cycle ;
-    unsigned int no_cycles = cse->no_cycles;
-    Cycle *cyc = cse->cyc_obj;
-
-    for(unsigned int v = 0; v < vertex_cnt(g); v++) {
-        if(dist[v].isInf < 0) {
-            is_neg_cycle = 0;
-            // idea: num[v] is the number of times the loop iterates
-            // 
-            unsigned int u = v;
-            /* while (u >= 0) {
-                for(unsigned int i = 0; i < no_cycles; i++) {
-                    if(u == cyc[i].start) is_neg_cycle = 1;
-                }
-                u = arcs(g, parent_edge[u]).first;
-            }*/
-
-            for(unsigned int j = 0; j <= num[v]; j++) {
-                for(unsigned int i = 0; i < no_cycles; i++) {
-                    if(u == cyc[i].start) is_neg_cycle = 1;
-                }
-                // if(arcs(g, parent_edge[u]) < edge_cnt(g)) return 0;
-                // uncomment code above to simplify proof if short on time.
-                u = arcs(g, parent_edge[u]).first;
-            }
-            if(is_neg_cycle == 0) return 0;
-        }
-    }
-    return 1;
-}
-
 int shortest_paths_locale_step1(Graph *g, unsigned int s, unsigned int *num, int *parent_edge, ENInt *dist) {
     if(!is_wellformed(g)) return 0;
     if(!s_assms(g, s, dist, parent_edge, num)) return 0;

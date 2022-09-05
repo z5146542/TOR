@@ -443,32 +443,48 @@ proof -
   ultimately show ?thesis by blast
 qed
 
+
+lemma signed_overflow':
+  fixes x :: "32 signed word" and y :: "32 signed word"
+  shows "sint(x) + sint(y) \<le> 4294967294" 
+proof-
+  have sx: "sint x \<le> 2147483647"
+    using INT_MAX_def by auto
+  moreover have "sint(y) \<le> 2147483647"
+    using INT_MAX_def by auto
+  thus ?thesis using sx by linarith
+qed
+
 lemma signed_overflow:
   fixes x :: "32 signed word" and y :: "32 signed word"
-  shows "sint(x) + sint(y) \<le> 9223372036854775807"
+  shows "sint x + sint y \<le> 9223372036854775807"
+proof -
+  have "sint x + sint y \<le> 4294967294"
+    by (simp add: signed_overflow')
+  then show ?thesis
+    by fastforce
+qed 
+
+lemma signed_underflow':
+  fixes x :: "32 signed word" and y :: "32 signed word"
+  shows "-4294967296 \<le> sint x + sint y"
 proof-
-  have "sint(x) \<le> 2147483647"
-    using INT_MAX_def by auto
-  then have "sint(y) \<le> 2147483647"
-    using INT_MAX_def by auto
-  then have "sint(x) + sint(y) \<le> 4294967294"
-    using \<open>sint x \<le> 2147483647\<close> by linarith
-  show ?thesis
-    using \<open>sint x + sint y \<le> 4294967294\<close> by linarith
+  have sx: "-2147483648 \<le> sint(x)"
+    using INT_MIN_def by auto
+  then have "-2147483648 \<le> sint(y)"
+    using INT_MIN_def by auto
+  thus "-4294967296 \<le> sint(x) + sint(y)"
+    using sx by linarith
 qed
 
 lemma signed_underflow:
   fixes x :: "32 signed word" and y :: "32 signed word"
   shows "-9223372036854775808 \<le> sint(x) + sint(y)"
 proof-
-  have "-2147483648 \<le> sint(x)"
-    using INT_MIN_def by auto
-  then have "-2147483648 \<le> sint(y)"
-    using INT_MIN_def by auto
-  then have "-4294967296 \<le> sint(x) + sint(y)"
-    using \<open>- 2147483648 \<le> sint x\<close> by linarith
+  have "-4294967296 \<le> sint x + sint y"
+    by (simp add: signed_underflow')
   show ?thesis
-    using \<open>-4294967296 \<le> sint(x) + sint(y)\<close> by linarith
+    using \<open>-4294967296 \<le> sint x + sint y\<close> by linarith
 qed
 
 lemma ptr_coerce_ptr_add_uint[simp]:
@@ -2694,8 +2710,7 @@ lemma awalk_spc':
 definition awalk_cost_neg_inv ::
   "ICost \<Rightarrow> ICycle \<Rightarrow> nat \<Rightarrow> int"
 where
-  "awalk_cost_neg_inv iC iY ee \<equiv> 
-      sum_list (map (sint \<circ> iC) (take ee (icycle_path iY)))"
+  "awalk_cost_neg_inv iC iY ee \<equiv>   sum_list (map (sint \<circ> iC) (take ee (icycle_path iY)))"
 
 lemma sum_list_step:
   assumes "i < length xs" 
@@ -2721,7 +2736,7 @@ proof -
   then show ?thesis
     by (simp add: take_map)
 qed
-
+(*
 lemma abstract_val_scast_add_strict_upcast:
     "\<lbrakk> len_of TYPE('a::len) < len_of TYPE('b::len);
        length xs' \<le> len_of TYPE('a::len);
@@ -2758,8 +2773,8 @@ proof -
   then show ?thesis using take_map 
 
   oops
-
-lemma awalk_cost_neg_inv_step:
+*)
+lemma awalk_cost_neg_inv_step':
   assumes "is_cycle s iY y"
     and   "i  < (length (icycle_path iY))"
     and   "icycle_path iY \<noteq> []"
@@ -2776,7 +2791,7 @@ lemma awalk_cost_neg_inv_step:
         Nil_is_map_conv add.commute length_map sum_list_step_sint)
   done
 
-corollary awalk_cost_neg_inv_step2:
+corollary awalk_cost_neg_inv_step:
   assumes "is_cycle s iY y"
     and "i < length (icycle_path iY)"
     and "icycle_path iY \<noteq> []"
@@ -2784,7 +2799,7 @@ corollary awalk_cost_neg_inv_step2:
           awalk_cost_neg_inv iC iY i +
           sint (iC (icycle_path iY ! i))"
   unfolding awalk_cost_neg_inv_def
-  using assms awalk_cost_neg_inv_def awalk_cost_neg_inv_step
+  using assms awalk_cost_neg_inv_def awalk_cost_neg_inv_step'
   by (metis (no_types, hide_lams) One_nat_def add_Suc_right nth_map
               gen_length_code(1) gen_length_def list.size(3))
 (*thm take.simps
@@ -2825,8 +2840,6 @@ thm unat_leq_plus
               (heap_w32 s
                 (PTR_COERCE(32 signed word \<rightarrow> 32 word) (c +\<^sub>p uint (heap_w32 s (path_C (heap_Cycle_C s y) +\<^sub>p uint a))))))
            \<le> 9223372036854775807"
-*)
-
 
 theorem awalk_cost_within_bounds':
   assumes "is_cycle s iY y"
@@ -2847,7 +2860,7 @@ corollary awalk_cost_neg_inv_sint:
          sint n \<le> 2 ^ (size n - 1) - 1"
   using assms
   apply (induct i arbitrary: n, simp add: awalk_cost_neg_inv_def) 
-  apply (frule_tac i=i in awalk_cost_neg_inv_step2[where iC=iC]; simp)
+  apply (frule_tac i=i in awalk_cost_neg_inv_step[where iC=iC]; simp)
   apply (subst signed_arith_ineq_checks_to_eq(1)[where 'a="32 signed", THEN iffD1])
   subgoal sorry
   apply (rule conjI)
@@ -2866,26 +2879,137 @@ lemma sum_list_sint:
 
 
   thm abstract_val_scast_upcast
-
+*)
 lemma abstract_val_scast_add_strict_upcast:
     "\<lbrakk> len_of TYPE('a::len) < len_of TYPE('b::len);
        abstract_val P C' sint C; abstract_val P D' sint D \<rbrakk>
             \<Longrightarrow>  abstract_val P (C' + D') sint 
                     ((scast (C :: 'a word) :: 'b word) +
                       scast (D :: 'a word) :: 'b word)"
-  find_theorems  sint "_ + _ \<le> _"
   thm unat_plus_less_two_power_length
   apply (clarsimp simp: is_up sint_up_scast scast_def )
   apply (clarsimp simp:  word_of_int_def sint_word_ariths(1))
-
   apply (frule unat_plus_less_two_power_length[where C=C and D=D]) 
   using  unat_of_nat_eq 
         add.right_neutral zero_less_power
         unat_plus_less_two_power_length uint_inverse 
-        uint_mod_same uint_nat unat_of_nat zero_less_numeral
+        uint_mod_same uint_nat unat_of_nat zero_less_numeral 
   oops
 
+lemma is_cycle_valid: 
+  "is_cycle s iY y \<Longrightarrow> is_valid_Cycle_C s y"
+by (simp add: is_cycle_def)
 
+lemma is_cycle_valid_path: 
+  "\<lbrakk> is_cycle s iY y; i < length_C (heap_Cycle_C s y) \<rbrakk> \<Longrightarrow> 
+      is_valid_w32 s (path_C (heap_Cycle_C s y) +\<^sub>p uint i)"
+unfolding is_cycle_def
+  by (force intro!:arrlist_nth_valid simp: int_unat word_less_def)
+
+lemma is_cycle_path_eq: 
+  "\<lbrakk> is_cycle s iY y; i < length_C (heap_Cycle_C s y) \<rbrakk> \<Longrightarrow> 
+     (icycle_path iY ! unat i) = heap_w32 s (path_C (heap_Cycle_C s y) +\<^sub>p uint i)"   
+by (fastforce dest: arrlist_cycle_path_heap simp: is_cycle_def int_unat word_less_nat_alt)
+  
+lemma is_cycle_valid_path_cost: 
+    "\<lbrakk> awalk_edge_inv iG iY (length (icycle_path iY)); 
+      is_cost s iG iC c; is_cycle s iY y;  i < length_C (heap_Cycle_C s y)\<rbrakk> \<Longrightarrow> 
+     is_valid_w32 s
+         (PTR_COERCE(32 signed word \<rightarrow> 32 word)
+         (c +\<^sub>p uint (heap_w32 s (path_C (heap_Cycle_C s y) +\<^sub>p uint i)))) "
+by (fastforce simp: awalk_edge_inv_def 
+                    is_cost_def is_cycle_def 
+                    uint_nat word_less_nat_alt
+             intro: arrlist_nth_valid) 
+
+lemma is_cost_eq: 
+  "is_cost s iG iC c  \<Longrightarrow> i < iedge_cnt iG \<Longrightarrow>
+    iC i = 
+    UCAST(32 \<rightarrow> 32 signed) (heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) (c +\<^sub>p uint i)))"
+  unfolding is_cost_def
+  by (fastforce dest!: arrlist_heap simp: int_unat)
+(*
+find_theorems sum_list fold
+
+lemma sum_list_no_overflow:
+  ""
+*)
+
+lemma "\<And>i. (i < length l \<Longrightarrow>i \<le> UINT_MAX \<Longrightarrow> sum_list (map sint (take i l)) \<le> UINT_MAX * i) \<Longrightarrow> 
+    Suc i < length l \<Longrightarrow> Suc i \<le> UINT_MAX \<Longrightarrow> sum_list (map sint (take (Suc i) (l::32word list))) \<le> UINT_MAX * Suc i"
+  apply (cases l; simp)
+  apply (simp only: take_map[symmetric])
+  apply clarsimp
+  oops
+ 
+lemma "is_cost s iG iC c \<Longrightarrow>
+       is_cycle s iY y \<Longrightarrow>
+       i < length (icycle_path iY) \<Longrightarrow>
+       int i \<ge> 0 \<Longrightarrow>
+        i \<le> INT_MAX \<Longrightarrow> 
+      awalk_cost_neg_inv iC iY i \<le> INT_MAX * i" using awalk_cost_neg_inv_step
+  apply (induct i, simp add: awalk_cost_neg_inv_def) 
+  apply (case_tac "snd iY"; clarsimp simp: INT_MAX_def)
+  apply (frule awalk_cost_neg_inv_step[simplified Suc_eq_plus1, where iC=iC], simp, fast, simp) 
+  apply clarsimp unfolding awalk_cost_neg_inv_def apply simp
+  apply (subgoal_tac "sint (iC a) \<le> 2147483647")  
+  
+  oops
+lemma 
+  "\<And>a s. a < length_C (heap_Cycle_C s y) \<Longrightarrow>
+           awalk_edge_inv iG iY (length (snd iY)) \<Longrightarrow>
+           wf_digraph (abs_IGraph iG) \<Longrightarrow>
+           is_graph s iG g \<Longrightarrow>
+           is_cost s iG iC c \<Longrightarrow>
+           is_cycle s iY y \<Longrightarrow>
+           sint b \<le> INT_MAX \<Longrightarrow> 
+           INT_MIN \<le> sint b  \<Longrightarrow>
+           LONG_MIN \<le> awalk_cost_neg_inv iC iY (unat a) + sint (b::word32) \<and>
+           awalk_cost_neg_inv iC iY (unat a) + sint b \<le> LONG_MAX \<and>
+           awalk_cost_neg_inv iC iY (unat a) + sint b = 
+           awalk_cost_neg_inv iC iY (unat (a + 1))"
+ using INT_MAX_def INT_MIN_def LONG_MIN_def LONG_MAX_def
+  oops
+lemma awalk_cost_neg_within_bounds:
+  "\<And>a s. a < length_C (heap_Cycle_C s y) \<Longrightarrow>
+           awalk_edge_inv iG iY (length (snd iY)) \<Longrightarrow>
+           wf_digraph (abs_IGraph iG) \<Longrightarrow>
+           is_graph s iG g \<Longrightarrow>
+           is_cost s iG iC c \<Longrightarrow>
+           is_cycle s iY y \<Longrightarrow>
+           - 9223372036854775808 \<le> awalk_cost_neg_inv iC iY (unat a) + sint (iC (snd iY ! unat a)) \<and>
+           awalk_cost_neg_inv iC iY (unat a) + sint (iC (snd iY ! unat a)) \<le> 9223372036854775807 \<and>
+           awalk_cost_neg_inv iC iY (unat a) + sint (iC (snd iY ! unat a)) = 
+           awalk_cost_neg_inv iC iY (unat (a + 1))"
+  oops
+lemma "\<And>a s. a < length_C (heap_Cycle_C s y) \<Longrightarrow>
+           awalk_edge_inv iG iY (length (snd iY)) \<Longrightarrow>
+           wf_digraph (abs_IGraph iG) \<Longrightarrow>
+           is_graph s iG g \<Longrightarrow>
+           is_cost s iG iC c \<Longrightarrow>
+           is_cycle s iY y \<Longrightarrow>
+           awalk_cost_neg_inv iC iY (unat a) \<le> INT_MAX * uint a \<Longrightarrow>
+           INT_MIN * uint a \<le> awalk_cost_neg_inv iC iY (unat a) \<Longrightarrow>
+           - 9223372036854775808 \<le> awalk_cost_neg_inv iC iY (unat a) + sint (iC (snd iY ! unat a)) \<and>
+           awalk_cost_neg_inv iC iY (unat a) + sint (iC (snd iY ! unat a)) \<le> 9223372036854775807 \<and>
+           awalk_cost_neg_inv iC iY (unat a) + sint (iC (snd iY ! unat a)) \<le> INT_MAX * uint (a + 1) \<and>
+           INT_MIN * uint (a + 1) \<le> awalk_cost_neg_inv iC iY (unat a) + sint (iC (snd iY ! unat a)) "
+  oops
+
+lemma "\<And>a s. a < length_C (heap_Cycle_C s y) \<Longrightarrow>
+           awalk_edge_inv iG iY (length (snd iY)) \<Longrightarrow>
+           wf_digraph (abs_IGraph iG) \<Longrightarrow>
+           is_graph s iG g \<Longrightarrow>
+           is_cost s iG iC c \<Longrightarrow>
+           is_cycle s iY y \<Longrightarrow>
+           awalk_cost_neg_inv iC iY (unat a) \<le> INT_MAX * uint a \<Longrightarrow>
+           INT_MIN * uint a \<le> awalk_cost_neg_inv iC iY (unat a) \<Longrightarrow>
+           - 9223372036854775808 \<le> awalk_cost_neg_inv iC iY (unat a) + sint (iC (snd iY ! unat a)) \<and>
+           awalk_cost_neg_inv iC iY (unat a) + sint (iC (snd iY ! unat a)) \<le> 9223372036854775807 \<and>
+           awalk_cost_neg_inv iC iY (unat a) + sint (iC (snd iY ! unat a)) \<le> INT_MAX * uint (a + 1) \<and>
+           INT_MIN * uint (a + 1) \<le> awalk_cost_neg_inv iC iY (unat a) + sint (iC (snd iY ! unat a)) \<and>
+           awalk_cost_neg_inv iC iY (unat a) + sint (iC (snd iY ! unat a)) = awalk_cost_neg_inv iC iY (unat (a + 1))"
+  oops
 lemma awalk_cost_neg_spc':
   "ovalidNF (\<lambda> s. 
    awalk_edge_inv iG iY (length (icycle_path iY)) \<and>
@@ -2904,24 +3028,26 @@ lemma awalk_cost_neg_spc':
               is_graph s iG g \<and>
               is_cost s iG iC c \<and>
               is_cycle s iY y \<and>
+              total \<le> INT_MAX * uint ee \<and>
+              INT_MIN * uint ee \<le> total \<and>
               total = awalk_cost_neg_inv iC iY (unat ee)"])
 (*icycle_start iY < ivertex_cnt iG \<and>*)
  (*length (icycle_path iY) \<le> unat (max_word::32 word) \<and>*)
-  apply wpsimp 
-     apply (rule conjI, simp add: is_cycle_def) 
-     apply (rule conjI, 
-            fastforce intro: arrlist_nth_valid 
-                      simp: is_cycle_def uint_nat 
-                            word_less_def)  
-     apply (rule conjI, 
-            fastforce simp: awalk_edge_inv_def 
-                            is_cost_def is_cycle_def 
-                            uint_nat word_less_nat_alt
-                     intro: arrlist_nth_valid)
-
-     apply (frule_tac i="unat a" in awalk_cost_neg_inv_step2[where iC=iC and iY="iY"]) 
+  apply wpsimp
+     apply (rule conjI, simp add: is_cycle_valid) 
+     apply (rule conjI, simp add: is_cycle_valid_path)
+     apply (rule conjI, simp add: is_cycle_valid_path_cost) 
+     apply (subst is_cycle_path_eq[symmetric], simp, simp)+
+     apply (subst is_cost_eq[symmetric], simp, 
+            metis (no_types, hide_lams) awalk_edge_inv_def is_cycle_def 
+            word_less_nat_alt)+
+     apply (frule_tac i="unat a" in awalk_cost_neg_inv_step[where iC=iC and iY="iY"]) 
        apply (fastforce intro: unat_mono simp: is_cycle_def)
       apply (metis add.right_neutral list.size(3) not_add_less2 is_cycle_def word_less_nat_alt)
+     
+apply (subst (asm) word_nat_simp[symmetric]) 
+        apply (metis max_word_max not_le not_less_iff_gr_or_eq)
+       apply clarsimp
 
 (*
   apply (subgoal_tac "sint
@@ -2935,6 +3061,7 @@ lemma awalk_cost_neg_spc':
  *) 
      apply (subgoal_tac "a < (max_word :: 32 word)")
       apply (subst (asm) word_nat_simp[symmetric], fast)
+      apply clarsimp
       apply (clarsimp simp add: awalk_cost_neg_inv_def is_cycle_def is_cost_def awalk_edge_inv_def)
       apply (subst (asm) arrlist_cycle_path_heap, blast, fastforce simp add: word_less_nat_alt)
       apply (subst (asm) arrlist_heap[where iL=iC], fast, metis arrlist_cycle_path_heap word_less_nat_alt)
