@@ -1030,6 +1030,15 @@ lemma is_numm_valid:
   "is_numm s iG iN n \<Longrightarrow> i < ivertex_cnt iG \<Longrightarrow> is_valid_w32 s (n +\<^sub>p uint i)"
 by (fastforce dest!:arrlist_nth_valid simp: is_numm_def uint_nat word_less_def)
 
+lemma is_dist_arrlist_is_inf:
+  "is_dist s iG iD d  \<Longrightarrow> i < ivertex_cnt iG \<Longrightarrow> 
+   is_inf_d iD i = sint (isInf_C (heap_ENInt_C s (d +\<^sub>p uint i)))"
+by (simp add:  is_inf_d_heap is_dist_def)
+
+lemma is_dist_valid:
+  "is_dist s iG iD d  \<Longrightarrow> i < ivertex_cnt iG \<Longrightarrow> is_valid_ENInt_C s (d +\<^sub>p uint i)"
+by (fastforce dest!:arrlist_nth_valid simp: is_dist_def uint_nat word_less_def)
+
 lemma is_pedge_arrlist_eq: 
   "is_pedge s iG iP p \<Longrightarrow>i < (ivertex_cnt iG) \<Longrightarrow>  0 \<le> i \<Longrightarrow>  
      iP i = heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word)(p +\<^sub>p uint i))"  
@@ -1080,12 +1089,10 @@ lemma parents_not_in_cycles_start_spc:
           is_graph s iG g \<and>
           are_cycles'' s iCS' cse  \<and>
           iCS = abs_ICycles' s iCS' \<and>
-          is_cost s iG iC c \<and>
-          is_dist s iG iD d \<and>
           is_numm s iG iN n \<and>
           is_pedge s iG iP p \<and>
           v < ivertex_cnt iG \<and>
-          (\<forall>i\<le>iN v. iP (((\<lambda>v. snd (snd (snd iG) (iP v))) ^^ unat i) v) < iedge_cnt iG)) \<rbrace>
+          (\<forall>i\<le>iN v. iP (((\<lambda>v. snd ((iedges iG) (iP v))) ^^ unat i) v) < iedge_cnt iG)) \<rbrace>
    parents_not_in_cycles_start' g cse p n v
    \<lbrace> (\<lambda>_ s. P s) And 
      (\<lambda>rr s. rr \<noteq> 0  \<longleftrightarrow> 
@@ -1147,7 +1154,121 @@ lemma parents_not_in_cycles_start_spc:
    apply wp
    apply clarsimp
    done 
+
+
+(*
+int int_neg_cyc(Graph *g, ENInt *dist, Cycle_set *cse, int *parent_edge, unsigned int *num) {
+    for(unsigned int v = 0; v < vertex_cnt(g); v++) {
+        if(dist[v].isInf < 0) {
+            if(parents_not_in_cycles_start(g, cse, parent_edge, num, v) == 1) return 0;
+        }
+    }
+    return 1;
+}
+*)
+
+definition 
+  int_neg_cyc_inv :: "IGraph \<Rightarrow> IENInt \<Rightarrow>ICycle_Set \<Rightarrow> IPEdge \<Rightarrow> IEInt \<Rightarrow> IVertex \<Rightarrow> bool" 
+where
+  "int_neg_cyc_inv G d CS P n k = 
+    (\<forall>i< k. is_inf_d d i < 0 \<longrightarrow>  
+            \<not> parents_not_in_cycles_start_inv G CS P i (unat (n i)))"
+
+lemma int_neg_cyc_inv_step :
+  "k < max_word \<Longrightarrow> 
+   int_neg_cyc_inv G d CS P n (k + 1) = 
+    (int_neg_cyc_inv G d CS P n k \<and> 
+    (is_inf_d d k < 0 \<longrightarrow>  
+      \<not> parents_not_in_cycles_start_inv G CS P k (unat (n k))))"
+by (fastforce simp: int_neg_cyc_inv_def less_x_plus_1 not_less_iff_gr_or_eq)
+
+lemma int_neg_cyc_spc:
+  "\<lbrace> P and 
+     (\<lambda>s. wf_digraph (abs_IGraph iG) \<and>
+          is_graph s iG g \<and>
+          are_cycles'' s iCS' cse  \<and>
+          iCS = abs_ICycles' s iCS' \<and>
+          is_dist s iG iD d \<and>
+          is_numm s iG iN n \<and>
+          is_pedge s iG iP p \<and>
+          (\<forall>v \<le>ivertex_cnt iG.  \<forall>i\<le>iN v. 
+             iP (((\<lambda>v. snd ((iedges iG) (iP v))) ^^ unat i) v) < iedge_cnt iG)) \<rbrace>
+   int_neg_cyc' g d cse p n
+   \<lbrace> (\<lambda>_ s. P s) And 
+     (\<lambda>rr s. rr \<noteq> 0  \<longleftrightarrow> 
+         int_neg_cyc_inv iG iD iCS iP iN (ivertex_cnt iG)) \<rbrace>!"   
+(is 
+  "\<lbrace> ?pre  \<rbrace> 
+   ?prog
+   \<lbrace> (\<lambda>_ s. P s) And (\<lambda>rr s. rr \<noteq> 0  \<longleftrightarrow> 
+        ?inv (?verts:: 32 word)) \<rbrace>!" )
+  unfolding int_neg_cyc'_def
+  apply wpsimp
+    apply (subst whileLoopE_add_inv [where 
+            M="\<lambda>(i, s).  ?verts -  i" and
+            I="\<lambda>i s. ?pre s \<and>  i \<le> ?verts \<and> ?inv i"])
+    apply wp
+       apply clarsimp
+
+       apply (rule_tac P1="(\<lambda>s.
+                       ?pre s \<and>
+                       i < ?verts \<and>
+                       is_inf_d iD  i < 0\<and>
+                       ?inv i)"
+                      and iCS1 ="iCS" and iCS'1="iCS'" and iN1=iN and iP1=iP and iG1=iG
+              in validNF_post_imp[OF _ parents_not_in_cycles_start_spc])
+       apply clarsimp
+       apply (rule conjI; rule impI)
+        apply (fastforce simp: int_neg_cyc_inv_def) 
+       apply (rule conjI, fastforce intro: inc_le) 
+       apply (rule conjI, fastforce simp: int_neg_cyc_inv_def intro: le_step)
+       apply (simp add: is_graph_valid_graph unat_minus_plus1_less word_less_nat_alt)
+      apply wp+
+     apply clarsimp
+     apply (rule conjI; clarsimp)
+      apply (fastforce dest: is_dist_arrlist_is_inf is_dist_valid simp: is_graph_def)
+     apply (rule conjI, fastforce intro!: inc_le simp: is_graph_def) 
+     apply (rule conjI)
+      apply (rule int_neg_cyc_inv_step[THEN iffD2])
+       apply (metis max_word_max not_le not_less_iff_gr_or_eq)
+      apply (simp add: is_graph_def is_dist_arrlist_is_inf)
+     apply (simp add: is_graph_def unat_minus_plus1_less word_less_nat_alt is_dist_valid)
+    apply (clarsimp simp: is_graph_def)
+   apply wp
+  apply (clarsimp simp: int_neg_cyc_inv_def is_graph_valid_graph)
+  done
+
+
+
+
+
+
   
+  using is_dist_def is_graph_def
+  Word.sint_0 int_unat not_le is_inf_d_heap s_C_pte t_C_pte two_comp_to_edge_arrlist_heap
+ wellformed_iGraph 
+ try0
+  apply (subst is_inf_d_heap, simp add: is_dist_def) 
+
+
+
+  unfolding int_neg_cyc_inv_def
+
+  using le_step oops
+
+        apply (rule_tac x=i in exI) apply simp
+
+  sorry
+(*
+       apply (rename_tac i s' r s) 
+       apply (rule conjI; clarsimp)
+  
+      apply wpsimp
+*)
+
+
+(*************)
+
 definition pwalk_int_neg_cyc_nth_inv :: 
   "IGraph \<Rightarrow> IVertex \<Rightarrow> IENInt \<Rightarrow> ICycle_Set \<Rightarrow> ICost \<Rightarrow> IPEdge \<Rightarrow> 
    IEInt \<Rightarrow> IVertex \<Rightarrow> IVertex \<Rightarrow> 32 word \<Rightarrow> 32 word \<Rightarrow> nat \<Rightarrow>  bool" 

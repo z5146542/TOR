@@ -296,7 +296,7 @@ int parents_not_in_cycles_start(Graph *g, Cycle_set *cse, int *parent_edge, unsi
 int int_neg_cyc(Graph *g, ENInt *dist, Cycle_set *cse, int *parent_edge, unsigned int *num) {
     for(unsigned int v = 0; v < vertex_cnt(g); v++) {
         if(dist[v].isInf < 0) {
-            if(parents_not_in_cycles_start(g, cse, parent_edge, num, v) == 1) return 0;
+            if(parents_not_in_cycles_start(g, cse, parent_edge, num, v) != 0) return 0;
         }
     }
     return 1;
