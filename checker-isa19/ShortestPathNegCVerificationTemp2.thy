@@ -523,26 +523,6 @@ where
     (\<forall>i<unat (icycle'_length iC'). 
        is_valid_w32 h ((icycle'_path iC') +\<^sub>p int i))"
 
-(*
-definition 
-  from_icycle'_to_icycle_list ::
-  "'a lifted_globals_scheme \<Rightarrow> ICycle'\<Rightarrow> ICycle \<Rightarrow> bool"
-where
-   "from_icycle'_to_icycle_list h iC' iC \<equiv>
-    icycle_start iC = icycle'_start iC' \<and> 
-    icycle_length iC = icycle'_length iC' \<and>
-    is_path h iC (icycle'_path iC')"
-
-definition is_cycle 
-where
-  "is_cycle h iC p \<equiv>
-    is_valid_Cycle_C h p \<and> 
-    icycle_start iC = start_C (heap_Cycle_C h p) \<and> 
-    unat (icycle_length iC) = length (icycle_path iC) \<and>
-    icycle_length iC = length_C (heap_Cycle_C h p) \<and>
-    is_path h iC (path_C (heap_Cycle_C h p))"
-*)
-
 definition 
   is_cycle :: "'a lifted_globals_scheme \<Rightarrow> ICycle \<Rightarrow> Cycle_C ptr \<Rightarrow> bool"
 where
@@ -551,15 +531,6 @@ where
     icycle_start iC = start_C (heap_Cycle_C h p) \<and> 
     length (icycle_path iC) = unat (length_C (heap_Cycle_C h p)) \<and>
     is_path h (icycle_path iC) (path_C (heap_Cycle_C h p))"
-(*
-definition final_is_cycle
-where
-  "final_is_cycle h iC' p \<equiv>
-    is_valid_Cycle_C h p \<and>
-    icycle'_start iC' = start_C (heap_Cycle_C h p) \<and>
-    icycle'_length iC' = length_C (heap_Cycle_C h p) \<and>
-    is_path h (abs_ICycle' h iC') (path_C (heap_Cycle_C h p))"
-*)
 
 definition 
   abs_ICycles' :: "'a lifted_globals_scheme \<Rightarrow> ICycle_Set' \<Rightarrow> ICycle_Set"
@@ -590,38 +561,6 @@ where
           is_cycle' h (iCS'!i) (cyc_obj_C (heap_Cycle_set_C h p) +\<^sub>p int i))"
 
 
-
-
-(*give  array_addrs*)
-
-(*
-definition is_cycle'
-where
-  "is_cycle' h iC p \<equiv>
-    is_valid_Cycle_C h p \<and> 
-    icycle'_start iC = start_C (heap_Cycle_C h p) \<and> 
-    icycle'_length iC = length_C (heap_Cycle_C h p) \<and>
-    icycle'_path iC = (path_C (heap_Cycle_C h p))"
- 
-definition is_cycle_set
-where
-  "is_cycle_set h iS p iC \<equiv>
-    is_valid_Cycle_set_C h p \<and> 
-    icycles_num iS = no_cycles_C (heap_Cycle_set_C h p) \<and> 
-    arrlist (heap_Cycle_C h) (is_valid_Cycle_C h)
-      ( (mk_icycle'_list iS)) (cyc_obj_C (heap_Cycle_set_C h p))"
-
-*)
-
-(*
-function from  iCycle to Cycle_C
-
-Operator:  arrlist (heap_Cycle_C h) (is_valid_Cycle_C h) ::
-  Cycle_C list \<Rightarrow> Cycle_C ptr \<Rightarrow> bool
-Operand:   mk_icycle_list iS :: (32 word \<times> 32 word \<times> (32 word \<Rightarrow> 32 word)) list
-
-    icycles iS = is_cycle h (abs_) (cyc_obj_C (heap_Cycle_set_C h p))"
-*)
 (* Abstract Graph *)
 
 definition no_loops :: 
@@ -890,39 +829,8 @@ lemma length_abs_ICycles': "length (abs_ICycles' h iYs) = length iYs"
   unfolding abs_ICycles'_def
   by simp
 
-
-
-(*
-int vert_not_in_cycles_start(Cycle_set *cse, unsigned int v) {
-    for(unsigned int i = 0; i < cse->no_cycles; i++) {
-        if(v == cse->cyc_obj[i].start) return 0;
-    }
-    return 1;
-}
-
-int parents_not_in_cycles_start(Graph *g, Cycle_set *cse, int *parent_edge, unsigned int *num, unsigned int v) {
-    unsigned int u = v;
-    for(unsigned int j = 0; j <= num[v]; j++) {
-        if(vert_not_in_cycles_start(cse, u) == 0)
-            return 0;
-        // if(arcs(g, parent_edge[u]) < edge_cnt(g)) return 0;
-        // uncomment code above to simplify proof if short on time.
-        u = arcs(g, parent_edge[u]).first;
-     }
-    return 1;
-}
-*)
-
-find_theorems "_ \<in> _ ` _"
-(*
-definition 
-  vertex_not_in_cycles_start_inv :: "ICycle_Set \<Rightarrow> IVertex \<Rightarrow> nat \<Rightarrow> bool" 
-where
-  "vertex_not_in_cycles_start_inv CS v i = (v \<notin> fst` set (take i CS))"
-*)
-
-definition 
-  vertex_not_in_cycles_start_inv :: "ICycle_Set \<Rightarrow> IVertex \<Rightarrow> nat \<Rightarrow> bool" 
+definition vertex_not_in_cycles_start_inv :: 
+  "ICycle_Set \<Rightarrow> IVertex \<Rightarrow> nat \<Rightarrow> bool" 
 where
   "vertex_not_in_cycles_start_inv CS v k = (\<forall>i< k. v \<noteq> fst (CS!  i))"
 
@@ -988,8 +896,7 @@ lemma vertex_not_in_cycles_start_spc:
   apply (clarsimp simp: vertex_not_in_cycles_start_inv_def are_cycles''_def)
   done
 
-definition 
-  parents_not_in_cycles_start_inv :: 
+definition parents_not_in_cycles_start_inv :: 
   "IGraph\<Rightarrow> ICycle_Set \<Rightarrow> IPEdge \<Rightarrow> IVertex \<Rightarrow> nat \<Rightarrow> bool" 
 where
   "parents_not_in_cycles_start_inv G CS p v k = 
@@ -1155,8 +1062,8 @@ lemma parents_not_in_cycles_start_spc:
    apply clarsimp
    done 
 
-definition 
-  int_neg_cyc_inv :: "IGraph \<Rightarrow> IENInt \<Rightarrow>ICycle_Set \<Rightarrow> IPEdge \<Rightarrow> IEInt \<Rightarrow> IVertex \<Rightarrow> bool" 
+definition int_neg_cyc_inv :: 
+  "IGraph \<Rightarrow> IENInt \<Rightarrow>ICycle_Set \<Rightarrow> IPEdge \<Rightarrow> IEInt \<Rightarrow> IVertex \<Rightarrow> bool" 
 where
   "int_neg_cyc_inv G d CS P n k = 
     (\<forall>i< k. is_inf_d d i < 0 \<longrightarrow>  
