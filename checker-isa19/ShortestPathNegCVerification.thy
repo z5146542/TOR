@@ -862,6 +862,68 @@ lemma arrlist_cycle_path_heap:
     icycle_path iY !  i = h (p +\<^sub>p int i)"
   using arrlist_nth_value by fastforce
 
+lemmas unat_le_mono = word_le_nat_alt [THEN iffD1]
+
+lemma is_numm_arrlist_heap: 
+  "is_numm s iG iN n \<Longrightarrow>  i < (ivertex_cnt iG) \<Longrightarrow>  iN i = heap_w32 s (n +\<^sub>p uint i)"  
+by (fastforce dest!:arrlist_heap simp: is_numm_def uint_nat)
+
+lemma is_numm_valid:
+  "is_numm s iG iN n \<Longrightarrow> i < ivertex_cnt iG \<Longrightarrow> is_valid_w32 s (n +\<^sub>p uint i)"
+by (fastforce dest!:arrlist_nth_valid simp: is_numm_def uint_nat word_less_def)
+
+lemma is_dist_arrlist_is_inf:
+  "is_dist s iG iD d  \<Longrightarrow> i < ivertex_cnt iG \<Longrightarrow> 
+   is_inf_d iD i = sint (isInf_C (heap_ENInt_C s (d +\<^sub>p uint i)))"
+by (simp add:  is_inf_d_heap is_dist_def)
+
+lemma is_dist_valid:
+  "is_dist s iG iD d  \<Longrightarrow> i < ivertex_cnt iG \<Longrightarrow> is_valid_ENInt_C s (d +\<^sub>p uint i)"
+by (fastforce dest!:arrlist_nth_valid simp: is_dist_def uint_nat word_less_def)
+
+lemma is_pedge_arrlist_eq: 
+  "is_pedge s iG iP p \<Longrightarrow>i < (ivertex_cnt iG) \<Longrightarrow>  0 \<le> i \<Longrightarrow>  
+     iP i = heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word)(p +\<^sub>p uint i))"  
+by (fastforce dest!: heap_ptr_coerce simp:is_pedge_def uint_nat)
+
+lemma is_pedge_valid:
+  "is_pedge s iG iP p \<Longrightarrow>i < (ivertex_cnt iG) \<Longrightarrow>  
+    is_valid_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint i))"
+by (fastforce intro: arrlist_nth_valid simp: is_pedge_def uint_nat word_less_def)
+
+lemma is_graph_head_arrlist_eq: 
+  "is_graph s iG g \<Longrightarrow> e < (iedge_cnt iG) \<Longrightarrow> 
+    snd (snd (snd iG) e) = second_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p uint e))"     
+by (fastforce simp: is_graph_def dest: head_heap)
+
+lemma is_graph_valid_graph:
+  "is_graph s iG g \<Longrightarrow> is_valid_Graph_C s g"
+by (force dest!: arrlist_nth_valid simp:is_graph_def uint_nat unat_mono) 
+
+lemma is_graph_valid_edge:
+  "\<lbrakk>is_graph s iG g; e < (iedge_cnt iG)\<rbrakk> \<Longrightarrow> 
+   is_valid_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p uint e)"
+by (force dest!: arrlist_nth_valid simp:is_graph_def uint_nat unat_mono) 
+
+lemma parent_head_in_verts:
+  "\<lbrakk>wf_digraph (abs_IGraph iG); 
+    v < ivertex_cnt iG;
+    \<forall>i\<le>n. iP (((\<lambda>v. snd (snd (snd iG) (iP v))) ^^ unat (i::32 word)) v) < iedge_cnt iG;
+    i\<le>n;
+    j=unat i -1  \<rbrakk> \<Longrightarrow> 
+    ((\<lambda>v. snd (iedges iG (iP v))) ^^ unat i) v < ivertex_cnt iG"
+  apply (case_tac "i=0", simp)
+   apply (frule_tac e1="iP (((\<lambda>v. snd (snd (snd iG) (iP v))) ^^ j) v) " in
+          wellformed_iGraph[THEN conjunct2])
+  apply (metis less_1_simp unat_minus_one word_le_less_eq)
+  apply clarsimp
+  apply (erule_tac x="i - 1" in allE)
+  apply (subst (asm) unat_minus_one, simp)
+  apply (frule_tac e1="iP (((\<lambda>v. snd (snd (snd iG) (iP v))) ^^ j) v) " in
+          wellformed_iGraph[THEN conjunct2])
+  apply (simp add: less_1_simp word_le_less_eq)
+  apply (metis (mono_tags, lifting) Suc_pred funpow_simp_l unat_gt_0)
+  done
 
 (*helpers for icycle intermediate abstraction *)
 
@@ -2977,7 +3039,6 @@ lemma abstract_val_scast_add_strict_upcast:
             \<Longrightarrow>  abstract_val P (C' + D') sint 
                     ((scast (C :: 'a word) :: 'b word) +
                       scast (D :: 'a word) :: 'b word)"
-  thm unat_plus_less_two_power_length
   apply (clarsimp simp: is_up sint_up_scast scast_def )
   apply (clarsimp simp:  word_of_int_def sint_word_ariths(1))
   apply (frule unat_plus_less_two_power_length[where C=C and D=D]) 
@@ -3159,52 +3220,15 @@ lemma awalk_cost_neg_spc':
 
  *) 
      apply (subgoal_tac "a < (max_word :: 32 word)")
-    (*  apply (subst (asm) word_nat_simp[symmetric], fast)
-      apply clarsimp*)
       apply (clarsimp simp add: awalk_neg_cyc_cost_def is_cycle_def is_cost_def awalk_edge_inv_def)
       apply (subst (asm) arrlist_cycle_path_heap, blast, fastforce simp add: word_less_nat_alt)
       apply (subst (asm) arrlist_heap[where iL=iC], fast, metis arrlist_cycle_path_heap word_less_nat_alt)
       apply (simp add: uint_nat)
       apply (subst arrlist_cycle_path_heap, blast, fastforce simp add: word_less_nat_alt)
       apply (subst arrlist_heap[where iL=iC], fast, metis arrlist_cycle_path_heap word_less_nat_alt)
-(*
-      apply (rule conjI)
-  using signed_underflow INT_MIN_def 
-
-  find_theorems sint 
-  apply (subst word_add_strict_up_cast_no_overflow_32_64)
-  using INT_MAX_def INT_MIN_def LONG_MIN_def
-  apply ()
-  unfolding max_word_def word_of_int_def apply simp
-*)
-  subgoal sorry
+      subgoal sorry
 
      apply (metis less_linear max_word_max word_le_not_less)
-
-      (*
-      apply (subgoal_tac " INT_MIN \<le> awalk_neg_cyc_cost iC iY (unat a)")
-       apply (simp add: sint_ucast INT_MIN_def) 
-       apply (subgoal_tac " awalk_neg_cyc_cost iC iY (unat a)\<le> INT_MAX")
-apply (simp add: sint_ucast INT_MAX_def)   apply (subgoal_tac "sint x \<le> 2147483647" for x)
-    using INT_MAX_def 
-  unfolding 
-      apply (subgoal_tac "awalk_neg_cyc_cost iC iY (unat a) = sint (x::32word)"  for x)
-
-       apply (metis signed_underflow sint_ucast)
- 
-  
-  unfolding awalk_neg_cyc_cost_def max_word_def sints_num
-
-  using signed_underflow[THEN subst]
-  apply (rule signed_underflow )
-  unfolding sum_list_triv
-  find_theorems "sum_list( map _ _)"
-  using signed_underflow 
-  find_theorems sint "- 9223372036854775808"
-  apply simp
-  subgoal sorry
-     apply (rule conjI) subgoal sorry*)
-
     apply wpsimp
     apply (clarsimp simp add: awalk_neg_cyc_cost_def is_cycle_def)  
     apply(fastforce simp: unat_sub[symmetric] unat_minus_plus1_less inc_le)
@@ -3259,7 +3283,6 @@ lemma C_se_inv_le:
   shows "C_se_inv G cse c d j"
   using assms 
   by (induct j) (auto simp add: C_se_inv_def)
-thm are_cycles''_def
 
 lemma are_cyclesD: 
   assumes "are_cycles'' s iYs cse"
@@ -3489,70 +3512,6 @@ lemma parents_not_in_cycles_start_inv_le :
   by (induct j) 
      (auto simp add: parents_not_in_cycles_start_inv_def)
 
-lemmas unat_le_mono = word_le_nat_alt [THEN iffD1]
-thm is_numm_def
-
-lemma is_numm_arrlist_heap: 
-  "is_numm s iG iN n \<Longrightarrow>  i < (ivertex_cnt iG) \<Longrightarrow>  iN i = heap_w32 s (n +\<^sub>p uint i)"  
-by (fastforce dest!:arrlist_heap simp: is_numm_def uint_nat)
-
-lemma is_numm_valid:
-  "is_numm s iG iN n \<Longrightarrow> i < ivertex_cnt iG \<Longrightarrow> is_valid_w32 s (n +\<^sub>p uint i)"
-by (fastforce dest!:arrlist_nth_valid simp: is_numm_def uint_nat word_less_def)
-
-lemma is_dist_arrlist_is_inf:
-  "is_dist s iG iD d  \<Longrightarrow> i < ivertex_cnt iG \<Longrightarrow> 
-   is_inf_d iD i = sint (isInf_C (heap_ENInt_C s (d +\<^sub>p uint i)))"
-by (simp add:  is_inf_d_heap is_dist_def)
-
-lemma is_dist_valid:
-  "is_dist s iG iD d  \<Longrightarrow> i < ivertex_cnt iG \<Longrightarrow> is_valid_ENInt_C s (d +\<^sub>p uint i)"
-by (fastforce dest!:arrlist_nth_valid simp: is_dist_def uint_nat word_less_def)
-
-lemma is_pedge_arrlist_eq: 
-  "is_pedge s iG iP p \<Longrightarrow>i < (ivertex_cnt iG) \<Longrightarrow>  0 \<le> i \<Longrightarrow>  
-     iP i = heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word)(p +\<^sub>p uint i))"  
-by (fastforce dest!: heap_ptr_coerce simp:is_pedge_def uint_nat)
-
-lemma is_pedge_valid:
-  "is_pedge s iG iP p \<Longrightarrow>i < (ivertex_cnt iG) \<Longrightarrow>  
-    is_valid_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) (p +\<^sub>p uint i))"
-by (fastforce intro: arrlist_nth_valid simp: is_pedge_def uint_nat word_less_def)
-
-lemma is_graph_head_arrlist_eq: 
-  "is_graph s iG g \<Longrightarrow> e < (iedge_cnt iG) \<Longrightarrow> 
-    snd (snd (snd iG) e) = second_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p uint e))"     
-by (fastforce simp: is_graph_def dest: head_heap)
-
-lemma is_graph_valid_graph:
-  "is_graph s iG g \<Longrightarrow> is_valid_Graph_C s g"
-by (force dest!: arrlist_nth_valid simp:is_graph_def uint_nat unat_mono) 
-
-lemma is_graph_valid_edge:
-  "\<lbrakk>is_graph s iG g; e < (iedge_cnt iG)\<rbrakk> \<Longrightarrow> 
-   is_valid_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p uint e)"
-by (force dest!: arrlist_nth_valid simp:is_graph_def uint_nat unat_mono) 
-
-lemma parent_head_in_verts:
-  "\<lbrakk>wf_digraph (abs_IGraph iG); 
-    v < ivertex_cnt iG;
-    \<forall>i\<le>n. iP (((\<lambda>v. snd (snd (snd iG) (iP v))) ^^ unat (i::32 word)) v) < iedge_cnt iG;
-    i\<le>n;
-    j=unat i -1  \<rbrakk> \<Longrightarrow> 
-    ((\<lambda>v. snd (iedges iG (iP v))) ^^ unat i) v < ivertex_cnt iG"
-  apply (case_tac "i=0", simp)
-   apply (frule_tac e1="iP (((\<lambda>v. snd (snd (snd iG) (iP v))) ^^ j) v) " in
-          wellformed_iGraph[THEN conjunct2])
-  apply (metis less_1_simp unat_minus_one word_le_less_eq)
-  apply clarsimp
-  apply (erule_tac x="i - 1" in allE)
-  apply (subst (asm) unat_minus_one, simp)
-  apply (frule_tac e1="iP (((\<lambda>v. snd (snd (snd iG) (iP v))) ^^ j) v) " in
-          wellformed_iGraph[THEN conjunct2])
-  apply (simp add: less_1_simp word_le_less_eq)
-  apply (metis (mono_tags, lifting) Suc_pred funpow_simp_l unat_gt_0)
-  done
-
 lemma parents_not_in_cycles_start_spc:
   "\<lbrace> P and 
      (\<lambda>s. wf_digraph (abs_IGraph iG) \<and>
@@ -3696,11 +3655,14 @@ lemma int_neg_cyc_spc:
   apply (clarsimp simp: int_neg_cyc_inv_def is_graph_valid_graph)
   done
 
-(**************************)
+(*** 
+  TODO: step3 proofs, 
+  finish C_se proofs and 
+  awalk_cost_neg within bounds **)
 
 
 
-
+(***)
 
 
 
