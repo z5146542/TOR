@@ -3353,6 +3353,7 @@ lemma is_cycle'D:
         "path_C (heap_Cycle_C h p) = icycle'_path iC'"
         "(\<forall>i<unat (icycle'_length iC'). is_valid_w32 h ((icycle'_path iC') +\<^sub>p int i))"
   using assms unfolding is_cycle'_def by simp+
+
 lemma C_se_spc':
   "\<lbrace> P and 
      (\<lambda>s. wf_digraph (abs_IGraph iG) \<and>
@@ -3691,8 +3692,8 @@ lemma int_neg_cyc_spc:
 (***)
 
 
+thm abs_IGraph_def
 
-(*
 definition shortest_paths_locale_step3_inv :: 
   "IGraph \<Rightarrow> IVertex \<Rightarrow> ICost \<Rightarrow> IEInt \<Rightarrow> IPEdge \<Rightarrow> 
    IENInt \<Rightarrow> IPEdge \<Rightarrow> ICycle_Set \<Rightarrow> bool" 
@@ -3700,23 +3701,67 @@ where
   "shortest_paths_locale_step3_inv G sc c n p d pred cse \<equiv>
    shortest_paths_locale_step2_inv G sc c n p d pred  \<and>
    C_se_inv G cse c d (length cse) \<and>
-   int_neg_cyc_inv G sc d cse c p n (ivertex_cnt G)"
+   int_neg_cyc_inv  G d cse p n (ivertex_cnt G)"
 
-*)
 
+
+lemma C_se_inv_eq_math: 
+  "wf_digraph (abs_IGraph G) \<Longrightarrow>
+C_se_inv G cse c d (length cse) =
+  (set cse \<subseteq> 
+      {(u, p). abs_IDist d u \<noteq> \<infinity> \<and> 
+                pre_digraph.awalk (abs_IGraph G) u p u \<and> 
+                wf_digraph.awalk_cost (abs_ICost c) p < 0})"
+  unfolding C_se_inv_def     
+  apply (rule iffI; clarsimp simp: abs_IDist_def)
+   apply (metis (no_types, hide_lams) 
+         awalk_cost_eq_math[symmetric] awalk_neg_cyc_cost_def 
+            dual_order.order_iff_strict fst_conv in_set_conv_nth of_int_0 of_int_less_0_iff 
+            of_int_sint awalk_spc'_eq_awalk snd_conv )
+  apply (rule conjI, fastforce simp: in_set_conv_nth)
+  apply (rule conjI, fastforce dest: nth_mem simp: awalk_spc'_eq_awalk) 
+  apply (frule_tac iY="cse ! i" in awalk_cost_eq_math[where iC=c])
+  apply(force dest!: nth_mem)  
+  done
+
+
+lemma "(shortest_paths_locale_step2_pred (abs_IGraph G) s (abs_ICost c) (abs_INat n) (abs_IPedge p) (abs_IDist d) (abs_IPedge pred) \<and>
+     C_se_inv G cse c d (length cse) \<and> int_neg_cyc_inv G d cse p n (fst G)) =
+    (shortest_paths_locale_step2_pred (abs_IGraph G) s (abs_ICost c) (abs_INat n) (abs_IPedge p) (abs_IDist d) (abs_IPedge pred) \<and>
+     set cse \<subseteq> {(u, p). abs_IDist d u \<noteq> \<infinity> \<and> pre_digraph.awalk (abs_IGraph G) u p u \<and> wf_digraph.awalk_cost (abs_ICost c) p < 0} \<and>
+     (\<forall>v<fst G. abs_IDist d v = - \<infinity> \<longrightarrow> fst ` set cse \<inter> shortest_paths_locale_step1.pwalk_verts (abs_IGraph G) s (abs_IPedge p) (abs_IDist d) v \<noteq> {}))"
+  oops
+
+lemma shortest_paths_locale_step3_eq_maths:
+  "\<And>G s c n p d pred cse.
+    shortest_paths_locale_step3_inv G s c n p d pred cse
+    =
+    shortest_paths_locale_step3_pred
+    (abs_IGraph G) s (abs_ICost c) (abs_INat n)
+    (abs_IPedge p) (abs_IDist d) (abs_IPedge pred) (set cse)"
+proof -
+  fix G c s n p d pred cse
+  let ?aG = "abs_IGraph G"
+  let ?ad = "abs_IDist d"
+  let ?ac = "abs_ICost c"
+  let ?an = "abs_INat n"
+  let ?ap = "abs_IPedge p"
+  show "?thesis G s c n p d pred cse"
+    unfolding  shortest_paths_locale_step3_inv_def 
+      shortest_paths_locale_step3_pred_def 
+      shortest_paths_locale_step3_pred_axioms_def
+    apply (simp add: shortest_paths_locale_step2_eq_maths)
+    oops
+    by (metis (no_types, hide_lams) atLeastLessThan_iff no_edge_Vm_Vf_inv_eq_maths abs_INat_to_abs_INum 
+      basic_just_sp_eq_maths shortest_paths_locale_step1_inv_eq_maths source_val_inv_eq_maths verts_absI 
+      shortest_paths_locale_step1.s_assms(1))
+qed
 
 (**to be updated to step3 *)
 (*
 
 
-lemma shortest_paths_locale_step3_eq_maths:
-  "\<And>G s c n p d pred.
-    shortest_paths_locale_step3_inv G s c n p d pred
-    =
-    shortest_paths_locale_step3_pred
-    (abs_IGraph G) s (abs_ICost c) (abs_INat n)
-    (abs_IPedge p) (abs_IDist d) (abs_IPedge pred)"
-  sorry
+
 definition shortest_paths_locale_step2_inv :: 
   "IGraph \<Rightarrow> IVertex \<Rightarrow> ICost \<Rightarrow> IEInt \<Rightarrow> IPEdge \<Rightarrow> IENInt \<Rightarrow> IPEdge \<Rightarrow> bool" where
   "shortest_paths_locale_step2_inv G sc c n p d pred  \<equiv>
