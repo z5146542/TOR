@@ -3268,7 +3268,7 @@ definition C_se_inv ::
 
 
 lemma C_se_inv_step:
-  "C_se_inv G cse c d (i + 1) \<longleftrightarrow> 
+  "C_se_inv G cse c d (Suc i) \<longleftrightarrow> 
        C_se_inv G cse c d i \<and>
        (is_inf_d d (icycle_start (cse ! i)) \<le> 0) \<and>
         awalk_spc' G (cse ! i) \<and>
@@ -3304,10 +3304,10 @@ lemma length_abs_ICycles': "length (abs_ICycles' h iYs) = length iYs"
   by simp
 
 lemma awalk_cost_neg_spc:
-    "\<lbrakk>is_cycle s iY y; 
-     is_graph s iG g; 
+    "\<lbrakk>is_graph s iG g;  
       wf_digraph (abs_IGraph iG);
       is_cost s iG iC c;
+      is_cycle s iY y; 
       n = length (snd iY);
       awalk_edge_inv iG iY n\<rbrakk> \<Longrightarrow>
       awalk_cost_neg' c y s \<noteq> None \<and> 
@@ -3315,7 +3315,44 @@ lemma awalk_cost_neg_spc:
       r = awalk_neg_cyc_cost iC iY n)"
 by (simp add: awalk_cost_neg_spc'[simplified ovalidNF_def])
 
+lemma abs_ICycles'_nth_eq:
+  "i < length iY' \<Longrightarrow> abs_ICycles' s iY' ! i = abs_ICycle' s  (iY'! i)"
+by (simp add: abs_ICycles'_def)
 
+lemma abs_ICycle'_simps:
+   "fst (abs_ICycle' h iC) = icycle'_start iC"
+   "snd (abs_ICycle' h iC) = mk_ipath'_list h iC"
+  by simp+
+
+lemma length_mk_ipath'_list: 
+  "length (mk_ipath'_list h C) = unat (icycle'_length C)"
+  using mk_ipath_length by simp
+
+lemma awalk_spc'D:
+  assumes "awalk_spc' G C "
+  shows "icycle_start C < ivertex_cnt G"
+        "awalk_edge_inv G C (length (icycle_path C))"
+        "cas_cyc_inv G C (length (icycle_path C))"
+using assms unfolding awalk_spc'_def by simp+
+
+lemma awalk_spc'I:
+  "\<lbrakk> icycle_start C < ivertex_cnt G;
+     awalk_edge_inv G C (length (icycle_path C));
+     cas_cyc_inv G C (length (icycle_path C))\<rbrakk> \<Longrightarrow> awalk_spc' G C "
+unfolding awalk_spc'_def by simp
+
+declare abs_ICycle'.simps [simp del]
+declare abs_ICycle'_simps [simp]
+declare mk_ipath'_list.simps [simp del]
+
+lemma is_cycle'D: 
+  assumes "is_cycle' h iC' p"
+  shows "is_valid_Cycle_C h p"
+        "start_C (heap_Cycle_C h p) = icycle'_start iC'"
+        "length_C (heap_Cycle_C h p) = icycle'_length iC'"
+        "path_C (heap_Cycle_C h p) = icycle'_path iC'"
+        "(\<forall>i<unat (icycle'_length iC'). is_valid_w32 h ((icycle'_path iC') +\<^sub>p int i))"
+  using assms unfolding is_cycle'_def by simp+
 lemma C_se_spc':
   "\<lbrace> P and 
      (\<lambda>s. wf_digraph (abs_IGraph iG) \<and>
@@ -3328,73 +3365,62 @@ lemma C_se_spc':
    \<lbrace> (\<lambda>_ s. P s) And 
      (\<lambda>rr s. rr \<noteq> 0  \<longleftrightarrow> 
          C_se_inv iG iY iC iD (length iY))\<rbrace>!"
+  (is "\<lbrace> ?pre  \<rbrace> 
+       ?prog 
+       \<lbrace> (\<lambda>_ s. P s) And (\<lambda>rr s. rr \<noteq> 0  \<longleftrightarrow>  ?inv (?ncycles:: nat)) \<rbrace>!" )
   unfolding C_se'_def 
   apply wpsimp
- (* apply (clarsimp simp: C_se'_def)
-  apply wp*)
     apply (subst whileLoopE_add_inv [where 
-            M="\<lambda>(cc, s). length iY - cc" and
-            I="\<lambda>cc s. P s \<and> 
+            M="\<lambda>(cc, s). ?ncycles - cc" and
+            I="\<lambda>cc s. ?pre s \<and> 
                    C_se_inv iG iY iC iD cc \<and> 
-                   cc \<le> length iY \<and> 
-                   wf_digraph (abs_IGraph iG) \<and>
-                   is_graph s iG g \<and>
-                   are_cycles'' s iY' cse  \<and>
-                   iY = abs_ICycles' s iY' \<and>
-                   is_cost s iG iC c \<and>
-                   is_dist s iG iD d"])
+                   cc \<le> length iY"])
     apply wp
-         apply (rename_tac cc s' x xa xb y)
-         apply (rule_tac P1="P and (\<lambda>s. 
+       apply (rename_tac cc s' x cc')
+       apply (rule_tac P1="(\<lambda>s. ?pre s \<and>
                    C_se_inv iG iY iC iD cc \<and> 
                    cc < length iY \<and> 
-                   wf_digraph (abs_IGraph iG) \<and>
-                   is_graph s iG g \<and>
-                   are_cycles'' s iY' cse  \<and>
-                   iY = abs_ICycles' s iY' \<and>
-                   is_cost s iG iC c \<and>
-                   is_dist s iG iD d \<and>
-                   is_inf_d iD (icycle_start (iY ! cc)) \<le> 0 )" 
-              and iG1=iG and iY1="iY!cc"
-          in validNF_post_imp[OF _ awalk_spc'])
-(* \<and> 
-                   awalk_neg_cyc_cost iC (iY ! cc) 
-                    (length (icycle_path(iY ! cc))) < 0 *)
-         apply clarsimp
-         apply (rename_tac cc r s') 
-         apply (case_tac "r\<noteq>0"; clarsimp) 
-          apply (rule conjI; clarsimp)
-           apply (rule conjI)
-            apply (fastforce 
-                intro!: awalk_cost_neg_spc[THEN conjunct1, simplified not_None_eq]
-                dest!: are_cycles_is_icycle 
-                simp: length_abs_ICycles' awalk_spc'_def abs_ICycles'_def)
-           apply (simp add: are_cyclesD)
-           apply (rule conjI) 
-            apply (clarsimp simp: C_se_inv_def)
-            apply (rule_tac x=cc in exI, clarsimp)
-            subgoal sorry
-           subgoal sorry
-          subgoal sorry
-         subgoal sorry
-        apply wp+
+                   cc < UINT_MAX)"
+                   and iG1=iG and iY1="iY!cc"
+              in validNF_post_imp[OF _ awalk_spc'])
+       apply (clarsimp simp: are_cyclesD(2))
+       apply (rename_tac cc r s)
+       apply (case_tac "r\<noteq>0"; clarsimp simp: length_abs_ICycles')
+        apply (frule are_cyclesD(3)[THEN spec, THEN mp], simp)
+        apply (clarsimp simp: is_cycle'D)
+        apply (subst (asm) abs_ICycles'_nth_eq, simp)
+        apply (frule is_icycle'_is_icycle)
+        apply (frule awalk_spc'D(1), frule awalk_spc'D(2), frule awalk_spc'D(3))
+        apply (frule awalk_cost_neg_spc, (simp add: is_cycle'D abs_ICycles'_nth_eq)+)
+        apply (frule is_dist_arrlist_is_inf, simp)
+        apply (drule is_dist_valid; simp)
+        apply (frule less_eq_Suc_le[THEN iffD1])
+        apply (fastforce dest!: C_se_inv_le 
+                         simp: C_se_inv_step is_cycle'_def abs_ICycles'_nth_eq)
+       apply (simp add: C_se_inv_def)
+      apply wp+
+     apply (clarsimp simp: are_cyclesD(1)[symmetric] )
+     apply (frule are_cycles_is_icycle[THEN spec, THEN  mp], assumption)
+     apply (clarsimp simp: is_cycle_valid abs_ICycles'_nth_eq)
+     apply (metis INT_MIN_MAX_lemmas(12) Suc_le_eq le_trans are_cycles''_def length_abs_ICycles') 
+    apply (metis (mono_tags) nat_less_le pred_conj_app are_cyclesD(1) length_abs_ICycles')
+   apply wp
+  apply (clarsimp simp: C_se_inv_def are_cyclesD)
+  done
+(*
      apply (clarsimp simp: are_cyclesD)
      apply (rule conjI; clarsimp simp: C_se_inv_def)
       apply (rule conjI)
-       apply rule 
-       apply (rule conjI , simp add: are_cycles''_def length_abs_ICycles')
-       apply clarsimp
+       apply (rule exI)
+       apply (rule conjI, simp add: are_cycles''_def length_abs_ICycles')
+              apply clarsimp 
        unfolding  is_dist_def 
        apply (drule_tac i="int (unat (fst (iY! cc)))" in arrlist_nth_value; simp)
-        apply (fastforce simp: unat_mono awalk_spc'_def)
-       subgoal sorry
-      subgoal sorry
-     subgoal sorry 
-    apply clarsimp 
-    apply (simp add: are_cyclesD(1) length_abs_ICycles')
-  apply wp
-  apply (clarsimp simp: C_se_inv_def are_cyclesD)
-  done
+        apply (fastforce simp: unat_mono awalk_spc'_def) 
+       subgoal sorry 
+
+      subgoal sorry *)
+    
 (*
          apply (clarsimp dest!: are_cyclesD)
          apply (rule conjI; clarsimp)+ 
