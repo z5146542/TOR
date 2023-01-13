@@ -4368,7 +4368,7 @@ lemma shortest_paths_locale_step3_spc_intermediate:
     apply (rule conjI, simp)+
     apply clarsimp
   (*"iP (((\<lambda>v. snd (snd (snd iG) (iP v))) ^^ unat i) v) < fst (snd iG)"*)
-  subgoal sorry
+  subgoal  sorry
   apply (rule_tac P1=" P and 
     (\<lambda>s.  wf_digraph (abs_IGraph iG) \<and>
           is_graph s iG g \<and>
@@ -4387,21 +4387,24 @@ lemma shortest_paths_locale_step3_spc_intermediate:
 
 lemma shortest_paths_locale_step3_spc:
   "\<lbrace> P and 
-     (\<lambda>s. is_graph s iG g \<and>
+     (\<lambda>s. wf_digraph (abs_IGraph iG) \<and>
+          is_graph s iG g \<and>
           is_dist s iG iD d \<and>
           is_numm s iG iN n \<and>
           is_cost s iG iC c \<and>
           is_pedge s iG iP p \<and>
           is_pedge s iG iPred pred \<and>
-          are_cycles'' s iCS cse)\<rbrace>
+          are_cycles'' s iCS' cse \<and> iCS = abs_ICycles' s iCS')\<rbrace>
    shortest_paths_locale_step3' g sc c n pred d cse p
    \<lbrace> (\<lambda>_ s. P s) And 
      (\<lambda>rr s. rr \<noteq> 0  \<longleftrightarrow> 
         shortest_paths_locale_step3
     (abs_IGraph iG) sc (abs_ICost iC) (abs_INat iN)
-    (abs_IPedge iP) (abs_IDist iD) (set (abs_ICycles' s iCS) ))\<rbrace>!"
- using validNF_post_imp[OF _ shortest_paths_locale_step3_spc_intermediate]
-       shortest_paths_locale_step3_eq_maths 
+    (abs_IPedge iP) (abs_IDist iD) (set iCS))\<rbrace>!"
+  using validNF_post_imp
+          [OF _ shortest_paths_locale_step3_spc_intermediate]
+
+  using     shortest_paths_locale_step3_eq_maths 
      oops   
 
 
