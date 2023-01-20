@@ -3713,11 +3713,7 @@ lemma C_se_inv_eq_math:
   done
 
 lemma vertex_not_in_cycles_start_inv_eq_math:
-  "vertex_not_in_cycles_start_inv CS v (length CS) = 
-   (v \<notin> fst ` set CS)"
-(*= 
-(shortest_paths_locale_step1.pwalk_verts 
-   (abs_IGraph G) s (abs_IPedge p) (abs_IDist d) v = {})*)
+  "vertex_not_in_cycles_start_inv CS v (length CS) = (v \<notin> fst ` set CS)"
   unfolding vertex_not_in_cycles_start_inv_def 
   by (metis (no_types, hide_lams) image_iff in_set_conv_nth)
 
@@ -3751,7 +3747,7 @@ lemma length_awalk_simp:
      v \<noteq> s \<and> v \<in> verts G \<and> d v \<noteq> \<infinity> \<or> v = s \<rbrakk> \<Longrightarrow>
    length (pre_digraph.awalk_verts G s 
           (shortest_paths_locale_step1.pwalk G s p d v)) =  Suc (n v)"
-  by (simp add: length_pwalk_simp pre_digraph.length_awalk_verts)
+by (simp add: length_pwalk_simp pre_digraph.length_awalk_verts)
 
 lemma head_iedges_awalk_math_base:
   "\<lbrakk> wf_digraph (abs_IGraph G);
@@ -4044,12 +4040,60 @@ lemma parent_edges_exist:
    \<forall>i\<le>n v. ((\<lambda>v. (p v)) ^^ i) v \<noteq> None"
   sorry
 
+lemma (in shortest_paths_locale_step2_pred) parent_edges_exist_and_wellformed : 
+   "\<lbrakk> v\<in>verts G; v\<noteq>s ; dist v \<noteq> \<infinity>\<rbrakk> \<Longrightarrow> 
+    \<forall>i\<le>num v.
+      \<exists>e. ((\<lambda>v. (parent_edge v)) ^^ i) v = Some e \<and> 
+          e \<in> arcs G \<and> 
+          head G e \<in> verts G \<and> 
+          tail G e \<in> verts G"
+  apply (induct "num v" arbitrary: v)
+  apply (fastforce dest!: parent_num_assms)
+  apply(drule parent_num_assms, simp+)
+   apply (erule notE)
+  apply (case_tac "v=s"; clarsimp)
 
-(* set lemma *)
-lemma nth_notin_disjoint:
-  "\<lbrakk>\<forall>i\<le>n. W' ! i \<notin> C; n = length W'; W = set W'\<rbrakk> \<Longrightarrow> 
-   C \<inter> W = {}"
-by (metis disjoint_iff_not_equal in_set_conv_nth less_imp_le_nat)
+  using s_assms parent_num_assms 
+
+  sorry
+
+lemma parent_edges_exist_and_wellformed': 
+  "shortest_paths_locale_step2_pred G s c n p d pred \<Longrightarrow>
+   \<forall>i\<le>n v. \<exists>e. ((\<lambda>v. (p v)) ^^ i) v = Some e \<and> e \<in> arcs G \<and> head e \<in> verts G \<and> tail e \<in> verts G "
+  sorry
+
+lemma parents_in_graph':
+  " \<And>r s v i.
+       wf_digraph (abs_IGraph iG) \<Longrightarrow>
+       is_graph s iG g \<Longrightarrow>
+       is_pedge s iG iP p \<Longrightarrow>
+       shortest_paths_locale_step2_inv iG sc iC iN iP iD iPred \<Longrightarrow>
+       C_se_inv iG (abs_ICycles' s iCS') iC iD (length (abs_ICycles' s iCS')) \<Longrightarrow>
+       v < fst iG \<Longrightarrow> v\<noteq>sc \<Longrightarrow> abs_IDist iD v \<noteq> \<infinity> \<Longrightarrow> i \<le> iN v \<Longrightarrow> 
+   iP (((\<lambda>v. snd (snd (snd iG) (iP v))) ^^ unat i) v) < fst (snd iG)"
+  unfolding shortest_paths_locale_step2_inv_eq_maths
+  apply (drule_tac v=v in shortest_paths_locale_step2_pred.parent_edges_exist_and_wellformed, simp_all)
+
+unfolding abs_IGraph_def apply simp
+(*TODO working here!*)
+  oops
+lemma parents_in_graph:
+  " \<And>r s v i.
+       P s \<Longrightarrow>
+       wf_digraph (abs_IGraph iG) \<Longrightarrow>
+       is_graph s iG g \<Longrightarrow>
+       is_pedge s iG iP p \<Longrightarrow>
+       shortest_paths_locale_step2_inv iG sc iC iN iP iD iPred \<Longrightarrow>
+       C_se_inv iG (abs_ICycles' s iCS') iC iD (length (abs_ICycles' s iCS')) \<Longrightarrow>
+       r \<noteq> 0 \<Longrightarrow> v \<le> fst iG \<Longrightarrow> i \<le> iN v \<Longrightarrow> iP (((\<lambda>v. snd (snd (snd iG) (iP v))) ^^ unat i) v) < fst (snd iG)"
+  oops
+
+(* set lemma not really in this locale just need to move  *)
+lemma (in shortest_paths_locale_step1) not_in_nth_eq_disjoint:
+  "\<lbrakk> n = length W'; W = set W'\<rbrakk> \<Longrightarrow> (\<forall>i<n. W' ! i \<notin> C)\<equiv>
+   C \<inter> W = {}" 
+  using disjoint_iff_not_equal in_set_conv_nth by smt 
+
 
 
 
@@ -4066,8 +4110,34 @@ using parent_num_assms s_assms
   using parent_num_assms s_assms
   
   
-  oops 
+  sorry  
 
+lemma (in shortest_paths_locale_step1) head_parents_nth_eq_pwalk_nth:
+  "wf_digraph G \<Longrightarrow>
+    v \<in> verts G \<Longrightarrow>
+    dist v \<noteq> \<infinity> \<Longrightarrow>
+    \<forall>i\<le>num v. 
+      ((\<lambda>v. pre_digraph.head G (the (parent_edge v))) ^^ i) v = 
+      awalk_verts s (pwalk v) ! i"
+  sorry
+
+lemma (in shortest_paths_locale_step1) temp':
+  " \<lbrakk> wf_digraph G; v \<in> verts G; 
+    dist v \<noteq> \<infinity>\<rbrakk> \<Longrightarrow>
+    (\<forall>i\<le>num v. awalk_verts s (pwalk v) ! i \<notin> S) =
+    (S \<inter> pwalk_verts v = {})"
+  unfolding pwalk_verts_def
+
+   apply (subst not_in_nth_eq_disjoint[symmetric])
+  using num_eq_length_pwalk head_parents_nth_eq_pwalk_nth 
+  apply fast
+   apply blast
+ 
+using num_eq_length_pwalk head_parents_nth_eq_pwalk_nth 
+  using s_assms(1) s_assms(2) s_assms(4) 
+  apply auto
+  done
+(*
 lemma temp':
   " \<lbrakk> wf_digraph G;
      shortest_paths_locale_step2_pred G s c n p d pred\<rbrakk> \<Longrightarrow>  
@@ -4108,9 +4178,11 @@ lemma temp':
   find_theorems "?A \<inter> ?B  = {}" "_ ! _" 
   using parent_edges_exist 
   sorry
-
+*)
 lemma temp:
   "\<lbrakk> wf_digraph (abs_IGraph G);
+v \<in> verts (abs_IGraph G);
+ abs_IDist d v \<noteq> \<infinity>;
      C_se_inv G cse c d (length cse); 
      shortest_paths_locale_step2_inv G s c n p d pred\<rbrakk> \<Longrightarrow>
    \<forall>i\<le>abs_INat n v.
@@ -4125,20 +4197,10 @@ lemma temp:
      shortest_paths_locale_step1.pwalk_verts (abs_IGraph G) s (abs_IPedge p)
       (abs_IDist d) v =
      {})"
-  apply (subgoal_tac "\<forall>v. \<not> msb (p v)")
-  apply (subst temp'[where n="abs_INat n" and p="abs_IPedge p" and 
-                    G="abs_IGraph G" and d="abs_IDist d" and 
-                    cse=cse and v=v, symmetric, simplified target_absI]) 
-   unfolding abs_IPedge_def
-    apply simp 
-   apply simp
-  subgoal sorry
-  try0
-  apply 
-  apply simp
+  by (simp add: shortest_paths_locale_step1.temp'
+                shortest_paths_locale_step1_inv_eq_maths 
+                shortest_paths_locale_step2_inv_def )
 
-
-  sorry
 
 lemma parents_not_in_cycles_start_inv_eq_math': 
   "\<lbrakk> wf_digraph (abs_IGraph G);
@@ -4209,6 +4271,8 @@ parents_not_in_cycles_start_inv_def
   
   oops
   find_theorems "_\<inter>_ = _ \<Longrightarrow> _"*)
+
+
 lemma parents_not_in_cycles_start_inv_eq_math:
   "\<lbrakk> wf_digraph (abs_IGraph G);
      v \<in> verts (abs_IGraph G); 
@@ -4268,6 +4332,7 @@ unfolding shortest_paths_locale_step1.enum_def
   subgoal  sorry
   sorry
 *)
+
 lemma int_neg_cyc_inv_eq_math:
   "\<lbrakk> wf_digraph (abs_IGraph G);
      shortest_paths_locale_step1 (abs_IGraph G) s (abs_INat n) (abs_IPedge p) (abs_IDist d)\<rbrakk> \<Longrightarrow>
@@ -4398,15 +4463,11 @@ lemma shortest_paths_locale_step3_spc:
    shortest_paths_locale_step3' g sc c n pred d cse p
    \<lbrace> (\<lambda>_ s. P s) And 
      (\<lambda>rr s. rr \<noteq> 0  \<longleftrightarrow> 
-        shortest_paths_locale_step3
+        shortest_paths_locale_step3_pred
     (abs_IGraph iG) sc (abs_ICost iC) (abs_INat iN)
-    (abs_IPedge iP) (abs_IDist iD) (set iCS))\<rbrace>!"
-  using validNF_post_imp
-          [OF _ shortest_paths_locale_step3_spc_intermediate]
-
-  using     shortest_paths_locale_step3_eq_maths 
-     oops   
-
+    (abs_IPedge iP) (abs_IDist iD) (abs_IPedge iPred) (set iCS))\<rbrace>!"
+  by (fastforce intro!: validNF_post_imp[OF _ shortest_paths_locale_step3_spc_intermediate] 
+                   simp: shortest_paths_locale_step3_eq_maths) 
 
 end
 
