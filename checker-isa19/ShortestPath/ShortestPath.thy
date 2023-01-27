@@ -28,7 +28,6 @@ locale basic_just_sp =
 
 locale shortest_path_pos_cost =
   basic_just_sp +
-  assumes s_in_G: "s \<in> verts G"
   assumes tail_val: "dist s = 0"
   assumes no_path: "\<And>v. v \<in> verts G \<Longrightarrow> dist v = \<infinity> \<longleftrightarrow> num v = \<infinity>"
   assumes pos_cost: "\<And>e. e \<in> arcs G \<Longrightarrow> 0 \<le> c e"
@@ -53,16 +52,15 @@ by unfold_locales (blast)
 
 locale shortest_path_pos_cost_pred =
   basic_just_sp_pred +
-  assumes s_in_G: "s \<in> verts G"
   assumes tail_val: "dist s = 0"
   assumes no_path: "\<And>v. v \<in> verts G \<Longrightarrow> dist v = \<infinity> \<longleftrightarrow> num v = \<infinity>"
   assumes pos_cost: "\<And>e. e \<in> arcs G \<Longrightarrow> 0 \<le> c e"
 
 sublocale shortest_path_pos_cost_pred \<subseteq> shortest_path_pos_cost
-using shortest_path_pos_cost_pred_axioms 
-by unfold_locales 
-   (auto simp: shortest_path_pos_cost_pred_def 
-   shortest_path_pos_cost_pred_axioms_def)
+  using shortest_path_pos_cost_pred_axioms 
+  by unfold_locales
+   (auto simp: shortest_path_pos_cost_pred_def basic_just_sp_pred_def
+   shortest_path_pos_cost_pred_axioms_def basic_sp_def basic_sp_axioms_def)
 
 lemma tail_value_helper:
   assumes "hd p = last p"

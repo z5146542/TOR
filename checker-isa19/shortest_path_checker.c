@@ -87,6 +87,7 @@ int no_path(Graph *g, EInt *dist, EInt *enu) {
 
 int check_basic_just_sp(Graph *g, EInt *dist, unsigned int *c, unsigned int s, EInt *enu, int *pred) {
     if(!is_wellformed(g)) return 0;
+    if(s >= vertex_cnt(g)) return 0;
     if(dist[s].isInf != 0) return 0;
     if(dist[s].val > 0) return 0;
     if(!trian(g, dist, c)) return 0;
@@ -96,7 +97,6 @@ int check_basic_just_sp(Graph *g, EInt *dist, unsigned int *c, unsigned int s, E
 
 int check_sp(Graph *g, EInt *dist, unsigned int *c, unsigned int s, EInt *enu, int *pred) {
     if(!check_basic_just_sp(g, dist, c, s, enu, pred)) return 0;
-    if(s >= vertex_cnt(g)) return 0;
     if(dist[s].val != 0) return 0;
     if(!no_path(g, dist, enu)) return 0;
     // if(!pos_cost(g, c)) return 0;
