@@ -1439,7 +1439,6 @@ definition basic_sp_inv ::
   "IGraph \<Rightarrow> IEInt \<Rightarrow> ICost \<Rightarrow> IVertex \<Rightarrow> IEInt \<Rightarrow> IPEdge \<Rightarrow> bool" where
   "basic_sp_inv G d c s n p \<equiv>
        (basic_just_sp_inv G d c s n p \<and>
-        s < ivertex_cnt G \<and>
         val d s = 0 \<and>
         no_path_inv G d n (ivertex_cnt G)\<and>
         (\<forall>e < ivertex_cnt G. 0 \<le> c e))"
@@ -1493,15 +1492,20 @@ lemma shortest_path_pos_cost_spc':
         apply argo
        apply (unfold is_dist_def)[1]
        apply (subst val_heap, simp+)
-      apply (simp add: basic_just_sp_inv_def)
+        apply (simp add: basic_just_sp_inv_def)
+       apply (subgoal_tac "fst (iD sc) = val_C (heap_EInt_C s (d +\<^sub>p uint sc))")
+        apply argo
+       apply (unfold is_dist_def is_graph_def)[1]
+       apply (subst val_heap, simp+)
+        apply (simp add: basic_just_sp_inv_def)
+       apply (simp add: is_graph_def)
+      apply (simp add: is_graph_def is_dist_def basic_just_sp_inv_def)
      apply (subgoal_tac "fst (iD sc) = val_C (heap_EInt_C s (d +\<^sub>p uint sc))")
       apply argo
-     apply (unfold is_dist_def is_graph_def)[1]
-     apply (subst val_heap, simp+)
-      apply (simp add: basic_just_sp_inv_def)
-     apply (simp add: is_graph_def)
-    apply (simp add: is_graph_def is_dist_def basic_just_sp_inv_def)
-    apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+)
+     apply (unfold is_dist_def)[1] 
+     apply (simp add: basic_just_sp_inv_def)
+    apply (unfold is_dist_def is_graph_def basic_just_sp_inv_def)[1]
+    apply (rule arrlist_nth, (simp add: uint_nat unat_mono)+) 
    apply (rule_tac P1= "P and 
     (\<lambda>s.  is_graph s iG g \<and>
           is_dist s iG iD d \<and>
