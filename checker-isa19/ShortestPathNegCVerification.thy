@@ -3227,6 +3227,7 @@ lemma awalk_cost_neg_spc':
       apply (simp add: uint_nat)
       apply (subst arrlist_cycle_path_heap, blast, fastforce simp add: word_less_nat_alt)
       apply (subst arrlist_heap[where iL=iC], fast, metis arrlist_cycle_path_heap word_less_nat_alt)
+      (* TODO: This proof that there is no over or underflow is still needed *)
       subgoal sorry
 
      apply (metis less_linear max_word_max word_le_not_less)
@@ -3676,14 +3677,7 @@ lemma int_neg_cyc_spc:
   apply (clarsimp simp: int_neg_cyc_inv_def is_graph_valid_graph)
   done
 
-(*** 
-  TODO: step3 proofs, 
-  finish C_se proofs and 
-  awalk_cost_neg within bounds **)
 
-
-
-(***)
 
 definition shortest_paths_locale_step3_inv :: 
   "IGraph \<Rightarrow> IVertex \<Rightarrow> ICost \<Rightarrow> IEInt \<Rightarrow> IPEdge \<Rightarrow> 
@@ -3714,70 +3708,88 @@ lemma C_se_inv_eq_math:
 
 lemma vertex_not_in_cycles_start_inv_eq_math:
   "vertex_not_in_cycles_start_inv CS v (length CS) = (v \<notin> fst ` set CS)"
-  unfolding vertex_not_in_cycles_start_inv_def 
-  by (metis (no_types, hide_lams) image_iff in_set_conv_nth)
+unfolding vertex_not_in_cycles_start_inv_def 
+by (metis (no_types, hide_lams) image_iff in_set_conv_nth)
 
 (*
-lemma pwalk_source_math:
-  "\<lbrakk>shortest_paths_locale_step1 (abs_IGraph G) s (abs_INat n) (abs_IPedge p) (abs_IDist d)\<rbrakk> \<Longrightarrow> 
-    \<forall>i\<le> abs_INat n s. 
-      (((\<lambda>v. snd (iedges G (p v)))^^ i) s) = 
-    pre_digraph.awalk_verts (abs_IGraph G) s 
-       (shortest_paths_locale_step1.pwalk (abs_IGraph G) s (abs_IPedge p) (abs_IDist d) s) !i"
-  by (simp add: shortest_paths_locale_step1.pwalk_simps(1) pre_digraph.awalk_verts_conv  
-              shortest_paths_locale_step1.s_assms(4))
+lemma iedges_walk_awalk_verts_math:
+  "\<lbrakk>shortest_paths_locale_step1 (abs_IGraph G) s n (abs_IPedge p) d\<rbrakk> \<Longrightarrow> 
+    \<forall>i\<le> n v. 
+      (((\<lambda>v. snd (iedges G (p v)))^^ i) v) = 
+    pre_digraph.awalk_verts (abs_IGraph G) s
+       (shortest_paths_locale_step1.pwalk (abs_IGraph G) s (abs_IPedge p) d v) !i"
+  apply (induct "n v" arbitrary: v)
+using shortest_paths_locale_step1.pwalk_simps(1) pre_digraph.awalk_verts_conv  
+              shortest_paths_locale_step1.s_assms(4) sledgehammer
+
+  sorry
  *)
 
 (* move to ShortestPathNeg or a Util file  *)
-lemma length_pwalk_simp: 
-  "\<lbrakk> shortest_paths_locale_step1 G s n p d; 
-     v \<noteq> s \<and> v \<in> verts G \<and> d v \<noteq> \<infinity> \<or> v = s\<rbrakk> \<Longrightarrow>
-   length (shortest_paths_locale_step1.pwalk G s p d v) =  n v"
-  apply (induct "n v" arbitrary: v) 
-   apply (fastforce dest: shortest_paths_locale_step1.num_s_is_min 
-                          shortest_paths_locale_step1.pwalk_simps(1))
-  apply (case_tac "s=v"; clarsimp simp:shortest_paths_locale_step1.s_assms) 
-  apply (force simp: shortest_paths_locale_step1.pwalk_simps(2)
-               dest!: shortest_paths_locale_step1.path_from_root_Vr_ex 
-               elim!: reachable_in_vertsE)
+lemma (in shortest_paths_locale_step1) length_pwalk: 
+  "\<lbrakk> v \<noteq> s \<and> v \<in> verts G \<and> dist v \<noteq> \<infinity> \<or> v = s\<rbrakk> \<Longrightarrow>
+   length (pwalk v) = num v"
+  apply (induct "num v" arbitrary: v) 
+   apply (fastforce dest: num_s_is_min 
+                          pwalk_simps(1))
+  apply (case_tac "v=s", clarsimp simp: s_assms) 
+  apply (drule_tac x="tail G (the (parent_edge v))" in meta_spec)
+  apply (metis Suc_eq_plus1 arc_implies_awalk awalk_hd_in_verts
+          length_append_singleton nat_add_right_cancel option.sel 
+          path_from_root_Vr_ex pwalk_simps(2))
   done
+ 
+lemma (in shortest_paths_locale_step1)length_awalk: 
+  "\<lbrakk> v \<noteq> s \<and> v \<in> verts G \<and> dist v \<noteq> \<infinity> \<or> v = s \<rbrakk> \<Longrightarrow>
+   length (pre_digraph.awalk_verts G s (pwalk v)) =  Suc (num v)"
+by (metis pre_digraph.length_awalk_verts length_pwalk)
 
-lemma length_awalk_simp: 
-  "\<lbrakk> shortest_paths_locale_step1 G s n p d; 
-     v \<noteq> s \<and> v \<in> verts G \<and> d v \<noteq> \<infinity> \<or> v = s \<rbrakk> \<Longrightarrow>
-   length (pre_digraph.awalk_verts G s 
-          (shortest_paths_locale_step1.pwalk G s p d v)) =  Suc (n v)"
-by (simp add: length_pwalk_simp pre_digraph.length_awalk_verts)
+(*
+lemma (in shortest_paths_locale_step1) num_eq_length_pwalk:
+  "wf_digraph G \<Longrightarrow> v \<in> verts G \<Longrightarrow>
+    dist v \<noteq> \<infinity> \<Longrightarrow>
+    \<forall>i\<le>num v. v \<noteq> s \<longrightarrow> ((\<lambda>v. head G (the (parent_edge v))) ^^ i) v =
+       awalk_verts s (pwalk v) ! Suc i \<Longrightarrow>
+    Suc (num v) = length (awalk_verts  s (pwalk v))"
+  apply (induction "num v" arbitrary: v) 
+  apply (cases "v=s") using s_assms num_s_is_min 
+    using s_assms pwalk.simps parent_num_assms  
+  using parent_num_assms s_assms
+  
+  
+  sorry  
 
+*)
+(*
 lemma head_iedges_awalk_math_base:
   "\<lbrakk> wf_digraph (abs_IGraph G);
-     abs_INat n v = 0;
-     shortest_paths_locale_step2_inv G s c n p d pred;
-     shortest_paths_locale_step1 (abs_IGraph G) s (abs_INat n) (abs_IPedge p) (abs_IDist d)\<rbrakk> \<Longrightarrow> 
-     \<forall>i\<le>k. v\<noteq>s \<and> v \<in> verts (abs_IGraph G) \<and> abs_IDist d v = - \<infinity> \<or> v=s \<longrightarrow>
+      num v = 0;
+     shortest_paths_locale_step1 (abs_IGraph G) s num (abs_IPedge p) d\<rbrakk> \<Longrightarrow> 
+     \<forall>i\<le>k. v\<noteq>s \<and> v \<in> verts (abs_IGraph G) \<and>  d v = - \<infinity> \<or> v=s \<longrightarrow>
        (((\<lambda>v. snd (iedges G (p v)))^^ 0) v) = 
    pre_digraph.awalk_verts (abs_IGraph G) s 
-         (shortest_paths_locale_step1.pwalk (abs_IGraph G) s (abs_IPedge p) (abs_IDist d) v) ! 0"
+         (shortest_paths_locale_step1.pwalk (abs_IGraph G) s (abs_IPedge p) d v) ! 0"
 by (simp add: shortest_paths_locale_step1.pwalk_simps(1) 
-    shortest_paths_locale_step1.s_assms(4) pre_digraph.awalk_verts_conv)
+              shortest_paths_locale_step1.s_assms(4) pre_digraph.awalk_verts_conv)
    (fastforce dest!: shortest_paths_locale_step1.num_s_is_min)
 
+(*shortest_paths_locale_step2_inv G s c n p d pred;*)
 lemma head_iedges_awalk_math_step:
   "\<lbrakk>  wf_digraph (abs_IGraph G);
      abs_INat n v = Suc k;
-     shortest_paths_locale_step2_inv G s c n p d pred;
+     
      shortest_paths_locale_step1 (abs_IGraph G) s (abs_INat n) (abs_IPedge p) (abs_IDist d);
      \<And>v. \<lbrakk> wf_digraph (abs_IGraph G);
            abs_INat n v = k;
            shortest_paths_locale_step2_inv G s c n p d pred;
            shortest_paths_locale_step1 (abs_IGraph G) s (abs_INat n) (abs_IPedge p) (abs_IDist d)\<rbrakk> \<Longrightarrow> 
-           \<forall>i\<le>k. v\<noteq>s \<and> v \<in> verts (abs_IGraph G) \<and> abs_IDist d v = - \<infinity> \<or> v=s \<longrightarrow>
+           \<forall>i\<le>k. v\<noteq>s \<and> v \<in> verts (abs_IGraph G) \<and> abs_IDist d v = - \<infinity> \<longrightarrow>
                  (((\<lambda>v. snd (iedges G (p v)))^^ i) v) = 
                     pre_digraph.awalk_verts (abs_IGraph G) s 
                      (shortest_paths_locale_step1.pwalk (abs_IGraph G) s 
                      (abs_IPedge p) (abs_IDist d) v) ! i
     \<rbrakk> \<Longrightarrow> 
-   v\<noteq>s \<and> v \<in> verts (abs_IGraph G) \<and> abs_IDist d v = - \<infinity> \<or> v=s \<longrightarrow>
+   v\<noteq>s \<and> v \<in> verts (abs_IGraph G) \<and> abs_IDist d v = - \<infinity>  \<longrightarrow>
      (((\<lambda>v. snd (iedges G (p v)))^^ Suc k) v) = 
      pre_digraph.awalk_verts (abs_IGraph G) s 
          (shortest_paths_locale_step1.pwalk (abs_IGraph G) s (abs_IPedge p) (abs_IDist d) v) ! Suc k"
@@ -3790,14 +3802,39 @@ lemma head_iedges_awalk_math_step:
 lemma head_iedges_awalk_math':
   "\<lbrakk> wf_digraph (abs_IGraph G);
      abs_INat n v = k;
-     shortest_paths_locale_step2_inv G s c n p d pred;
      shortest_paths_locale_step1 (abs_IGraph G) s (abs_INat n) (abs_IPedge p) (abs_IDist d)\<rbrakk> \<Longrightarrow> 
-     \<forall>i\<le>k. v\<noteq>s \<and> v \<in> verts (abs_IGraph G) \<and> abs_IDist d v = - \<infinity> \<or> v=s \<longrightarrow>
+     \<forall>i\<le>k. v\<noteq>s \<and> v \<in> verts (abs_IGraph G) \<and> abs_IDist d v = - \<infinity>  \<longrightarrow>
        (((\<lambda>v. snd (iedges G (p v)))^^ i) v) = 
    pre_digraph.awalk_verts (abs_IGraph G) s 
          (shortest_paths_locale_step1.pwalk (abs_IGraph G) s (abs_IPedge p) (abs_IDist d) v) ! i"
   apply (induct k arbitrary:v, fastforce dest: head_iedges_awalk_math_base)
-  apply (rule allI )
+  apply (clarsimp)
+  apply (case_tac "i = Suc k")
+   apply (frule head_iedges_awalk_math_step, blast, blast, simp, simp)  
+(*  apply (rule conjI; clarsimp)*)
+   apply(frule shortest_paths_locale_step1.parent_num_assms, simp_all, simp) 
+  apply clarsimp
+   apply (erule_tac x="fst (snd (snd G) e)" in meta_allE, clarsimp) 
+   apply (erule_tac x=i in allE, clarsimp) 
+   apply (case_tac "fst (snd (snd G) e) = s") 
+  apply (frule shortest_paths_locale_step1.s_assms(4), simp)
+  apply (subgoal_tac "i=0"; clarsimp) using shortest_paths_locale_step1.length_awalk subgoal sorry
+  
+  apply (erule_tac x="the (p v)" in meta_allE, clarsimp)
+    
+    sorry
+  subgoal
+    apply (metis  not_less_eq shortest_paths_locale_step1.s_assms(4) zero_less_Suc)
+    done
+  apply (erule_tac x=" (((\<lambda>v. snd (iedges G (p v)))^^ 1) v)" in meta_allE, clarsimp)
+  apply (erule meta_impE)
+  using shortest_paths_locale_step1.parent_num_assms
+  subgoal sorry
+  apply (erule_tac x=i in allE, clarsimp) 
+  apply clarsimp
+
+  apply(erule_tac x=v in meta_allE, clarsimp)
+  apply (rule allI)
   apply (case_tac "v = s", fastforce simp: shortest_paths_locale_step1.s_assms(4))
   apply (case_tac i)
 (*
@@ -3833,8 +3870,7 @@ lemma head_iedges_awalk_math':
   apply (frule shortest_paths_locale_step1.path_from_root_Vr_ex, simp+) 
   apply clarsimp 
   sorry
-  (* TODO: HERE *)
-  
+
 
   (* apply (case_tac "v=s")
     apply (simp add: shortest_paths_locale_step1.pwalk_simps(1)  
@@ -3852,148 +3888,7 @@ lemma head_iedges_awalk_math':
   subgoal sorry
   done*)
   sorry
-(*
-definition
-  valid' :: "('s \<Rightarrow> bool) \<Rightarrow> ('s \<Rightarrow> bool) \<Rightarrow>('s,'a) nondet_monad \<Rightarrow> ('a \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> ('a \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> bool"
-  ("\<lbrace>_, _ \<rbrace>/ _ /\<lbrace>_, _\<rbrace>")
-where
-  "\<lbrace>I'\<rbrace> c \<lbrace>Q, Q'\<rbrace> \<equiv> \<forall>s. P s \<longrightarrow> (\<forall>(r,s') \<in> fst (f s). Q r s')"
 
-definition
-  validNF' ::"('s \<Rightarrow> bool) \<Rightarrow> ('s,'a) nondet_monad \<Rightarrow> ('a \<Rightarrow> 's \<Rightarrow> bool) \<Rightarrow> bool"
-      ("\<lbrace>_\<rbrace>/ _ /\<lbrace>_\<rbrace>!'")
-where
-  "validNF' P f Q \<equiv> valid P f Q \<and> no_fail P f"
-*)
-(*
-lemma example1:  
-  assumes "\<lbrace> True \<rbrace> c \<lbrace>\<lambda>v s. P s  \<rbrace>!" oops
-*)
-(*
-lemma validNF_pre_post_ex:
-  assumes "\<lbrace> I \<rbrace> c \<lbrace>\<lambda>v. I \<rbrace>!"
-  shows "\<lbrace>(\<lambda>s. I s \<and> I' s)\<rbrace> c \<lbrace> \<lambda> v s. I s \<longrightarrow> I' s\<rbrace>!"       
-  shows "\<lbrace>(\<lambda>s. I s \<and> I' s)\<rbrace> c \<lbrace> \<lambda> v s. I s \<and> I' s\<rbrace>!" 
-
-
-lemma validNF_post_imp':
-  assumes "\<lbrace>P\<rbrace> c \<lbrace>Q\<rbrace>!" "\<lbrace> P' \<longrightarrow> P \<rbrace> c \<lbrace> Q \<longrightarrow> Q'\<rbrace>!" shows "\<lbrace>P'\<rbrace> c \<lbrace>Q'\<rbrace>!" 
-*)
-(*
-lemma head_iedges_awalk_math':
-  "\<lbrakk>wf_digraph (abs_IGraph G);
-    abs_INat n v = k;
-    shortest_paths_locale_step2_inv G s c n p d pred;
- i\<le>abs_INat n v ;
-    shortest_paths_locale_step1 (abs_IGraph G) s (abs_INat n) (abs_IPedge p) (abs_IDist d)\<rbrakk> \<Longrightarrow> 
-    
-      {(((\<lambda>v. snd (iedges G (p v)))^^ i) v)  | 
-         (v\<noteq>s \<longrightarrow> v \<in> verts (abs_IGraph G) \<and> abs_IDist d v = - \<infinity>)} = 
- shortest_paths_locale_step1.pwalk_verts (abs_IGraph G) s (abs_IPedge p) (abs_IDist d) v "
-  oops*)
-
-(*\<le>abs_INat n v*)
-  (*apply 
-
-  apply (case_tac "tail (abs_IGraph G) ( (p v)) \<noteq> s")
-  
-  apply (case_tac "i\<le> k") 
-  subgoal 
-    sorry
-   
-  apply (subgoal_tac "i\<le>k")
-   apply (drule_tac x=i in spec, drule mp, simp) 
-  apply clarsimp 
-   
-   using 
-
-    find_theorems name:"num_s" name:min
-    sorry
-
-  apply (frule_tac v=v in length_awalk_simp[symmetric]; simp) 
-  apply (case_tac "i=Suc (Suc k) - 1", simp only:) 
-  subgoal 
-   apply (subst last_conv_nth[symmetric], fastforce) 
-   apply (simp add: pre_digraph.awalk_verts_conv)
-   apply (clarsimp simp: pre_digraph.awalk_verts_conv
-                         shortest_paths_locale_step1.pwalk_simps(2))
-   apply (drule shortest_paths_locale_step1.path_from_root_Vr_ex, simp+)
-    apply (clarsimp simp: abs_IPedge_def abs_INat_def)
-   apply (erule meta_allE, (erule meta_impE, rule refl))
-          apply (erule allE, drule mp, rule eq_refl[OF refl]) 
-    sorry
-
-  apply (erule_tac x="v" in meta_allE, erule meta_impE)
-  try0 
-  find_theorems "_ = _ \<Longrightarrow> _ \<le> _"
-  sorry
-
-   apply (erule_tac x=k in allE) 
-   apply (erule impE)  try0 oops
-
-  apply (simp add: id_funpow_id)
-  
-
- 
-  apply (erule_tac x=i in allE) 
-  apply (erule impE, clarsimp simp: shortest_paths_locale_step1.s_assms(4)) 
-   oops
-  find_theorems "Suc ?x " " ?y -1"
-
-  try0 subgoal sorry
-  apply (case_tac "i=Suc k", clarsimp) 
-
-
-   apply (simp add: pre_digraph.awalk_verts_conv)
- apply( clarsimp simp add: pre_digraph.awalk_verts_conv
-        shortest_paths_locale_step1.pwalk_simps(2))
-  using last_conv_nth[symmetric] 
-
-  
-  
-
-
-  using last_conv_nth[symmetric]
-  find_theorems  "_ ! _"  last
-  using last_conv_nth subst[OF last_conv_nth]
-    
-  find_theorems pre_digraph.awalk_verts length
-   apply(clarsimp simp: pre_digraph.awalk_verts_conv
-        shortest_paths_locale_step1.pwalk_simps(2))
-  apply (subst pre_digraph.length_awalk_verts)
-  apply (s)
-
-  apply (subgoal_tac "k = abs_INat n (tail (abs_IGraph G) v)", simp) 
-   prefer 2 subgoal sorry
-  
-  apply (erule_tac x=i in allE) 
-  apply (erule impE, clarsimp simp: shortest_paths_locale_step1.s_assms(4))
-
-  apply (case_tac "tail (abs_IGraph G) v =s")
-  apply (erule meta_impE, assumption?)+ subgoal sorry
-  
-  apply (case_tac "tail (abs_IGraph G) v = s"; clarsimp)
-   apply (simp add: shortest_paths_locale_step1.s_assms(4))
-  subgoal_tac 
-  apply (erule meta_impE)
-  subgoal using  shortest_paths_locale_step2_pred.no_edge_Vm_Vf sorry
-  
-  apply (erule impE) 
-  subgoal using shortest_paths_locale_step1.parent_num_assms   sorry
-
-  apply (subgoal_tac "abs_INat n v = Suc k")
-  apply (erule allE)
-   apply (case_tac "i \<le> k", simp)
-  apply (erule_tac x=i in allE)
-
-  
-  
-  
-  
-    apply (erule meta_impE) subgoal sorry
-  using wf_digraph.head_in_verts shortest_paths_locale_step1.parent_num_assms
-  try0 sledgehammer
-  oops*)
 
 lemma head_iedges_awalk_math:
   "\<lbrakk> wf_digraph (abs_IGraph G);
@@ -4008,7 +3903,9 @@ lemma head_iedges_awalk_math:
   using head_iedges_awalk_math'
         shortest_paths_locale_step2_inv_eq_maths
         shortest_paths_locale_step2_pred_def
-  by fast
+  oops
+(*
+  by fast*)
 (*  apply (simp add: shortest_paths_locale_step2_eq_maths)
   apply (induct "abs_INat n v" arbitrary:v)
    apply (case_tac "v=s")
@@ -4038,8 +3935,9 @@ apply (erule_tac x=i in allE)
 lemma parent_edges_exist: 
   "shortest_paths_locale_step2_pred  G s c n p d pred \<Longrightarrow>
    \<forall>i\<le>n v. ((\<lambda>v. (p v)) ^^ i) v \<noteq> None"
-  sorry
 
+  oops
+*)
 lemma (in shortest_paths_locale_step2_pred) parent_edges_exist_and_wellformed : 
    "\<lbrakk> v\<in>verts G; v\<noteq>s ; dist v \<noteq> \<infinity>\<rbrakk> \<Longrightarrow> 
     \<forall>i\<le>num v.
@@ -4062,21 +3960,46 @@ lemma parent_edges_exist_and_wellformed':
    \<forall>i\<le>n v. \<exists>e. ((\<lambda>v. (p v)) ^^ i) v = Some e \<and> e \<in> arcs G \<and> head e \<in> verts G \<and> tail e \<in> verts G "
   sorry
 
-lemma parents_in_graph':
-  " \<And>r s v i.
-       wf_digraph (abs_IGraph iG) \<Longrightarrow>
-       is_graph s iG g \<Longrightarrow>
-       is_pedge s iG iP p \<Longrightarrow>
-       shortest_paths_locale_step2_inv iG sc iC iN iP iD iPred \<Longrightarrow>
-       C_se_inv iG (abs_ICycles' s iCS') iC iD (length (abs_ICycles' s iCS')) \<Longrightarrow>
-       v < fst iG \<Longrightarrow> v\<noteq>sc \<Longrightarrow> abs_IDist iD v \<noteq> \<infinity> \<Longrightarrow> i \<le> iN v \<Longrightarrow> 
-   iP (((\<lambda>v. snd (snd (snd iG) (iP v))) ^^ unat i) v) < fst (snd iG)"
-  unfolding shortest_paths_locale_step2_inv_eq_maths
-  apply (drule_tac v=v in shortest_paths_locale_step2_pred.parent_edges_exist_and_wellformed, simp_all)
 
-unfolding abs_IGraph_def apply simp
-(*TODO working here!*)
+lemma (in shortest_paths_locale_step1) pwalk_verts_in_verts:
+  "v \<in> pwalk_verts u \<Longrightarrow> v\<in> verts G"
+by (metis awalk_decomp awalk_hd_in_verts awalk_verts.simps(1) 
+          pwalk_awalk  pwalk.elims mem_Collect_eq s_assms(1)
+          pwalk_verts_def vwalk_singleton vwalk_verts_in_verts)
+
+lemma (in shortest_paths_locale_step1) pwalk_in_arcs:
+  "e \<in> set (pwalk v) \<Longrightarrow> e\<in> arcs G"
+by (metis awalkE  empty_set equals0D  pwalk.simps pwalk_awalk  subsetD)
+(*
+lemma (in shortest_paths_locale_step2) parents_in_graph_math:
+  "\<And>v i. \<lbrakk>wf_digraph G; v \<in> verts G; v \<noteq> s; dist v \<noteq> \<infinity>; i \<le> num v\<rbrakk> \<Longrightarrow> 
+   parent_edge (((\<lambda>v. parent_edge v) ^^ i) v) \<in> arcs G"
   oops
+*)
+(*((\<lambda>v. (parent_edge v)) ^^ i) v*)
+(*
+lemma  parents_in_graph':
+  " \<And>s v i.
+       wf_digraph G \<Longrightarrow>
+       v \<in> verts G \<Longrightarrow> v \<noteq> s \<Longrightarrow> dist v \<noteq> \<infinity> \<Longrightarrow> i \<le> num v \<Longrightarrow> 
+   iP (((\<lambda>v. snd (snd (snd G) (parent_edge v))) ^^ i) v) < arcs G"
+  unfolding shortest_paths_locale_step2_inv_eq_maths
+  apply (frule_tac v=v in shortest_paths_locale_step2_pred.parent_edges_exist_and_wellformed, simp_all)
+  apply (clarsimp simp: abs_INat_def)
+  apply (drule_tac x="unat i" in spec) 
+  apply (drule mp) 
+   apply (blast dest: unat_le_mono) 
+  apply (case_tac "unat i = 0")apply clarsimp apply (clarsimp simp: abs_IPedge_def ) 
+   apply (case_tac "\<not>msb (iP v)")
+    apply (subgoal_tac "Some (iP v) = Some e", simp)
+
+   find_theorems "_ ^^ 0"
+  apply (clarsimp simp: abs_IPedge_def)
+  apply (case_tac " msb (iP v)")
+oops
+*)
+
+
 lemma parents_in_graph:
   " \<And>r s v i.
        P s \<Longrightarrow>
@@ -4085,125 +4008,115 @@ lemma parents_in_graph:
        is_pedge s iG iP p \<Longrightarrow>
        shortest_paths_locale_step2_inv iG sc iC iN iP iD iPred \<Longrightarrow>
        C_se_inv iG (abs_ICycles' s iCS') iC iD (length (abs_ICycles' s iCS')) \<Longrightarrow>
-       r \<noteq> 0 \<Longrightarrow> v \<le> fst iG \<Longrightarrow> i \<le> iN v \<Longrightarrow> iP (((\<lambda>v. snd (snd (snd iG) (iP v))) ^^ unat i) v) < fst (snd iG)"
+       r \<noteq> 0 \<Longrightarrow> v \<le> fst iG \<Longrightarrow> i \<le> iN v \<Longrightarrow> 
+       iP (((\<lambda>v. snd (snd (snd iG) (iP v))) ^^ unat i) v) < fst (snd iG)"
   oops
+(* \<And>r s v i.
+       P s \<Longrightarrow>
+       wf_digraph (abs_IGraph iG) \<Longrightarrow>
+       is_graph s iG g \<Longrightarrow>
+       is_dist s iG iD d \<Longrightarrow>
+       is_numm s iG iN n \<Longrightarrow>
+       is_cost s iG iC c \<Longrightarrow>
+       is_pedge s iG iP p \<Longrightarrow>
+       is_pedge s iG iPred pred \<Longrightarrow>
+       are_cycles'' s iCS' cse \<Longrightarrow>
+       iCS = abs_ICycles' s iCS' \<Longrightarrow>
+       shortest_paths_locale_step2_inv iG sc iC iN iP iD iPred \<Longrightarrow>
+       C_se_inv iG (abs_ICycles' s iCS') iC iD (length (abs_ICycles' s iCS')) \<Longrightarrow>
+       r \<noteq> 0 \<Longrightarrow> v \<le> fst iG \<Longrightarrow> i \<le> iN v \<Longrightarrow> 
+       iP (((\<lambda>v. snd (snd (snd iG) (iP v))) ^^ unat i) v) < fst (snd iG)*)
 
 (* set lemma not really in this locale just need to move  *)
 lemma (in shortest_paths_locale_step1) not_in_nth_eq_disjoint:
-  "\<lbrakk> n = length W'; W = set W'\<rbrakk> \<Longrightarrow> (\<forall>i<n. W' ! i \<notin> C)\<equiv>
-   C \<inter> W = {}" 
+  "\<lbrakk> n = length W'; W = set W'\<rbrakk> \<Longrightarrow> (\<forall>i<n. W' ! i \<notin> C) \<equiv> (C \<inter> W = {})" 
   using disjoint_iff_not_equal in_set_conv_nth by smt 
 
+lemma (in shortest_paths_locale_step1) head_parent_nth_eq_pwalk_nth:
+  assumes " v \<in> verts G"
+  assumes "dist v \<noteq> \<infinity>"
+  assumes " v\<noteq>s"
+  assumes "i \<le> num v"
+  shows "((\<lambda>v. pre_digraph.head G (the (parent_edge v))) ^^ i) v = 
+          awalk_verts s (pwalk v) ! Suc i"
+ (* apply (subst awalk_verts_conv)*)
+  using assms
+  apply (induct "num v" arbitrary: v i)
+   apply (metis length_greater_0_conv list.size(3) num_s_is_min)
+  apply (frule parent_num_assms, simp, simp, elim bexE conjE)
+  apply (subst (asm) length_pwalk[symmetric, where v="tail G e" for e], 
+         (case_tac "tail G e = s"; clarsimp simp only:))+
+apply (subst (asm) length_pwalk[symmetric, where v="head G e" for e], blast)+
+   apply (simp del: pwalk.simps)
+  apply (frule pwalk_awalk[simplified awalk_def], (clarsimp simp del: pwalk.simps)+)
+  apply (frule awalk_verts_conv', simp del:pwalk.simps) 
+  apply (case_tac "pwalk (head G e) = []", metis cas.simps(1), simp del:pwalk.simps) 
+  apply (subst pwalk_simps(2), (blast intro: head_in_verts)+)
 
-
-
-lemma (in shortest_paths_locale_step1) num_eq_length_pwalk:
-  "wf_digraph G \<Longrightarrow> v \<in> verts G \<Longrightarrow>
-    dist v \<noteq> \<infinity> \<Longrightarrow>
-    \<forall>i\<le>num v. ((\<lambda>v. head G (the (parent_edge v))) ^^ i) v =
-       awalk_verts s (pwalk v) ! i \<Longrightarrow>
-    num v = length (awalk_verts  s (pwalk v))"
-using parent_num_assms s_assms 
-  apply (induction "num v" arbitrary: v) 
-  apply (cases "v=s") using s_assms  
-    using s_assms pwalk.simps parent_num_assms  
-  using parent_num_assms s_assms
-  
-  
-  sorry  
-
-lemma (in shortest_paths_locale_step1) head_parents_nth_eq_pwalk_nth:
-  "wf_digraph G \<Longrightarrow>
-    v \<in> verts G \<Longrightarrow>
-    dist v \<noteq> \<infinity> \<Longrightarrow>
-    \<forall>i\<le>num v. 
-      ((\<lambda>v. pre_digraph.head G (the (parent_edge v))) ^^ i) v = 
-      awalk_verts s (pwalk v) ! i"
+  apply (drule_tac x="tail G e" in meta_spec)
+  apply (simp del:pwalk.simps)
+  apply (case_tac "i")
   sorry
+(*
+  apply (clarsimp simp del: pwalk.simps simp add: )
+  apply (drule_tac x="tail G e" in meta_spec)
 
-lemma (in shortest_paths_locale_step1) temp':
-  " \<lbrakk> wf_digraph G; v \<in> verts G; 
+  apply (case_tac "pwalk (tail G e) = []") 
+  oops
+ 
+*)
+
+lemma (in shortest_paths_locale_step1) cycle_does_not_intersect_path_eq':
+  " \<lbrakk> wf_digraph G; v \<in> verts G; v\<noteq>s;
     dist v \<noteq> \<infinity>\<rbrakk> \<Longrightarrow>
     (\<forall>i\<le>num v. awalk_verts s (pwalk v) ! i \<notin> S) =
-    (S \<inter> pwalk_verts v = {})"
-  unfolding pwalk_verts_def
+    (S \<inter> pwalk_verts v = {})" 
+  using length_awalk_verts length_pwalk n_not_Suc_n mem_Collect_eq in_set_conv_nth
+        head_parent_nth_eq_pwalk_nth pwalk_verts_def less_Suc_eq_le disjoint_iff_not_equal     
+  by smt
 
-   apply (subst not_in_nth_eq_disjoint[symmetric])
-  using num_eq_length_pwalk head_parents_nth_eq_pwalk_nth 
-  apply fast
-   apply blast
- 
-using num_eq_length_pwalk head_parents_nth_eq_pwalk_nth 
-  using s_assms(1) s_assms(2) s_assms(4) 
-  apply auto
-  done
-(*
-lemma temp':
-  " \<lbrakk> wf_digraph G;
-     shortest_paths_locale_step2_pred G s c n p d pred\<rbrakk> \<Longrightarrow>  
-  \<forall>i\<le>n v.
-       ((\<lambda>v. head G (the (p v))) ^^ i) v =
-       pre_digraph.awalk_verts  G s
-        (shortest_paths_locale_step1.pwalk G s p d v) !
-       i \<Longrightarrow>
-    (\<forall>i\<le>n v.
-        ((\<lambda>v. head G (the (p v))) ^^ i) v \<notin> fst ` set cse) =
-    (fst ` set cse \<inter>
-     shortest_paths_locale_step1.pwalk_verts  G s  p d v =
-     {})"
-  apply clarsimp
-  apply (rule iffI) 
-   apply (rule_tac 
-            W'="pre_digraph.awalk_verts G s
-                (shortest_paths_locale_step1.pwalk G s p d v)" and
-            n="n v" in nth_notin_disjoint)
-     apply simp
-  subgoal  using pre_digraph.length_awalk_verts
-    sorry
-  subgoal 
-    using 
-       shortest_paths_locale_step1.pwalk_verts_def 
-       shortest_paths_locale_step2_pred_def
-    by fastforce
-     
-  subgoal
-    sorry
-
-  apply (rule_tac C = "fst ` set cse" in nth_notin_disjoint )
-  apply (clarsimp simp add: disjoint_iff_not_equal)
-  unfolding 
-  using  pre_digraph.awalk_verts_conv
-  using UN_Diff_disjoint
-
-  find_theorems "?A \<inter> ?B  = {}" "_ ! _" 
-  using parent_edges_exist 
-  sorry
-*)
-lemma temp:
-  "\<lbrakk> wf_digraph (abs_IGraph G);
-v \<in> verts (abs_IGraph G);
- abs_IDist d v \<noteq> \<infinity>;
+lemma cycle_does_not_intersect_path_eq:
+  "\<lbrakk> v\<noteq>s; wf_digraph (abs_IGraph G);
+     v \<in> verts (abs_IGraph G);
+     abs_IDist d v \<noteq> \<infinity>; 
      C_se_inv G cse c d (length cse); 
-     shortest_paths_locale_step2_inv G s c n p d pred\<rbrakk> \<Longrightarrow>
-   \<forall>i\<le>abs_INat n v.
-       ((\<lambda>v. snd (snd (snd G) (p v))) ^^ i) v =
-       pre_digraph.awalk_verts (abs_IGraph G) s
-        (shortest_paths_locale_step1.pwalk (abs_IGraph G) s (abs_IPedge p)
-          (abs_IDist d) v) !
-       i \<Longrightarrow>
+     shortest_paths_locale_step2_inv G s c n p d pred;
+     \<forall>i\<le>abs_INat n v.
+         ((\<lambda>v. snd (snd (snd G) (p v))) ^^ i) v =
+         pre_digraph.awalk_verts (abs_IGraph G) s
+          (shortest_paths_locale_step1.pwalk (abs_IGraph G) s (abs_IPedge p)
+            (abs_IDist d) v) ! i \<rbrakk> \<Longrightarrow>
     (\<forall>i\<le>abs_INat n v.
         ((\<lambda>v. snd (snd (snd G) (p v))) ^^ i) v \<notin> fst ` set cse) =
     (fst ` set cse \<inter>
      shortest_paths_locale_step1.pwalk_verts (abs_IGraph G) s (abs_IPedge p)
       (abs_IDist d) v =
      {})"
-  by (simp add: shortest_paths_locale_step1.temp'
+  by (simp add: shortest_paths_locale_step1.cycle_does_not_intersect_path_eq'
                 shortest_paths_locale_step1_inv_eq_maths 
-                shortest_paths_locale_step2_inv_def )
+                shortest_paths_locale_step2_inv_def)
 
+lemma nth_parent_eq_math:
+  " wf_digraph (abs_IGraph G) \<Longrightarrow>
+    v < fst G \<Longrightarrow>
+    shortest_paths_locale_step2_inv G s c n p d pred \<Longrightarrow>
+    abs_IDist d v = - \<infinity> \<Longrightarrow>
+    v \<noteq> s \<Longrightarrow>
+    \<forall>i\<le>abs_INat n v.
+       ((\<lambda>v. snd (snd (snd G) (p v))) ^^ i) v =
+       pre_digraph.awalk_verts (abs_IGraph G) s (shortest_paths_locale_step1.pwalk (abs_IGraph G) s 
+       (abs_IPedge p) (abs_IDist d) v) ! i"
+  apply (clarsimp simp: shortest_paths_locale_step2_inv_eq_maths shortest_paths_locale_step2_pred_def)
+  apply (frule shortest_paths_locale_step1.head_parent_nth_eq_pwalk_nth, simp+)
+  apply (frule shortest_paths_locale_step1.num_s_is_min, simp+)
+  sorry
 
-lemma parents_not_in_cycles_start_inv_eq_math': 
+  
+
+lemma parents_not_in_cycles_start_inv_eq_math: 
   "\<lbrakk> wf_digraph (abs_IGraph G);
+     v \<in> verts (abs_IGraph G);
+     abs_IDist d v \<noteq> \<infinity>;
      C_se_inv G cse c d (length cse); 
      shortest_paths_locale_step2_inv G s c n p d pred;
      v\<noteq>s \<and> v \<in> verts (abs_IGraph G) \<and> abs_IDist d v = - \<infinity> \<or> v=s \<rbrakk> \<Longrightarrow>
@@ -4211,68 +4124,40 @@ lemma parents_not_in_cycles_start_inv_eq_math':
    (fst ` set cse \<inter> 
     shortest_paths_locale_step1.pwalk_verts 
      (abs_IGraph G) s (abs_IPedge p) (abs_IDist d) v = {})"
-  apply (frule head_iedges_awalk_math[where v=v], simp+)
+(*TODO: make sure this lemma is actually true*)
   unfolding parents_not_in_cycles_start_inv_def
-            vertex_not_in_cycles_start_inv_eq_math
-  using temp by simp+
-
-
-(*  unfolding parents_not_in_cycles_start_inv_def C_se_inv_eq_math
             vertex_not_in_cycles_start_inv_eq_math 
-            shortest_paths_locale_step2_inv_eq_maths
-            shortest_paths_locale_step2_pred_def 
-  (*
-  by (fast dest: temp)*)
-  apply (subst shortest_paths_locale_step1.pwalk_verts_def)
-  find_theorems shortest_paths_locale_step1.pwalk_verts
-   apply clarsimp 
-   apply simp
-  apply clarsimp 
-  apply (frule temp[where cse =cse, symmetric])
-  apply (clarsimp simp:  shortest_paths_locale_step1.pwalk_verts_def)
-  apply (clarsimp  dest: temp) 
-  using shortest_paths_locale_step1.pwalk_awalk shortest_paths_locale_step1.pwalk_verts_def try0
-  apply (rule iffI)
-   apply (simp add: disjoint_eq_subset_Compl)
+  apply (case_tac "v = s")
+    apply (clarsimp simp: 
+            shortest_paths_locale_step2_inv_eq_maths 
+            shortest_paths_locale_step2_pred_def shortest_paths_locale_step1.pwalk_verts_def
+            shortest_paths_locale_step1.pwalk.simps
+            shortest_paths_locale_step1.s_assms pre_digraph.awalk_verts.simps) 
+  apply(subst cycle_does_not_intersect_path_eq[symmetric], simp_all)
+  apply clarsimp
+  using nth_parent_eq_math 
 
-   apply (erule_tac x="abs_INat n v" in allE, erule impE, simp)
-  using temp try0
-  find_theorems "_ \<inter> _ "" _ ! _"
-using shortest_paths_locale_step1.pwalk_awalk
+  apply (case_tac i)
+  subgoal sorry
+  apply clarsimp
 
+   
+  sorry
 
-  apply (simp add: shortest_paths_locale_step1_inv_eq_maths 
-         shortest_paths_locale_step2_inv_def)
-  unfolding shortest_paths_locale_step2_inv_eq_maths
-  unfolding C_se_inv_eq_math parents_not_in_cycles_start_inv_def 
-            vertex_not_in_cycles_start_inv_eq_math
-  apply clarsimp 
-  unfolding shortest_paths_locale_step1.pwalk_verts_def
-  using shortest_paths_locale_step1.pwalk_awalk
-  find_theorems "_  \<notin> _" " _ \<inter> _" " _ \<subseteq> _"
-  using shortest_paths_locale_step2_inv_eq_maths
-vertex_not_in_cycles_start_inv_eq_math
-head_iedges_awalk_math'
-parents_not_in_cycles_start_inv_def
-  shortest_paths_locale_step2_inv_eq_maths
+(*
+  apply simp 
   
-  unfolding C_se_inv_eq_math 
-            shortest_paths_locale_step2_inv_eq_maths
+ apply (clarsimp simp: 
+            shortest_paths_locale_step2_inv_eq_maths 
+            shortest_paths_locale_step2_pred_def ) using cycle_does_not_intersect_path_eq 
+  using iedges_walk_awalk_verts_math[where n="abs_INat n" and d="abs_IDist d" and v=v and s=s ]
+head_iedges_awalk_math
+apply (frule  [where v=v])
 
-  unfolding parents_not_in_cycles_start_inv_def
-  unfolding vertex_not_in_cycles_start_inv_eq_math 
-
-  using head_iedges_awalk_math 
-  apply safe  
-  apply clarsimp  
- 
-            
-  using awalk_cas_inv_def
-  
-  oops
-  find_theorems "_\<inter>_ = _ \<Longrightarrow> _"*)
-
-
+  apply (frule head_iedges_awalk_math[where v=v], simp+) 
+  done
+*)
+(*
 lemma parents_not_in_cycles_start_inv_eq_math:
   "\<lbrakk> wf_digraph (abs_IGraph G);
      v \<in> verts (abs_IGraph G); 
@@ -4285,56 +4170,20 @@ lemma parents_not_in_cycles_start_inv_eq_math:
        (abs_IGraph G) s (abs_IPedge p) (abs_IDist d) v = 
      {})"
   unfolding parents_not_in_cycles_start_inv_def vertex_not_in_cycles_start_inv_eq_math
-
-
   using head_iedges_awalk_math 
-
   unfolding parents_not_in_cycles_start_inv_def vertex_not_in_cycles_start_inv_eq_math 
   apply (subst (asm)C_se_inv_eq_math)
-  using  wf_inv_is_wf_digraph
-      shortest_paths_locale_step2_inv_eq_maths shortest_paths_locale_step1_inv_def  
-       shortest_paths_locale_step2_inv_def 
-   apply blast sorry
-(*  
-  apply clarsimp
-  apply(frule shortest_paths_locale_step2_pred.source_val, clarsimp )
-  apply (rule_tac x=v in bexI)
-  unfolding shortest_paths_locale_step2_pred_def apply clarsimp
- unfolding shortest_paths_locale_step1.enum_def apply clarsimp 
-
-  unfolding shortest_paths_locale_step2_pred_def abs_INat_def
-  (*apply (subgoal_tac "s\<in> fst`set cse") *)
-   apply (subst shortest_paths_locale_step1.pwalk_verts_def, fast)  
-  apply(subst shortest_paths_locale_step1.pwalk_simps(2); clarsimp?; fast?) 
-  using 
-    apply clarsimp apply fast
-  apply clarsimp
-    apply (frule shortest_paths_locale_step1.s_assms(4), fast) 
-    apply clarsimp
-  unfolding shortest_paths_locale_step1_def shortest_paths_locale_step2_pred_axioms_def apply clarsimp
-
-  subgoal sorry
-  using  wf_inv_is_wf_digraph
-      shortest_paths_locale_step2_inv_eq_maths shortest_paths_locale_step1_inv_def  
-       shortest_paths_locale_step2_inv_def abs_INat_def subgoal sorry
-apply (clarsimp simp add: abs_INat_def)
-  unfolding  shortest_paths_locale_step1_def 
-    apply clarsimp
-  apply (elim allE impE, assumption)
-unfolding shortest_paths_locale_step1.enum_def 
-  apply (clarsimp simp: abs_INat_def abs_IDist_def abs_IPedge_def)
-  
-  unfolding shortest_paths_locale_step1_def abs_IDist_def apply clarsimp 
-  subgoal  
-    sorry
-  subgoal 
-    sorry
-  subgoal  sorry
-  sorry
+   using wf_inv_is_wf_digraph shortest_paths_locale_step2_inv_def
+         shortest_paths_locale_step2_inv_eq_maths shortest_paths_locale_step1_inv_def  
+   apply blast 
+  apply (rule cycle_does_not_intersect_path_eq, simp_all)
+  using shortest_path_neg_checker.C_se_inv_eq_math 
+  apply auto 
+  done
 *)
-
 lemma int_neg_cyc_inv_eq_math:
   "\<lbrakk> wf_digraph (abs_IGraph G);
+     C_se_inv G cse c d (length cse);
      shortest_paths_locale_step1 (abs_IGraph G) s (abs_INat n) (abs_IPedge p) (abs_IDist d)\<rbrakk> \<Longrightarrow>
      int_neg_cyc_inv G d cse p n (fst G) =
      (\<forall>v<fst G. abs_IDist d v = - \<infinity> \<longrightarrow> 
@@ -4342,22 +4191,20 @@ lemma int_neg_cyc_inv_eq_math:
         shortest_paths_locale_step1.pwalk_verts 
           (abs_IGraph G) s (abs_IPedge p) (abs_IDist d) v \<noteq> {})"
   unfolding int_neg_cyc_inv_def
- apply (subst parents_not_in_cycles_start_inv_eq_math'
-                  [unfolded abs_INat_def])
- subgoal sorry
-  subgoal sorry
-  subgoal sorry
-   apply (metis (mono_tags, hide_lams)
- \<open>\<And>sa pred da c. \<lbrakk>wf_digraph (abs_IGraph G); 
-shortest_paths_locale_step1 (abs_IGraph G) s (abs_INat n) (abs_IPedge p) (abs_IDist d)\<rbrakk> \<Longrightarrow> 
-shortest_paths_locale_step2_inv G sa c n p da pred\<close> 
- less_numeral_extra(3)
- s_assms_eq_math
- shortest_paths_locale_step1.num_s_is_min 
-shortest_paths_locale_step1_inv_def 
-shortest_paths_locale_step2_inv_def)
-  using abs_IDist_def 
-  by auto
+  apply (rule iffI; clarsimp) 
+  (*TODO: parents_not_in_cycles_start_inv_eq_math is still unproven, is it actually true? *)
+   apply(subst (asm) parents_not_in_cycles_start_inv_eq_math
+                   [unfolded abs_INat_def, symmetric], simp_all)
+     subgoal sorry
+     apply (fastforce simp: abs_IDist_def)
+    apply (erule_tac x=i in allE, clarsimp simp: abs_IDist_def)
+  apply(subst (asm) parents_not_in_cycles_start_inv_eq_math
+                  [unfolded abs_INat_def, symmetric], simp_all)
+        apply (fastforce simp: abs_IDist_def)
+   
+     subgoal sorry 
+      apply (fastforce simp: abs_IDist_def)+
+     done
 
 lemma shortest_paths_locale_step3_eq_maths:
   "\<And>G s c n p d pred cse.
