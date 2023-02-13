@@ -3155,15 +3155,27 @@ lemma baz1_min:
   unfolding INT_MIN_def LONG_MIN_def max_word_def
   by fastforce
 
+lemma test1:
+  assumes "a < (max_word :: 32 word)"
+  shows "uint (a + 1) \<le> uint (max_word :: 32 word)"
+  using word_le_def by blast
+
+lemma test2:
+  assumes "a < (max_word :: 32 word)"
+  shows "INT_MIN * uint (a + 1) \<le> INT_MIN * uint a"
+  by (metis INT_MIN_MAX_lemmas(18) add.right_neutral assms le_less shortest_path_neg_checker.foo1)
+
 lemma baz:
   assumes "a < (max_word :: 32 word)"
   shows "INT_MAX * uint (a + 1) \<le> LONG_MAX"
-  sorry
+  using baz_max test1[OF assms(1)] 
+  by (metis (no_types, hide_lams) INT_MIN_MAX_lemmas(17) add.commute mult.commute mult_right_mono order_trans)
 
 lemma baz1: 
   assumes "a < (max_word :: 32 word)"
   shows "LONG_MIN \<le> INT_MIN * uint (a + 1)"
-  sorry
+  using baz1_min test1[OF assms(1)] test2[OF assms(1)]
+  by (meson INT_MIN_MAX_lemmas(9) le_less mult_le_cancel_left mult_nonneg_nonneg order.trans uint_ge_0 un_ui_le)
 
 lemma 
   "\<And>a s. a < length_C (heap_Cycle_C s y) \<Longrightarrow>
