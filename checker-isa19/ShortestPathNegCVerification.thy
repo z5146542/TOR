@@ -2780,7 +2780,7 @@ definition awalk_neg_cyc_cost ::
 where
   "awalk_neg_cyc_cost iC iY ee \<equiv> 
    sum_list (map (sint \<circ> iC) (take ee (icycle_path iY)))"
-
+                              
 lemma sum_list_step:
   assumes "i < length xs" 
   assumes "xs \<noteq> []"
@@ -3116,6 +3116,55 @@ lemma "is_cost s iG iC c \<Longrightarrow>
 *)
   
   oops
+
+lemma bar1:
+  assumes "a < (max_word :: 32 word)"
+  shows "INT_MIN * uint (a + 1) = INT_MIN + INT_MIN * uint a"
+  using assms
+  by (metis (no_types, hide_lams) add.commute distrib_left less_irrefl less_x_plus_1 mult.right_neutral not_le uint_1 uint_plus_simple_iff)
+
+lemma foo1:
+  assumes "a < (max_word :: 32 word)"
+    and "INT_MIN * uint a \<le> x"
+    and "INT_MIN \<le> y"
+  shows "INT_MIN * uint (a + 1) \<le> x + y"
+  using assms
+  using bar1 by force
+
+lemma bar:
+  assumes "a < (max_word :: 32 word)"
+  shows "INT_MAX * uint (a + 1) = INT_MAX + INT_MAX * uint a"
+  using assms
+  by (metis (no_types, hide_lams) add.commute distrib_left less_irrefl less_x_plus_1 mult.right_neutral not_le uint_1 uint_plus_simple_iff)
+
+lemma foo:
+  assumes "a < (max_word :: 32 word)"
+    and "x \<le> INT_MAX * uint a"
+    and "y \<le> INT_MAX"
+  shows "x + y \<le> INT_MAX * uint (a + 1)"
+  using assms
+  using bar by force
+
+lemma baz_max: 
+  "INT_MAX * uint (max_word :: 32 word) \<le> LONG_MAX"
+  unfolding INT_MAX_def LONG_MAX_def max_word_def
+  by fastforce
+
+lemma baz1_min: 
+  "LONG_MIN \<le> INT_MIN * uint (max_word :: 32 word)"
+  unfolding INT_MIN_def LONG_MIN_def max_word_def
+  by fastforce
+
+lemma baz:
+  assumes "a < (max_word :: 32 word)"
+  shows "INT_MAX * uint (a + 1) \<le> LONG_MAX"
+  sorry
+
+lemma baz1: 
+  assumes "a < (max_word :: 32 word)"
+  shows "LONG_MIN \<le> INT_MIN * uint (a + 1)"
+  sorry
+
 lemma 
   "\<And>a s. a < length_C (heap_Cycle_C s y) \<Longrightarrow>
            awalk_edge_inv iG iY (length (snd iY)) \<Longrightarrow>
@@ -3221,6 +3270,14 @@ lemma awalk_cost_neg_spc':
 
  *) 
      apply (subgoal_tac "a < (max_word :: 32 word)")
+  apply (fold LONG_MAX_def LONG_MIN_def)
+      apply safe[1] 
+         apply (meson INT_MIN_MAX_lemmas(11) order.trans shortest_path_neg_checker.baz1 shortest_path_neg_checker.foo1)
+        apply (meson INT_MIN_MAX_lemmas(10) order.trans shortest_path_neg_checker.baz shortest_path_neg_checker.foo)
+       apply (metis INT_MIN_MAX_lemmas(10) add.commute add_mono_thms_linordered_semiring(1) shortest_path_neg_checker.bar)
+      apply (metis INT_MIN_MAX_lemmas(11) add.commute add_mono shortest_path_neg_checker.bar1 shortest_path_neg_checker.word_nat_simp)
+    (*
+
       apply (clarsimp simp add: awalk_neg_cyc_cost_def is_cycle_def is_cost_def awalk_edge_inv_def)
       apply (subst (asm) arrlist_cycle_path_heap, blast, fastforce simp add: word_less_nat_alt)
       apply (subst (asm) arrlist_heap[where iL=iC], fast, metis arrlist_cycle_path_heap word_less_nat_alt)
@@ -3228,7 +3285,7 @@ lemma awalk_cost_neg_spc':
       apply (subst arrlist_cycle_path_heap, blast, fastforce simp add: word_less_nat_alt)
       apply (subst arrlist_heap[where iL=iC], fast, metis arrlist_cycle_path_heap word_less_nat_alt)
       (* TODO: This proof that there is no over or underflow is still needed *)
-      subgoal sorry
+  subgoal sorry*)
 
      apply (metis less_linear max_word_max word_le_not_less)
     apply wpsimp
