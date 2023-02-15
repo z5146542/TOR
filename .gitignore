@@ -246,3 +246,7 @@ TSWLatexianTemp*
 
 #edit files
 ~*
+
+#isabelle swap files
+*.thy~
+*.c~
