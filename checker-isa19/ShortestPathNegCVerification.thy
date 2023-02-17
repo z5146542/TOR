@@ -4129,34 +4129,101 @@ lemma (in shortest_paths_locale_step1) asdf:
   assumes " v\<noteq>s"
   assumes "dist v \<noteq> \<infinity>"
   assumes " v \<in> verts G"
-  shows "awalk_verts s (pwalk v) ! 0 = v"
+  shows "rev (awalk_verts s (pwalk v)) ! 0 = v"
   apply (subst local.pwalk.simps)
-  oops
-  
+  apply (simp del: pwalk.simps)
+  apply safe
+  using assms(2) apply blast
+  using assms(3) apply blast 
+  apply (insert shortest_paths_locale_step1_axioms)
+  apply (simp only: shortest_paths_locale_step1_def; safe)
+  apply (erule_tac x=v in allE)
+  apply safe
+  apply (simp del: pwalk.simps)
+  by (smt append.assoc append.left_neutral append.right_neutral append_Cons append_Nil append_eq_append_conv append_is_Nil_conv assms(3) awalkE' awalkI awalk_decomp_verts awalk_verts_conv length_awalk_verts nat.inject nth_Cons_0 option.sel pwalk_awalk pwalk_simps(2) rev.simps(2) rev_append singleton_rev_conv)
+
+lemma (in shortest_paths_locale_step2) asdf2:
+  assumes " v\<noteq>s"
+  assumes "dist v \<noteq> \<infinity>"
+  assumes " v \<in> verts G"
+  shows "(awalk_verts s (pwalk v)) ! 0 = s"
+  apply (subst local.pwalk.simps)
+  apply (simp del: pwalk.simps)
+  apply safe
+  apply (insert shortest_paths_locale_step1_axioms)
+  apply (simp only: shortest_paths_locale_step1_def; safe)
+  apply (erule_tac x=v in allE)
+  apply safe
+  apply (simp del: pwalk.simps)
+  by (smt assms(3) awalkE' awalk_verts_conv' cas_simp nth_Cons_0 option.sel pwalk.elims pwalk_awalk)
+
+lemma (in shortest_paths_locale_step1) asdf3:
+  assumes " v\<noteq>s"
+  assumes "dist v \<noteq> \<infinity>"
+  assumes " v \<in> verts G"
+  shows "((\<lambda>v. pre_digraph.head G (the (parent_edge v))) ^^ i) v = v"
+  apply (insert shortest_paths_locale_step1_axioms)
+  apply (simp only: shortest_paths_locale_step1_def; safe)
+  apply (erule_tac x=v in allE)
+  by (metis assms id_funpow_id option.sel)
+
 lemma (in shortest_paths_locale_step1) head_parent_nth_eq_pwalk_nth:
   assumes " v \<in> verts G"
   assumes "dist v \<noteq> \<infinity>"
   assumes " v\<noteq>s"
   assumes "i \<le> num v"   
   shows "((\<lambda>v. pre_digraph.tail G (the (parent_edge v))) ^^ i) v = 
-          awalk_verts s (pwalk v) ! i"
- (* apply (subst awalk_verts_conv)*)
+          rev (awalk_verts s (pwalk v)) ! i"
+  using assms
+  apply (induct i arbitrary: v) 
+  using asdf apply auto[1]
+  apply (simp del: pwalk.simps)
+  apply (frule parent_num_assms, simp, simp, elim bexE conjE)
+  apply (simp del: pwalk.simps)
+  apply (drule_tac x="head G e" in meta_spec)
+  apply (simp del: pwalk.simps)
+  apply safe
+  apply (simp del: pwalk.simps) 
+  
+(*
+  apply (subst (2) pwalk.simps)
+  apply (simp del: pwalk.simps)
+  apply (subst (asm) length_pwalk[symmetric, where v="head G e" for e])
+   apply force
+  apply (subst awalk_verts_conv)
+  apply (simp del: pwalk.simps)
+  apply safe 
+  apply (metis Suc_n_not_le_n le0 length_0_conv)
+  apply (subst awalk_verts_conv)
+  apply (simp del: pwalk.simps)
+  apply (subst (2) pwalk.simps)
+  apply (simp del: pwalk.simps)
+  apply (subgoal_tac "last (pwalk (pre_digraph.head G e)) = e")
+   apply (simp del: pwalk.simps)
+   defer
+   apply (metis last_snoc option.sel pwalk.simps)
+  
+  sorry
+
   using assms
   apply (induct "num v" arbitrary: v i)
    apply (metis length_greater_0_conv list.size(3) num_s_is_min)
   apply (frule parent_num_assms, simp, simp, elim bexE conjE)
   apply (subst (asm) length_pwalk[symmetric, where v="tail G e" for e], 
-         (case_tac "tail G e = s"; clarsimp simp only:))+
-apply (subst (asm) length_pwalk[symmetric, where v="head G e" for e], blast)+
+      (case_tac "tail G e = s"; clarsimp simp only:))+
+   apply (subst (asm) length_pwalk[symmetric, where v="head G e" for e], blast)+
    apply (simp del: pwalk.simps)
   apply (frule pwalk_awalk[simplified awalk_def], (clarsimp simp del: pwalk.simps)+)
-  apply (frule awalk_verts_conv', simp del:pwalk.simps) 
+ apply (frule awalk_verts_conv', simp del:pwalk.simps) 
   apply (case_tac "pwalk (head G e) = []", metis cas.simps(1), simp del:pwalk.simps) 
   apply (subst pwalk_simps(2), (blast intro: head_in_verts)+)
 
   apply (drule_tac x="tail G e" in meta_spec)
-  apply (simp del:pwalk.simps)
-  apply (case_tac "i")
+(* Here, specifying i is very important. But what should it be? Intuitively, it should be i - 1*)
+  apply (drule_tac x="i - 1" in meta_spec)
+  apply (clarsimp simp del:pwalk.simps)
+  
+*)
   sorry
 (*
   apply (clarsimp simp del: pwalk.simps simp add: )
