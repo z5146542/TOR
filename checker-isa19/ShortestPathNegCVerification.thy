@@ -4167,7 +4167,20 @@ lemma (in shortest_paths_locale_step1) asdf3:
   apply (erule_tac x=v in allE)
   by (metis assms id_funpow_id option.sel)
 
+lemma (in shortest_paths_locale_step1) asdf4:
+  notes pwalk.simps[simp del]
+  assumes " v \<in> verts G"
+  assumes "dist v \<noteq> \<infinity>"
+  assumes " v\<noteq>s"
+  assumes "i \<le> num v"   
+  shows "rev (awalk_verts s (pwalk v)) ! i \<in> verts G"
+  using assms 
+  apply (induct i arbitrary: v)
+   apply (simp add: asdf)
+  by (smt awalkE in_set_conv_nth length_rev less_Suc_eq_le set_rev shortest_paths_locale_step1.length_awalk shortest_paths_locale_step1.pwalk_awalk shortest_paths_locale_step1_axioms subsetD)
+
 lemma (in shortest_paths_locale_step1) head_parent_nth_eq_pwalk_nth:
+  notes pwalk.simps[simp del]
   assumes " v \<in> verts G"
   assumes "dist v \<noteq> \<infinity>"
   assumes " v\<noteq>s"
@@ -4177,14 +4190,15 @@ lemma (in shortest_paths_locale_step1) head_parent_nth_eq_pwalk_nth:
   using assms
   apply (induct i arbitrary: v) 
   using asdf apply auto[1]
-  apply (simp del: pwalk.simps)
+  apply simp
   apply (frule parent_num_assms, simp, simp, elim bexE conjE)
-  apply (simp del: pwalk.simps)
+  apply simp
   apply (drule_tac x="head G e" in meta_spec)
-  apply (simp del: pwalk.simps)
+  apply simp
   apply safe
-  apply (simp del: pwalk.simps) 
-  
+  apply simp
+  apply (simp add:length_pwalk[symmetric, where v="head G e" for e])
+
 (*
   apply (subst (2) pwalk.simps)
   apply (simp del: pwalk.simps)
@@ -4243,6 +4257,25 @@ lemma (in shortest_paths_locale_step1) cycle_does_not_intersect_path_eq':
         head_parent_nth_eq_pwalk_nth pwalk_verts_def less_Suc_eq_le disjoint_iff_not_equal     
   by smt
 
+definition (in shortest_paths_locale_step1) pwalk_verts_rev :: "'a  \<Rightarrow> 'a set" where 
+  "pwalk_verts_rev v = {u. u \<in> set (rev (awalk_verts s (pwalk v)))}" 
+
+lemma (in shortest_paths_locale_step1) pwalks_verts_rev_same: 
+  "pwalk_verts v = pwalk_verts_rev v"
+  unfolding shortest_paths_locale_step1.pwalk_verts_rev_def[OF shortest_paths_locale_step1_axioms]
+    shortest_paths_locale_step1.pwalk_verts_def[OF shortest_paths_locale_step1_axioms]
+  by simp
+
+lemma (in shortest_paths_locale_step1) cycle_does_not_intersect_path_eq'':
+  " \<lbrakk> wf_digraph G; v \<in> verts G; v\<noteq>s;
+    dist v \<noteq> \<infinity>\<rbrakk> \<Longrightarrow>
+    (\<forall>i\<le>num v. rev (awalk_verts s (pwalk v)) ! i \<notin> S) =
+    (S \<inter> pwalk_verts v = {})" 
+apply (simp only: pwalks_verts_rev_same)
+  using length_awalk_verts length_pwalk n_not_Suc_n mem_Collect_eq in_set_conv_nth
+        head_parent_nth_eq_pwalk_nth pwalk_verts_rev_def less_Suc_eq_le disjoint_iff_not_equal
+  by (smt length_rev)
+
 lemma cycle_does_not_intersect_path_eq:
   "\<lbrakk> v\<noteq>s; wf_digraph (abs_IGraph G);
      v \<in> verts (abs_IGraph G);
@@ -4264,6 +4297,27 @@ lemma cycle_does_not_intersect_path_eq:
                 shortest_paths_locale_step1_inv_eq_maths 
                 shortest_paths_locale_step2_inv_def)
 
+lemma cycle_does_not_intersect_path_eq':
+  "\<lbrakk> v\<noteq>s; wf_digraph (abs_IGraph G);
+     v \<in> verts (abs_IGraph G);
+     abs_IDist d v \<noteq> \<infinity>; 
+     C_se_inv G cse c d (length cse); 
+     shortest_paths_locale_step2_inv G s c n p d pred;
+     \<forall>i\<le>abs_INat n v.
+         ((\<lambda>v. fst (snd (snd G) (p v))) ^^ i) v =
+         rev (pre_digraph.awalk_verts (abs_IGraph G) s
+          (shortest_paths_locale_step1.pwalk (abs_IGraph G) s (abs_IPedge p)
+            (abs_IDist d) v)) ! i \<rbrakk> \<Longrightarrow>
+    (\<forall>i\<le>abs_INat n v.
+        ((\<lambda>v. fst (snd (snd G) (p v))) ^^ i) v \<notin> fst ` set cse) =
+    (fst ` set cse \<inter>
+     shortest_paths_locale_step1.pwalk_verts (abs_IGraph G) s (abs_IPedge p)
+      (abs_IDist d) v =
+     {})"
+  by (simp add: shortest_paths_locale_step1.cycle_does_not_intersect_path_eq''
+                shortest_paths_locale_step1_inv_eq_maths 
+                shortest_paths_locale_step2_inv_def)
+
 lemma nth_parent_eq_math:
   " wf_digraph (abs_IGraph G) \<Longrightarrow>
     v < fst G \<Longrightarrow>
@@ -4272,13 +4326,18 @@ lemma nth_parent_eq_math:
     v \<noteq> s \<Longrightarrow>
     \<forall>i\<le>abs_INat n v.
        ((\<lambda>v. fst (snd (snd G) (p v))) ^^ i) v =
-       pre_digraph.awalk_verts (abs_IGraph G) s (shortest_paths_locale_step1.pwalk (abs_IGraph G) s 
-       (abs_IPedge p) (abs_IDist d) v) ! i"
+       rev (pre_digraph.awalk_verts (abs_IGraph G) s (shortest_paths_locale_step1.pwalk (abs_IGraph G) s 
+       (abs_IPedge p) (abs_IDist d) v)) ! i"
   apply (clarsimp simp: shortest_paths_locale_step2_inv_eq_maths shortest_paths_locale_step2_pred_def)
   apply (frule shortest_paths_locale_step1.head_parent_nth_eq_pwalk_nth, simp+)
   apply (frule shortest_paths_locale_step1.num_s_is_min, simp+)
   apply (simp add: shortest_paths_locale_step2_pred_axioms_def)
-  
+  apply (insert shortest_paths_locale_step1.head_parent_nth_eq_pwalk_nth[where ?G="abs_IGraph G" and ?s=s and ?num="abs_INat n" and ?dist="abs_IDist d" and ?v=v and ?parent_edge="abs_IPedge p"])
+  apply (drule_tac x=i in meta_spec)
+  apply clarsimp
+ (* show p v = the (abs_IPedge p v)*)
+  apply (subgoal_tac "((\<lambda>v. fst (snd (snd G) (the (abs_IPedge p v)))) ^^ i) v = ((\<lambda>v. fst (snd (snd G) (p v))) ^^ i) v")
+   apply argo
   sorry
 
   
@@ -4303,10 +4362,10 @@ lemma parents_not_in_cycles_start_inv_eq_math:
             shortest_paths_locale_step2_pred_def shortest_paths_locale_step1.pwalk_verts_def
             shortest_paths_locale_step1.pwalk.simps
             shortest_paths_locale_step1.s_assms pre_digraph.awalk_verts.simps) 
-  apply(subst cycle_does_not_intersect_path_eq[symmetric], simp_all)
+  apply(subst cycle_does_not_intersect_path_eq'[symmetric], simp_all)
   apply clarsimp
   using nth_parent_eq_math by blast
-(*
+(*                    
   apply (case_tac i)
   subgoal sorry
   apply clarsimp
@@ -4358,7 +4417,7 @@ lemma int_neg_cyc_inv_eq_math:
      int_neg_cyc_inv G d cse p n (fst G) =
      (\<forall>v<fst G. abs_IDist d v = - \<infinity> \<longrightarrow> 
         fst ` set cse \<inter> 
-        shortest_paths_locale_step1.pwalk_verts 
+        shortest_paths_locale_step1.pwalk_verts
           (abs_IGraph G) s (abs_IPedge p) (abs_IDist d) v \<noteq> {})"
   unfolding int_neg_cyc_inv_def
   apply (rule iffI; clarsimp) 
