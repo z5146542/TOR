@@ -61,12 +61,7 @@ abbreviation icycle_start ::
   "ICycle \<Rightarrow> 32 word"
 where
   "icycle_start C \<equiv> fst C"
-(*
-abbreviation icycle_length ::
-  "ICycle \<Rightarrow> 32 word"
-where
-  "icycle_length C \<equiv> fst (snd C)"
-*)
+
 abbreviation icycle_path ::
   "ICycle \<Rightarrow> IPath"
 where
@@ -86,25 +81,6 @@ abbreviation icycle'_path ::
   "ICycle' \<Rightarrow> IPathPtr"
 where
   "icycle'_path C \<equiv> snd (snd C)"
-(*
-abbreviation icycles_num ::
-  "ICycle_Set \<Rightarrow> 32 word"
-where
-  "icycles_num CS \<equiv> fst CS"
-
-abbreviation icycles :: "ICycle_Set \<Rightarrow> ICycle list"
-where
-  "icycles CS \<equiv> snd CS"
-       
-abbreviation icycles'_num ::
-  "ICycle_Set' \<Rightarrow> 32 word"
-where
-  "icycles'_num CS \<equiv> fst CS"
-
-abbreviation icycles' :: "ICycle_Set' \<Rightarrow> ICycle' list"
-where
-  "icycles' CS \<equiv> snd CS"
-*)
 
 (* Implementation functions to lists *)
 
@@ -155,13 +131,7 @@ fun mk_icost_list ::
 where
   "mk_icost_list G cost = mk_list' (unat (iedge_cnt G)) cost"
 
-  (* Make cycle lists *)
-(*
-fun mk_ipath_list :: 
-  "ICycle \<Rightarrow> IPath"
-where 
-  "mk_ipath_list C = mk_list' (unat (icycle_length C)) (icycle_path C)"
-*)
+(* Make cycle lists *)
 fun mk_ipath_list ::
   "ICycle \<Rightarrow> IPath"
 where
@@ -173,31 +143,6 @@ where
   "mk_ipath'_list h C = map (heap_w32 h) 
                          (array_addrs (icycle'_path C) (unat (icycle'_length C)))"
 
-(*
-fun mk_icycle_list :: 
-  "ICycle_Set \<Rightarrow> ICycle list"
-where 
-  "mk_icycle_list CS = mk_list' (unat (icycles_num CS)) (icycles CS)"
-*)
-(*
-fun mk_icycle_list ::
-  "ICycle_Set \<Rightarrow> ICycle list"
-where
-  "mk_icycle_list CS = icycles CS"
-*)
-(*
-fun mk_icycle'_list :: 
-  "ICycle_Set' \<Rightarrow> ICycle' list"
-where 
-  "mk_icycle'_list CS = mk_list' (unat (icycles'_num CS)) (icycles' CS)"
-*)
-
-(*
-fun mk_icycle'_list ::
-"ICycle_Set' \<Rightarrow> ICycle' list"
-where
-"mk_icycle'_list CS = icycles' CS"
-*)
 (*Helper word lemmas*)
 
 lemma word_nat_simp[simp]:
@@ -581,26 +526,6 @@ where
     (\<forall>i<unat (icycle'_length iC'). 
        is_valid_w32 h ((icycle'_path iC') +\<^sub>p int i))"
 
-(*
-definition 
-  from_icycle'_to_icycle_list ::
-  "'a lifted_globals_scheme \<Rightarrow> ICycle'\<Rightarrow> ICycle \<Rightarrow> bool"
-where
-   "from_icycle'_to_icycle_list h iC' iC \<equiv>
-    icycle_start iC = icycle'_start iC' \<and> 
-    icycle_length iC = icycle'_length iC' \<and>
-    is_path h iC (icycle'_path iC')"
-
-definition is_cycle 
-where
-  "is_cycle h iC p \<equiv>
-    is_valid_Cycle_C h p \<and> 
-    icycle_start iC = start_C (heap_Cycle_C h p) \<and> 
-    unat (icycle_length iC) = length (icycle_path iC) \<and>
-    icycle_length iC = length_C (heap_Cycle_C h p) \<and>
-    is_path h iC (path_C (heap_Cycle_C h p))"
-*)
-
 definition 
   is_cycle :: "'a lifted_globals_scheme \<Rightarrow> ICycle \<Rightarrow> Cycle_C ptr \<Rightarrow> bool"
 where
@@ -609,15 +534,6 @@ where
     icycle_start iC = start_C (heap_Cycle_C h p) \<and> 
     length (icycle_path iC) = unat (length_C (heap_Cycle_C h p)) \<and>
     is_path h (icycle_path iC) (path_C (heap_Cycle_C h p))"
-(*
-definition final_is_cycle
-where
-  "final_is_cycle h iC' p \<equiv>
-    is_valid_Cycle_C h p \<and>
-    icycle'_start iC' = start_C (heap_Cycle_C h p) \<and>
-    icycle'_length iC' = length_C (heap_Cycle_C h p) \<and>
-    is_path h (abs_ICycle' h iC') (path_C (heap_Cycle_C h p))"
-*)
 
 definition 
   abs_ICycles' :: "'a lifted_globals_scheme \<Rightarrow> ICycle_Set' \<Rightarrow> ICycle_Set"
@@ -647,39 +563,6 @@ where
    (\<forall>i< length iCS'. 
           is_cycle' h (iCS'!i) (cyc_obj_C (heap_Cycle_set_C h p) +\<^sub>p int i))"
 
-
-
-
-(*give  array_addrs*)
-
-(*
-definition is_cycle'
-where
-  "is_cycle' h iC p \<equiv>
-    is_valid_Cycle_C h p \<and> 
-    icycle'_start iC = start_C (heap_Cycle_C h p) \<and> 
-    icycle'_length iC = length_C (heap_Cycle_C h p) \<and>
-    icycle'_path iC = (path_C (heap_Cycle_C h p))"
- 
-definition is_cycle_set
-where
-  "is_cycle_set h iS p iC \<equiv>
-    is_valid_Cycle_set_C h p \<and> 
-    icycles_num iS = no_cycles_C (heap_Cycle_set_C h p) \<and> 
-    arrlist (heap_Cycle_C h) (is_valid_Cycle_C h)
-      ( (mk_icycle'_list iS)) (cyc_obj_C (heap_Cycle_set_C h p))"
-
-*)
-
-(*
-function from  iCycle to Cycle_C
-
-Operator:  arrlist (heap_Cycle_C h) (is_valid_Cycle_C h) ::
-  Cycle_C list \<Rightarrow> Cycle_C ptr \<Rightarrow> bool
-Operand:   mk_icycle_list iS :: (32 word \<times> 32 word \<times> (32 word \<Rightarrow> 32 word)) list
-
-    icycles iS = is_cycle h (abs_) (cyc_obj_C (heap_Cycle_set_C h p))"
-*)
 (* Abstract Graph *)
 
 definition no_loops :: 
@@ -725,19 +608,7 @@ definition abs_IPedge ::
   "IPEdge \<Rightarrow> IVertex \<Rightarrow> 32 word option" 
 where
   "abs_IPedge p v \<equiv> if msb (p v) then None else Some (p v)"
-(*
-definition abs_IPath ::
-  "IPath \<Rightarrow> 32 word awalk"
-where
-  "abs_IPath \<equiv> id"
-*)
 
-(*
-definition abs_ICycle :: 
-  "ICycle_Set \<Rightarrow> (32 word \<times> (32 word awalk)) set"
-where
-  "abs_ICycle CS \<equiv> set (map (\<lambda> C. (icycle_start C, icycle_path C)) (icycles CS))"
-*)
 lemma None_abs_pedgeI[simp]:
   "(abs_IPedge p v = None) = msb (p v)"
   using abs_IPedge_def by auto
@@ -894,7 +765,12 @@ by (fastforce intro: arrlist_nth_valid simp: is_pedge_def uint_nat word_less_def
 lemma is_graph_head_arrlist_eq: 
   "is_graph s iG g \<Longrightarrow> e < (iedge_cnt iG) \<Longrightarrow> 
     snd (snd (snd iG) e) = second_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p uint e))"     
-by (fastforce simp: is_graph_def dest: head_heap)
+  by (fastforce simp: is_graph_def dest: head_heap)
+
+lemma is_graph_tail_arrlist_eq: 
+  "is_graph s iG g \<Longrightarrow> e < (iedge_cnt iG) \<Longrightarrow> 
+    fst (snd (snd iG) e) = first_C (heap_Edge_C s (arcs_C (heap_Graph_C s g) +\<^sub>p uint e))"     
+by (fastforce simp: is_graph_def dest: tail_heap)
 
 lemma is_graph_valid_graph:
   "is_graph s iG g \<Longrightarrow> is_valid_Graph_C s g"
@@ -923,6 +799,19 @@ lemma parent_head_in_verts:
           wellformed_iGraph[THEN conjunct2])
   apply (simp add: less_1_simp word_le_less_eq)
   apply (metis (mono_tags, lifting) Suc_pred funpow_simp_l unat_gt_0)
+  done
+
+lemma parent_tail_in_verts:
+  "\<lbrakk>wf_digraph (abs_IGraph iG); 
+    v < ivertex_cnt iG;
+    \<forall>i<n. iP (((\<lambda>v. fst (snd (snd iG) (iP v))) ^^ unat (i::32 word)) v) < iedge_cnt iG;
+    i\<le>n  \<rbrakk> \<Longrightarrow> 
+    ((\<lambda>v. fst (iedges iG (iP v))) ^^ unat i) v < ivertex_cnt iG"
+   apply (cases "unat i"; simp)
+   apply (rename_tac j)
+   apply (rule wellformed_iGraph[THEN conjunct1], simp)
+   apply (erule_tac x="i - 1" in allE)
+   apply (metis Zero_not_Suc diff_Suc_1 unat_0 unat_minus_one less_1_simp)
   done
 
 (*helpers for icycle intermediate abstraction *)
@@ -2375,36 +2264,6 @@ lemma shortest_paths_locale_step2_spc:
      using validNF_post_imp[OF _ shortest_paths_locale_step2_spc_intermediate] 
         shortest_paths_locale_step2_inv_eq_maths 
      by simp
-(*
-definition awalk_inv ::
-  "IGraph \<Rightarrow> ICycle \<Rightarrow> nat \<Rightarrow> bool"
-where
-"awalk_inv G C k \<equiv>
-    icycle_start C < ivertex_cnt G \<and>
-    (length (icycle_path C) \<noteq> 0 \<longrightarrow> 
-       icycle_start C = snd (iedges G (last (icycle_path C)))) \<and>
-    (\<forall>i < k. 
-       icycle_path C ! i < iedge_cnt G \<and>
-       icycle_path C ! (Suc i) < iedge_cnt G \<and>
-       fst (iedges G (icycle_path C ! i)) =
-       snd (iedges G (icycle_path C ! (Suc i))))"
-
-lemma awalk_inv_step:
-  assumes i_less_max: "k < unat (max_word::32 word)"
-  assumes "icycle_path iY \<noteq> []"
-  shows "awalk_inv iG iY (k + 1) \<longleftrightarrow> awalk_inv iG iY k \<and>
-       icycle_path iY ! k < iedge_cnt iG \<and>
-       icycle_path iY ! (Suc k) < iedge_cnt iG \<and>
-       fst (iedges iG (icycle_path iY ! k)) =
-       snd (iedges iG (icycle_path iY ! (Suc k)))"
-  unfolding awalk_inv_def
-  using less_antisym Suc_eq_plus1 less_Suc_eq
-  by metis
-
-lemma list_quant_set: "((P (hd xs)) \<and> (\<forall>i < length xs - 1. P (xs ! (i - 1)) \<and> P (xs ! i))) = (\<forall> x \<in> set xs. P x)"
-  sledgehammer
-  by (metis in_set_conv_nth)
-*)
 
 definition awalk_edge_inv ::
   "IGraph \<Rightarrow> ICycle \<Rightarrow> nat \<Rightarrow> bool"
@@ -2878,55 +2737,6 @@ next
         add_mono_thms_linordered_semiring(1))
 qed
 
-(*
-thm take_map
-sum_list_map_eq_sum_count
-find_theorems "sum_list (map ?f ?xs) = _"
-term "sint xs"
-lemma sum_list_sint_take_le:
-  assumes "i < length xs"
-  assumes "\<forall>x\<in> set xs. x \<le> m"
-  shows   "sum_list (map sint (take i xs)) \<le> sint (m * of_nat i)"
-*)
-
-(*
-lemma abstract_val_scast_add_strict_upcast:
-    "\<lbrakk> len_of TYPE('a::len) < len_of TYPE('b::len);
-       length xs' \<le> len_of TYPE('a::len);
-       abstract_val P xs (map sint) xs' \<rbrakk> \<Longrightarrow>  
-         abstract_val P (sum_list xs) sint 
-           (sum_list  (map (scast :: 'a word \<Rightarrow> 'b word) xs'))"
-  oops
-
-lemma abstract_val_scast_add_strict_upcast:
-    "\<lbrakk> len_of TYPE('a::len) < len_of TYPE('b::len);
-       length xs \<le> len_of TYPE('a::len);
-       abstract_val P as (map sint) xs \<rbrakk> \<Longrightarrow>  
-       abstract_val P (sum_list as) sint 
-           (sum_list (map (scast :: 'a word \<Rightarrow> 'b word) xs))"
-  apply (induct xs arbitrary: as; clarsimp)
-
-  apply (drule_tac x="map sint xs" in meta_spec; clarsimp)
-  apply (subst signed_arith_ineq_checks_to_eq(1)[THEN iffD1, symmetric])
- apply (subst sint_up_scast, simp add: is_up nat_less_le )+
-   apply (rule conjI)  
-  unfolding scast_def sint_uint
-    apply clarsimp 
-  oops
-
-lemma sum_list_step_sint':
-  assumes "i < length xs" 
-  assumes "xs \<noteq> []"
-  shows "sum_list (map sint (take (i + 1) xs)) = 
-          sint (sum_list (take i xs)) + sint (xs ! i)"
-proof -
-  have "sum_list (take i (map sint xs)) + sint (xs ! i) = 
-        sum_list (take (i + 1) (map sint xs))"
-    by (metis (no_types) add.commute assms(1) gen_length_code(1) gen_length_def length_map not_add_less1 nth_map sum_list_step)
-  then show ?thesis using take_map 
-
-  oops
-*)
 lemma awalk_neg_cyc_cost_step':
   assumes "is_cycle s iY y"
     and   "i  < (length (icycle_path iY))"
@@ -2955,99 +2765,6 @@ corollary awalk_neg_cyc_cost_step:
   using assms awalk_neg_cyc_cost_def awalk_neg_cyc_cost_step'
   by (metis (no_types, hide_lams) One_nat_def add_Suc_right nth_map
               gen_length_code(1) gen_length_def list.size(3))
-(*thm take.simps
-lemmas word_add_strict_up_cast_no_overflow_32_64' = 
-      abstract_val_ucast_add_strict_upcast
-        [unfolded abstract_val_def,
-          OF word_abs_base(18) impI, where P=True, simplified]
-
-
-lemma abstract_val_scast_add_strict_upcast:
-    "\<lbrakk> len_of TYPE('a::len) < len_of TYPE('b::len);
-       abstract_val P C' uint C; abstract_val P D' uint D \<rbrakk>
-            \<Longrightarrow>  abstract_val P (C' + D') uint 
-                    ((scast (C :: 'a word) :: 'b word) +
-                      scast (D :: 'a word) :: 'b word)"
-  find_theorems scast is_up 
-int
-  thm unat_ucast_upcast
-  apply (clarsimp simp: is_up unat_ucast_upcast ucast_def )
-  apply (clarsimp simp:  word_of_int_def unat_word_ariths(1))
-  apply (frule unat_plus_less_two_power_length[where C=C and D=D]) 
-  using unat_of_nat_eq 
-        add.right_neutral zero_less_power
-        unat_plus_less_two_power_length uint_inverse 
-        uint_mod_same uint_nat unat_of_nat zero_less_numeral) 
-
-thm unat_leq_plus
-"
- - 9223372036854775808
-           \<le> awalk_neg_cyc_cost iC iY (unat a) +
-              sint
-               (UCAST(32 \<rightarrow> 32 signed)
-                 (heap_w32 s
-                   (PTR_COERCE(32 signed word \<rightarrow> 32 word) (c +\<^sub>p uint (heap_w32 s (path_C (heap_Cycle_C s y) +\<^sub>p uint a)))))) \<and>
-           awalk_neg_cyc_cost iC iY (unat a) +
-           sint
-            (UCAST(32 \<rightarrow> 32 signed)
-              (heap_w32 s
-                (PTR_COERCE(32 signed word \<rightarrow> 32 word) (c +\<^sub>p uint (heap_w32 s (path_C (heap_Cycle_C s y) +\<^sub>p uint a))))))
-           \<le> 9223372036854775807"
-
-theorem awalk_cost_within_bounds':
-  assumes "is_cycle s iY y"
-  and     "i < length (icycle_path iY)"
-  and     "n = sum_list (map iC ((take i (icycle_path iY))))"
-  shows   "- (2 ^ (size n - 1)) \<le> sint n \<and>
-             sint n \<le> 2 ^ (size n - 1) - 1"
-    using assms
-    oops
-
-corollary awalk_neg_cyc_cost_sint:
-  assumes "is_cycle s iY y"
-    and "i < length (icycle_path iY)"
-    and "icycle_path iY \<noteq> []"
-    and "n = sum_list (map iC ((take i (icycle_path iY))))"
-  shows "awalk_neg_cyc_cost iC iY i = sint n \<and>
-         - (2 ^ (size n - 1)) \<le> sint n \<and>
-         sint n \<le> 2 ^ (size n - 1) - 1"
-  using assms
-  apply (induct i arbitrary: n, simp add: awalk_neg_cyc_cost_def) 
-  apply (frule_tac i=i in awalk_neg_cyc_cost_step[where iC=iC]; simp)
-  apply (subst signed_arith_ineq_checks_to_eq(1)[where 'a="32 signed", THEN iffD1])
-  subgoal sorry
-  apply (rule conjI)
-   apply (smt Nil_is_map_conv Suc_eq_plus1 Suc_lessD length_map nth_map shortest_path_neg_checker.sum_list_step take_map)
-  apply (rule conjI)
-  apply clarsimp
-  oops
-
-lemma sum_list_sint: 
-  shows "sum_list (map (sint \<circ> f) xs) = 
-         sint (sum_list (map f xs))"
-  apply (induction xs) 
-   apply simp_all apply (subst signed_arith_sint(1), simp_all)
-  apply safe  
-  oops
-
-
-  thm abstract_val_scast_upcast
-*)
-(* *)
-lemma abstract_val_scast_add_strict_upcast:
-    "\<lbrakk> len_of TYPE('a::len) < len_of TYPE('b::len);
-       abstract_val P C' sint C; abstract_val P D' sint D \<rbrakk>
-            \<Longrightarrow>  abstract_val P (C' + D') sint 
-                    ((scast (C :: 'a word) :: 'b word) +
-                      scast (D :: 'a word) :: 'b word)"
-  apply (clarsimp simp: is_up sint_up_scast scast_def )
-  apply (clarsimp simp:  word_of_int_def sint_word_ariths(1))
-  apply (frule unat_plus_less_two_power_length[where C=C and D=D]) 
-  using  unat_of_nat_eq 
-        add.right_neutral zero_less_power
-        unat_plus_less_two_power_length uint_inverse 
-        uint_mod_same uint_nat unat_of_nat zero_less_numeral 
-  oops
 
 lemma is_cycle_valid: 
   "is_cycle s iY y \<Longrightarrow> is_valid_Cycle_C s y"
@@ -3070,10 +2787,10 @@ lemma is_cycle_valid_path_cost:
      is_valid_w32 s
          (PTR_COERCE(32 signed word \<rightarrow> 32 word)
          (c +\<^sub>p uint (heap_w32 s (path_C (heap_Cycle_C s y) +\<^sub>p uint i)))) "
-by (fastforce simp: awalk_edge_inv_def 
-                    is_cost_def is_cycle_def 
-                    uint_nat word_less_nat_alt
-             intro: arrlist_nth_valid) 
+  by (fastforce simp: awalk_edge_inv_def 
+      is_cost_def is_cycle_def 
+      uint_nat word_less_nat_alt
+      intro: arrlist_nth_valid) 
 
 lemma is_cost_eq: 
   "is_cost s iG iC c  \<Longrightarrow> i < iedge_cnt iG \<Longrightarrow>
@@ -3081,76 +2798,41 @@ lemma is_cost_eq:
     UCAST(32 \<rightarrow> 32 signed) (heap_w32 s (PTR_COERCE(32 signed word \<rightarrow> 32 word) (c +\<^sub>p uint i)))"
   unfolding is_cost_def
   by (fastforce dest!: arrlist_heap simp: int_unat)
-(*
-find_theorems sum_list fold
 
-lemma sum_list_no_overflow:
-  ""
-*)
-
-lemma "\<And>i. (i < length l \<Longrightarrow>i \<le> UINT_MAX \<Longrightarrow> sum_list (map sint (take i l)) \<le> UINT_MAX * i) \<Longrightarrow> 
-    Suc i < length l \<Longrightarrow> Suc i \<le> UINT_MAX \<Longrightarrow> sum_list (map sint (take (Suc i) (l::32word list))) \<le> UINT_MAX * Suc i"
-  apply (cases l; simp)
-  apply (simp only: take_map[symmetric])
-  apply clarsimp
-  oops
-
-
-lemma "is_cost s iG iC c \<Longrightarrow>
-       is_cycle s iY y \<Longrightarrow>
-       i < length (icycle_path iY) \<Longrightarrow>
-       int i \<ge> 0 \<Longrightarrow>
-      i \<le> INT_MAX \<Longrightarrow> 
-      awalk_neg_cyc_cost iC iY i \<le> INT_MAX * i" 
-  apply (induct i, simp add: awalk_neg_cyc_cost_def)
-  apply (case_tac "snd iY"; clarsimp simp: INT_MAX_def)
-  apply (rename_tac i cyc cs)
-  apply (frule awalk_neg_cyc_cost_step[simplified Suc_eq_plus1, where iC=iC], 
-         simp, fast, simp)
-  unfolding awalk_neg_cyc_cost_def apply clarsimp
-  (*
-  apply clarsimp unfolding awalk_neg_cyc_cost_def  apply simp
-  apply (subgoal_tac "sint (iC a) \<le> 2147483647")
-
-
-*)
-  
-  oops
-
-lemma bar1:
+lemma INT_MIN_times_uint_plus_1:
   assumes "a < (max_word :: 32 word)"
   shows "INT_MIN * uint (a + 1) = INT_MIN + INT_MIN * uint a"
   using assms
   by (metis (no_types, hide_lams) add.commute distrib_left less_irrefl less_x_plus_1 mult.right_neutral not_le uint_1 uint_plus_simple_iff)
 
-lemma foo1:
+lemma INT_MIN_times_uint_plus_1_le:
   assumes "a < (max_word :: 32 word)"
     and "INT_MIN * uint a \<le> x"
     and "INT_MIN \<le> y"
   shows "INT_MIN * uint (a + 1) \<le> x + y"
   using assms
-  using bar1 by force
+  using INT_MIN_times_uint_plus_1 by force
 
-lemma bar:
+lemma INT_MAX_times_uint_plus_1:
   assumes "a < (max_word :: 32 word)"
   shows "INT_MAX * uint (a + 1) = INT_MAX + INT_MAX * uint a"
   using assms
   by (metis (no_types, hide_lams) add.commute distrib_left less_irrefl less_x_plus_1 mult.right_neutral not_le uint_1 uint_plus_simple_iff)
 
-lemma foo:
+lemma INT_MAX_times_uint_plus_1_le:
   assumes "a < (max_word :: 32 word)"
     and "x \<le> INT_MAX * uint a"
     and "y \<le> INT_MAX"
   shows "x + y \<le> INT_MAX * uint (a + 1)"
   using assms
-  using bar by force
+  using INT_MAX_times_uint_plus_1 by force
 
-lemma baz_max: 
+lemma INT_MAX_times_uint_max_word_le_LONG_MAX: 
   "INT_MAX * uint (max_word :: 32 word) \<le> LONG_MAX"
   unfolding INT_MAX_def LONG_MAX_def max_word_def
   by fastforce
 
-lemma baz1_min: 
+lemma INT_MIN_times_uint_max_word_ge_LONG_MIN: 
   "LONG_MIN \<le> INT_MIN * uint (max_word :: 32 word)"
   unfolding INT_MIN_def LONG_MIN_def max_word_def
   by fastforce
@@ -3163,75 +2845,20 @@ lemma test1:
 lemma test2:
   assumes "a < (max_word :: 32 word)"
   shows "INT_MIN * uint (a + 1) \<le> INT_MIN * uint a"
-  by (metis INT_MIN_MAX_lemmas(18) add.right_neutral assms le_less shortest_path_neg_checker.foo1)
+  by (metis INT_MIN_MAX_lemmas(18) add.right_neutral assms le_less INT_MIN_times_uint_plus_1_le)
 
-lemma baz:
+lemma INT_MAX_times_uint_plus_1_le_LONG_MAX:
   assumes "a < (max_word :: 32 word)"
   shows "INT_MAX * uint (a + 1) \<le> LONG_MAX"
-  using baz_max test1[OF assms(1)] 
+  using INT_MAX_times_uint_max_word_le_LONG_MAX test1[OF assms(1)] 
   by (metis (no_types, hide_lams) INT_MIN_MAX_lemmas(17) add.commute mult.commute mult_right_mono order_trans)
 
-lemma baz1: 
+lemma INT_MIN_times_uint_plus_1_ge_LONG_MIN: 
   assumes "a < (max_word :: 32 word)"
   shows "LONG_MIN \<le> INT_MIN * uint (a + 1)"
-  using baz1_min test1[OF assms(1)] test2[OF assms(1)]
+  using INT_MIN_times_uint_max_word_ge_LONG_MIN test1[OF assms(1)] test2[OF assms(1)]
   by (meson INT_MIN_MAX_lemmas(9) le_less mult_le_cancel_left mult_nonneg_nonneg order.trans uint_ge_0 un_ui_le)
 
-lemma 
-  "\<And>a s. a < length_C (heap_Cycle_C s y) \<Longrightarrow>
-           awalk_edge_inv iG iY (length (snd iY)) \<Longrightarrow>
-           wf_digraph (abs_IGraph iG) \<Longrightarrow>
-           is_graph s iG g \<Longrightarrow>
-           is_cost s iG iC c \<Longrightarrow>
-           is_cycle s iY y \<Longrightarrow>
-           sint b \<le> INT_MAX \<Longrightarrow> 
-           INT_MIN \<le> sint b  \<Longrightarrow>
-           LONG_MIN \<le> awalk_neg_cyc_cost iC iY (unat a) + sint (b::word32) \<and>
-           awalk_neg_cyc_cost iC iY (unat a) + sint b \<le> LONG_MAX \<and>
-           awalk_neg_cyc_cost iC iY (unat a) + sint b = 
-           awalk_neg_cyc_cost iC iY (unat (a + 1))"
- using INT_MAX_def INT_MIN_def LONG_MIN_def LONG_MAX_def
-  oops
-lemma awalk_cost_neg_within_bounds:
-  "\<And>a s. a < length_C (heap_Cycle_C s y) \<Longrightarrow>
-           awalk_edge_inv iG iY (length (snd iY)) \<Longrightarrow>
-           wf_digraph (abs_IGraph iG) \<Longrightarrow>
-           is_graph s iG g \<Longrightarrow>
-           is_cost s iG iC c \<Longrightarrow>
-           is_cycle s iY y \<Longrightarrow>
-           - 9223372036854775808 \<le> awalk_neg_cyc_cost iC iY (unat a) + sint (iC (snd iY ! unat a)) \<and>
-           awalk_neg_cyc_cost iC iY (unat a) + sint (iC (snd iY ! unat a)) \<le> 9223372036854775807 \<and>
-           awalk_neg_cyc_cost iC iY (unat a) + sint (iC (snd iY ! unat a)) = 
-           awalk_neg_cyc_cost iC iY (unat (a + 1))"
-  oops
-lemma "\<And>a s. a < length_C (heap_Cycle_C s y) \<Longrightarrow>
-           awalk_edge_inv iG iY (length (snd iY)) \<Longrightarrow>
-           wf_digraph (abs_IGraph iG) \<Longrightarrow>
-           is_graph s iG g \<Longrightarrow>
-           is_cost s iG iC c \<Longrightarrow>
-           is_cycle s iY y \<Longrightarrow>
-           awalk_neg_cyc_cost iC iY (unat a) \<le> INT_MAX * uint a \<Longrightarrow>
-           INT_MIN * uint a \<le> awalk_neg_cyc_cost iC iY (unat a) \<Longrightarrow>
-           - 9223372036854775808 \<le> awalk_neg_cyc_cost iC iY (unat a) + sint (iC (snd iY ! unat a)) \<and>
-           awalk_neg_cyc_cost iC iY (unat a) + sint (iC (snd iY ! unat a)) \<le> 9223372036854775807 \<and>
-           awalk_neg_cyc_cost iC iY (unat a) + sint (iC (snd iY ! unat a)) \<le> INT_MAX * uint (a + 1) \<and>
-           INT_MIN * uint (a + 1) \<le> awalk_neg_cyc_cost iC iY (unat a) + sint (iC (snd iY ! unat a)) "
-  oops
-
-lemma "\<And>a s. a < length_C (heap_Cycle_C s y) \<Longrightarrow>
-           awalk_edge_inv iG iY (length (snd iY)) \<Longrightarrow>
-           wf_digraph (abs_IGraph iG) \<Longrightarrow>
-           is_graph s iG g \<Longrightarrow>
-           is_cost s iG iC c \<Longrightarrow>
-           is_cycle s iY y \<Longrightarrow>
-           awalk_neg_cyc_cost iC iY (unat a) \<le> INT_MAX * uint a \<Longrightarrow>
-           INT_MIN * uint a \<le> awalk_neg_cyc_cost iC iY (unat a) \<Longrightarrow>
-           - 9223372036854775808 \<le> awalk_neg_cyc_cost iC iY (unat a) + sint (iC (snd iY ! unat a)) \<and>
-           awalk_neg_cyc_cost iC iY (unat a) + sint (iC (snd iY ! unat a)) \<le> 9223372036854775807 \<and>
-           awalk_neg_cyc_cost iC iY (unat a) + sint (iC (snd iY ! unat a)) \<le> INT_MAX * uint (a + 1) \<and>
-           INT_MIN * uint (a + 1) \<le> awalk_neg_cyc_cost iC iY (unat a) + sint (iC (snd iY ! unat a)) \<and>
-           awalk_neg_cyc_cost iC iY (unat a) + sint (iC (snd iY ! unat a)) = awalk_neg_cyc_cost iC iY (unat (a + 1))"
-  oops
 lemma awalk_cost_neg_spc':
   "ovalidNF (\<lambda> s. 
    awalk_edge_inv iG iY (length (icycle_path iY)) \<and>
@@ -3253,59 +2880,35 @@ lemma awalk_cost_neg_spc':
               total \<le> INT_MAX * uint ee \<and>
               INT_MIN * uint ee \<le> total \<and>
               total = awalk_neg_cyc_cost iC iY (unat ee)"])
-(*icycle_start iY < ivertex_cnt iG \<and>*)
- (*length (icycle_path iY) \<le> unat (max_word::32 word) \<and>*)
   apply wpsimp
      apply (rule conjI, simp add: is_cycle_valid) 
      apply (rule conjI, simp add: is_cycle_valid_path)
      apply (rule conjI, simp add: is_cycle_valid_path_cost) 
      apply (subst is_cycle_path_eq[symmetric], simp, simp)+
      apply (subst is_cost_eq[symmetric], simp, 
-            metis (no_types, hide_lams) awalk_edge_inv_def is_cycle_def 
-            word_less_nat_alt)+
+      metis (no_types, hide_lams) awalk_edge_inv_def is_cycle_def 
+      word_less_nat_alt)+
      apply (frule_tac i="unat a" in awalk_neg_cyc_cost_step[where iC=iC and iY="iY"]) 
        apply (fastforce intro: unat_mono simp: is_cycle_def)
       apply (metis add.right_neutral list.size(3) not_add_less2 is_cycle_def word_less_nat_alt)
-     
-      apply (subst (asm) word_nat_simp[symmetric]) 
-        apply (metis max_word_max not_le not_less_iff_gr_or_eq)
-       apply clarsimp
 
-(*
-  apply (subgoal_tac "sint
-            (UCAST(32 \<rightarrow> 32 signed)
-              (heap_w32 s
-                (PTR_COERCE(32 signed word \<rightarrow> 32 word) 
-              (c +\<^sub>p uint (heap_w32 s
-           (path_C (heap_Cycle_C s y) +\<^sub>p uint a))))))
-              = sint (iC (snd iY!unat a))")
-
- *) 
+     apply (subst (asm) word_nat_simp[symmetric]) 
+      apply (metis max_word_max not_le not_less_iff_gr_or_eq)
+     apply clarsimp
      apply (subgoal_tac "a < (max_word :: 32 word)")
-  apply (fold LONG_MAX_def LONG_MIN_def)
+      apply (fold LONG_MAX_def LONG_MIN_def)
       apply safe[1] 
-         apply (meson INT_MIN_MAX_lemmas(11) order.trans shortest_path_neg_checker.baz1 shortest_path_neg_checker.foo1)
-        apply (meson INT_MIN_MAX_lemmas(10) order.trans shortest_path_neg_checker.baz shortest_path_neg_checker.foo)
-       apply (metis INT_MIN_MAX_lemmas(10) add.commute add_mono_thms_linordered_semiring(1) shortest_path_neg_checker.bar)
-      apply (metis INT_MIN_MAX_lemmas(11) add.commute add_mono shortest_path_neg_checker.bar1 shortest_path_neg_checker.word_nat_simp)
-    (*
-
-      apply (clarsimp simp add: awalk_neg_cyc_cost_def is_cycle_def is_cost_def awalk_edge_inv_def)
-      apply (subst (asm) arrlist_cycle_path_heap, blast, fastforce simp add: word_less_nat_alt)
-      apply (subst (asm) arrlist_heap[where iL=iC], fast, metis arrlist_cycle_path_heap word_less_nat_alt)
-      apply (simp add: uint_nat)
-      apply (subst arrlist_cycle_path_heap, blast, fastforce simp add: word_less_nat_alt)
-      apply (subst arrlist_heap[where iL=iC], fast, metis arrlist_cycle_path_heap word_less_nat_alt)
-      (* TODO: This proof that there is no over or underflow is still needed *)
-  subgoal sorry*)
-
+         apply (meson INT_MIN_MAX_lemmas(11) order.trans INT_MIN_times_uint_plus_1_ge_LONG_MIN INT_MIN_times_uint_plus_1_le)
+        apply (meson INT_MIN_MAX_lemmas(10) order.trans INT_MAX_times_uint_plus_1_le_LONG_MAX INT_MAX_times_uint_plus_1_le)
+       apply (metis INT_MIN_MAX_lemmas(10) add.commute add_mono_thms_linordered_semiring(1) INT_MAX_times_uint_plus_1)
+      apply (metis INT_MIN_MAX_lemmas(11) add.commute add_mono INT_MIN_times_uint_plus_1 shortest_path_neg_checker.word_nat_simp)
      apply (metis less_linear max_word_max word_le_not_less)
     apply wpsimp
     apply (clarsimp simp add: awalk_neg_cyc_cost_def is_cycle_def)  
     apply(fastforce simp: unat_sub[symmetric] unat_minus_plus1_less inc_le)
    apply clarsimp
    apply (clarsimp simp add: is_cycle_def awalk_neg_cyc_cost_def)
-  apply (simp add: word_less_nat_alt)
+   apply (simp add: word_less_nat_alt)
   apply wpsimp
   apply (clarsimp simp add: is_cycle_def awalk_neg_cyc_cost_def) 
   done
@@ -3361,14 +2964,6 @@ lemma are_cyclesD:
         "is_valid_Cycle_set_C s cse"
         "(\<forall>i<length iYs. is_cycle' s (iYs ! i) (cyc_obj_C (heap_Cycle_set_C s cse) +\<^sub>p int i))"
   using assms unfolding are_cycles''_def by simp_all
-      
-   
-lemma "cc \<le> length iY \<Longrightarrow>
-       C_se_inv iG iY iC iD cc \<Longrightarrow>
-       \<not> awalk_spc' iG (iY ! cc) \<Longrightarrow>
-       0 \<le> the (awalk_cost_neg' c (cyc_obj_C (heap_Cycle_set_C s cse) +\<^sub>p int cc) s) \<Longrightarrow>
-       C_se_inv iG iY iC iD (length iY) \<Longrightarrow> False"
-  oops
 
 lemma length_abs_ICycles': "length (abs_ICycles' h iYs) = length iYs"
   unfolding abs_ICycles'_def
@@ -3479,32 +3074,6 @@ lemma C_se_spc':
    apply wp
   apply (clarsimp simp: C_se_inv_def are_cyclesD)
   done
-(*
-     apply (clarsimp simp: are_cyclesD)
-     apply (rule conjI; clarsimp simp: C_se_inv_def)
-      apply (rule conjI)
-       apply (rule exI)
-       apply (rule conjI, simp add: are_cycles''_def length_abs_ICycles')
-              apply clarsimp 
-       unfolding  is_dist_def 
-       apply (drule_tac i="int (unat (fst (iY! cc)))" in arrlist_nth_value; simp)
-        apply (fastforce simp: unat_mono awalk_spc'_def) 
-       subgoal sorry 
-
-      subgoal sorry *)
-    
-(*
-         apply (clarsimp dest!: are_cyclesD)
-         apply (rule conjI; clarsimp)+ 
-  
-           apply (case_tac "cc+1 \<le> length iY")
-            apply (fastforce dest!: C_se_inv_le simp only: C_se_inv_step)
-           apply simp 
-          apply (rule conjI) 
-using awalk_cost_neg_spc'[simplified ovalid_def]
-      *)
-
-(*TEMP FILE PROOFS GO HERE*)
 
 
 definition vertex_not_in_cycles_start_inv :: 
@@ -3579,11 +3148,11 @@ definition parents_not_in_cycles_start_inv ::
 where
   "parents_not_in_cycles_start_inv G CS p v k = 
    (\<forall>i \<le> k. vertex_not_in_cycles_start_inv CS 
-               (((\<lambda>v. snd (iedges G (p v)))^^ i) v) (length CS))"
+               (((\<lambda>v. fst (iedges G (p v)))^^ i) v) (length CS))"           
 
 lemma parents_not_in_cycles_start_inv_stepD:
   "parents_not_in_cycles_start_inv G CS p v i \<Longrightarrow>
-   vertex_not_in_cycles_start_inv CS (((\<lambda>v. snd (iedges G (p v)))^^  (Suc i)) v) (length CS) \<Longrightarrow> 
+   vertex_not_in_cycles_start_inv CS (((\<lambda>v. fst (iedges G (p v)))^^  (Suc i)) v) (length CS) \<Longrightarrow> 
   parents_not_in_cycles_start_inv G CS p v (Suc i)"
   unfolding parents_not_in_cycles_start_inv_def 
   by (fastforce elim: le_SucE)
@@ -3591,7 +3160,7 @@ lemma parents_not_in_cycles_start_inv_stepD:
 lemma parents_not_in_cycles_start_inv_step :
   "parents_not_in_cycles_start_inv G CS p v (Suc i) = 
            (vertex_not_in_cycles_start_inv CS 
-               (((\<lambda>v. snd (iedges G (p v)))^^  (Suc i)) v) (length CS) \<and> 
+               (((\<lambda>v. fst (iedges G (p v)))^^  (Suc i)) v) (length CS) \<and> 
            parents_not_in_cycles_start_inv G CS p v i)"
   unfolding parents_not_in_cycles_start_inv_def 
   by (fastforce elim: le_SucE)
@@ -3613,7 +3182,7 @@ lemma parents_not_in_cycles_start_spc:
           is_numm s iG iN n \<and>
           is_pedge s iG iP p \<and>
           v < ivertex_cnt iG \<and>
-          (\<forall>i\<le>iN v. iP (((\<lambda>v. snd ((iedges iG) (iP v))) ^^ unat i) v) < iedge_cnt iG)) \<rbrace>
+          (\<forall>i<iN v. iP (((\<lambda>v. fst (iedges iG (iP v))) ^^ unat i) v) < iedge_cnt iG)) \<rbrace>
    parents_not_in_cycles_start' g cse p n v
    \<lbrace> (\<lambda>_ s. P s) And 
      (\<lambda>rr s. rr \<noteq> 0  \<longleftrightarrow> 
@@ -3625,46 +3194,55 @@ lemma parents_not_in_cycles_start_spc:
               M="\<lambda>((i, u), s). ?numv - i" and
               I="\<lambda>(i, u) s. ?pre s \<and> 
                             i \<le> ?numv \<and> 
-                            u = ((\<lambda>v. snd (iedges iG (iP v)))^^ (unat i)) v \<and>
+                            u = ((\<lambda>v. fst (iedges iG (iP v)))^^ (unat i)) v \<and>
                             ?inv (unat i)" ])
       apply wpsimp
           apply (rename_tac u'' r i' u' s i ba u)
-          apply (rule_tac P1="(\<lambda>s.
+ apply (rule_tac P1="(\<lambda>s.
                        ?pre s \<and>
-                       i + 1 \<le> ?numv \<and>
-                       i < ?numv \<and>
-                       i = i' \<and> u = snd (iedges iG (iP u')) \<and> 
-                       u = ((\<lambda>v. snd (iedges iG (iP v)))^^ (unat (i + 1))) v \<and>  
+                        i + 1 \<le> ?numv \<and>
+                        i=i'\<and>
+                        i < ?numv \<and> 
+                        (if ?numv=0 
+                          then u = v 
+                          else 
+                               u = ((\<lambda>v. fst (iedges iG (iP v)))^^ (unat (i + 1))) v) \<and>
                        ?inv (unat i))"
                       and iCS1 ="iCS" and iCS'1="iCS'"
               in validNF_post_imp[OF _ vertex_not_in_cycles_start_spc])
+         (* apply (rule_tac P1="(\<lambda>s.
+                       ?pre s \<and>
+                       i + 1 \<le> ?numv \<and>
+                       i < ?numv \<and>
+                       i = i' \<and> u = fst (iedges iG (iP u')) \<and> 
+                       u = ((\<lambda>v. fst (iedges iG (iP v)))^^ (unat (i + 1))) v \<and>  
+                       ?inv (unat i))"
+                      and iCS1 ="iCS" and iCS'1="iCS'"
+              in validNF_post_imp[OF _ vertex_not_in_cycles_start_spc])*)
           apply clarsimp 
           apply (rename_tac i r s) 
-          apply (rule conjI; clarsimp) 
-           apply (frule unat_le_mono)
-           apply (frule parents_not_in_cycles_start_inv_le, simp) 
-           apply (subst(asm) unat_Suc2, fastforce)+  
-           apply (simp only:parents_not_in_cycles_start_inv_step, simp) 
-          apply (rule conjI)   
-           apply (metis Suc_eq_plus1 less_is_non_zero_p1 
-                  word_overflow_unat parents_not_in_cycles_start_inv_stepD)
-          apply (simp add: unat_minus_plus1_less word_less_nat_alt)
-          apply(fastforce dest!: arrlist_nth_valid simp: is_numm_def uint_nat word_less_def) 
+          apply (rule conjI; clarsimp simp: parents_not_in_cycles_start_inv_def)
+           apply (blast intro: unat_le_mono)
+          apply (rule conjI, clarsimp, metis nat_less_le not_le less_unat_plus1)
+          apply (rule conjI, simp add: unat_minus_plus1_less word_less_nat_alt)
+          apply(fastforce dest!: arrlist_nth_valid simp: is_numm_def uint_nat word_less_def)
          apply wp+
        apply clarsimp
        apply (rename_tac i s)
        apply(subgoal_tac "unat (i + 1) = unat i + 1", simp)
         apply (clarsimp simp: is_graph_valid_graph)
-        apply (rule conjI, simp add:is_numm_arrlist_heap inc_le) 
-        apply (rule conjI, simp add: is_numm_arrlist_heap)
-        apply (rule conjI, 
-               force dest!:parent_head_in_verts is_graph_head_arrlist_eq 
-                     simp: is_pedge_arrlist_eq)
+        apply (rule conjI; clarsimp simp: inc_le is_numm_arrlist_heap)
         apply (rule conjI)
-         apply (rule is_graph_valid_edge, simp)
-         apply (force dest!:parent_head_in_verts is_graph_head_arrlist_eq 
-                     simp: is_pedge_arrlist_eq)
-        apply (fast intro: is_pedge_valid dest: parent_head_in_verts)
+         apply (subst is_graph_tail_arrlist_eq, simp, simp)
+         apply (subst is_pedge_arrlist_eq[symmetric,where iP=iP], simp)
+           apply (blast intro!: parent_tail_in_verts)
+          apply simp+
+       apply (rule conjI)
+        apply (rule is_graph_valid_edge, simp)
+         apply (subst is_pedge_arrlist_eq[symmetric,where iP=iP], simp)
+           apply (blast intro!: parent_tail_in_verts)
+          apply simp+
+        apply (fast intro: is_pedge_valid dest: parent_tail_in_verts)
        apply (fastforce simp:less_le_trans)
       apply clarsimp
       apply (case_tac "a=iN v"; simp add:is_numm_arrlist_heap)
@@ -3700,8 +3278,8 @@ lemma int_neg_cyc_spc:
           is_dist s iG iD d \<and>
           is_numm s iG iN n \<and>
           is_pedge s iG iP p \<and>
-          (\<forall>v \<le>ivertex_cnt iG.  \<forall>i\<le>iN v. 
-             iP (((\<lambda>v. snd ((iedges iG) (iP v))) ^^ unat i) v) < iedge_cnt iG)) \<rbrace>
+          (\<forall>v <ivertex_cnt iG.  \<forall>i<iN v. abs_IDist iD v \<noteq> \<infinity> \<longrightarrow>
+             iP (((\<lambda>v. fst ((iedges iG) (iP v))) ^^ unat i) v) < iedge_cnt iG)) \<rbrace>
    int_neg_cyc' g d cse p n
    \<lbrace> (\<lambda>_ s. P s) And 
      (\<lambda>rr s. rr \<noteq> 0  \<longleftrightarrow> 
@@ -3733,7 +3311,7 @@ lemma int_neg_cyc_spc:
        apply (simp add: is_graph_valid_graph unat_minus_plus1_less word_less_nat_alt)
       apply wp+
      apply clarsimp
-     apply (rule conjI; clarsimp)
+     apply (rule conjI; clarsimp simp:abs_IDist_def)
       apply (fastforce dest: is_dist_arrlist_is_inf is_dist_valid simp: is_graph_def)
      apply (rule conjI, fastforce intro!: inc_le simp: is_graph_def) 
      apply (rule conjI)
@@ -3745,7 +3323,6 @@ lemma int_neg_cyc_spc:
    apply wp
   apply (clarsimp simp: int_neg_cyc_inv_def is_graph_valid_graph)
   done
-
 
 
 definition shortest_paths_locale_step3_inv :: 
@@ -3767,8 +3344,8 @@ lemma C_se_inv_eq_math:
   unfolding C_se_inv_def     
   apply (rule iffI; clarsimp simp: abs_IDist_def)
    apply (metis (no_types, hide_lams) awalk_cost_eq_math[symmetric] of_int_0
-            dual_order.order_iff_strict in_set_conv_nth awalk_neg_cyc_cost_def
-            fst_conv of_int_sint awalk_spc'_eq_awalk snd_conv of_int_less_0_iff)
+      dual_order.order_iff_strict in_set_conv_nth awalk_neg_cyc_cost_def
+      fst_conv of_int_sint awalk_spc'_eq_awalk snd_conv of_int_less_0_iff)
   apply (rule conjI, fastforce simp: in_set_conv_nth)
   apply (rule conjI, fastforce dest: nth_mem simp: awalk_spc'_eq_awalk) 
   apply (frule_tac iY="cse ! i" in awalk_cost_eq_math[where iC=c])
@@ -3780,255 +3357,24 @@ lemma vertex_not_in_cycles_start_inv_eq_math:
 unfolding vertex_not_in_cycles_start_inv_def 
 by (metis (no_types, hide_lams) image_iff in_set_conv_nth)
 
-(*
-lemma iedges_walk_awalk_verts_math:
-  "\<lbrakk>shortest_paths_locale_step1 (abs_IGraph G) s n (abs_IPedge p) d\<rbrakk> \<Longrightarrow> 
-    \<forall>i\<le> n v. 
-      (((\<lambda>v. snd (iedges G (p v)))^^ i) v) = 
-    pre_digraph.awalk_verts (abs_IGraph G) s
-       (shortest_paths_locale_step1.pwalk (abs_IGraph G) s (abs_IPedge p) d v) !i"
-  apply (induct "n v" arbitrary: v)
-using shortest_paths_locale_step1.pwalk_simps(1) pre_digraph.awalk_verts_conv  
-              shortest_paths_locale_step1.s_assms(4) sledgehammer
-
-  sorry
- *)
-
 (* move to ShortestPathNeg or a Util file  *)
 lemma (in shortest_paths_locale_step1) length_pwalk: 
   "\<lbrakk> v \<noteq> s \<and> v \<in> verts G \<and> dist v \<noteq> \<infinity> \<or> v = s\<rbrakk> \<Longrightarrow>
    length (pwalk v) = num v"
   apply (induct "num v" arbitrary: v) 
    apply (fastforce dest: num_s_is_min 
-                          pwalk_simps(1))
+      pwalk_simps(1))
   apply (case_tac "v=s", clarsimp simp: s_assms) 
   apply (drule_tac x="tail G (the (parent_edge v))" in meta_spec)
   apply (metis Suc_eq_plus1 arc_implies_awalk awalk_hd_in_verts
-          length_append_singleton nat_add_right_cancel option.sel 
-          path_from_root_Vr_ex pwalk_simps(2))
+      length_append_singleton nat_add_right_cancel option.sel 
+      path_from_root_Vr_ex pwalk_simps(2))
   done
  
 lemma (in shortest_paths_locale_step1)length_awalk: 
   "\<lbrakk> v \<noteq> s \<and> v \<in> verts G \<and> dist v \<noteq> \<infinity> \<or> v = s \<rbrakk> \<Longrightarrow>
-   length (pre_digraph.awalk_verts G s (pwalk v)) =  Suc (num v)"
-by (metis pre_digraph.length_awalk_verts length_pwalk)
-
-(*
-lemma (in shortest_paths_locale_step1) num_eq_length_pwalk:
-  "wf_digraph G \<Longrightarrow> v \<in> verts G \<Longrightarrow>
-    dist v \<noteq> \<infinity> \<Longrightarrow>
-    \<forall>i\<le>num v. v \<noteq> s \<longrightarrow> ((\<lambda>v. head G (the (parent_edge v))) ^^ i) v =
-       awalk_verts s (pwalk v) ! Suc i \<Longrightarrow>
-    Suc (num v) = length (awalk_verts  s (pwalk v))"
-  apply (induction "num v" arbitrary: v) 
-  apply (cases "v=s") using s_assms num_s_is_min 
-    using s_assms pwalk.simps parent_num_assms  
-  using parent_num_assms s_assms
-  
-  
-  sorry  
-
-*)
-(*
-lemma head_iedges_awalk_math_base:
-  "\<lbrakk> wf_digraph (abs_IGraph G);
-      num v = 0;
-     shortest_paths_locale_step1 (abs_IGraph G) s num (abs_IPedge p) d\<rbrakk> \<Longrightarrow> 
-     \<forall>i\<le>k. v\<noteq>s \<and> v \<in> verts (abs_IGraph G) \<and>  d v = - \<infinity> \<or> v=s \<longrightarrow>
-       (((\<lambda>v. snd (iedges G (p v)))^^ 0) v) = 
-   pre_digraph.awalk_verts (abs_IGraph G) s 
-         (shortest_paths_locale_step1.pwalk (abs_IGraph G) s (abs_IPedge p) d v) ! 0"
-by (simp add: shortest_paths_locale_step1.pwalk_simps(1) 
-              shortest_paths_locale_step1.s_assms(4) pre_digraph.awalk_verts_conv)
-   (fastforce dest!: shortest_paths_locale_step1.num_s_is_min)
-
-(*shortest_paths_locale_step2_inv G s c n p d pred;*)
-lemma head_iedges_awalk_math_step:
-  "\<lbrakk>  wf_digraph (abs_IGraph G);
-     abs_INat n v = Suc k;
-     
-     shortest_paths_locale_step1 (abs_IGraph G) s (abs_INat n) (abs_IPedge p) (abs_IDist d);
-     \<And>v. \<lbrakk> wf_digraph (abs_IGraph G);
-           abs_INat n v = k;
-           shortest_paths_locale_step2_inv G s c n p d pred;
-           shortest_paths_locale_step1 (abs_IGraph G) s (abs_INat n) (abs_IPedge p) (abs_IDist d)\<rbrakk> \<Longrightarrow> 
-           \<forall>i\<le>k. v\<noteq>s \<and> v \<in> verts (abs_IGraph G) \<and> abs_IDist d v = - \<infinity> \<longrightarrow>
-                 (((\<lambda>v. snd (iedges G (p v)))^^ i) v) = 
-                    pre_digraph.awalk_verts (abs_IGraph G) s 
-                     (shortest_paths_locale_step1.pwalk (abs_IGraph G) s 
-                     (abs_IPedge p) (abs_IDist d) v) ! i
-    \<rbrakk> \<Longrightarrow> 
-   v\<noteq>s \<and> v \<in> verts (abs_IGraph G) \<and> abs_IDist d v = - \<infinity>  \<longrightarrow>
-     (((\<lambda>v. snd (iedges G (p v)))^^ Suc k) v) = 
-     pre_digraph.awalk_verts (abs_IGraph G) s 
-         (shortest_paths_locale_step1.pwalk (abs_IGraph G) s (abs_IPedge p) (abs_IDist d) v) ! Suc k"
-  
- 
-
-  sorry
-
-
-lemma head_iedges_awalk_math':
-  "\<lbrakk> wf_digraph (abs_IGraph G);
-     abs_INat n v = k;
-     shortest_paths_locale_step1 (abs_IGraph G) s (abs_INat n) (abs_IPedge p) (abs_IDist d)\<rbrakk> \<Longrightarrow> 
-     \<forall>i\<le>k. v\<noteq>s \<and> v \<in> verts (abs_IGraph G) \<and> abs_IDist d v = - \<infinity>  \<longrightarrow>
-       (((\<lambda>v. snd (iedges G (p v)))^^ i) v) = 
-   pre_digraph.awalk_verts (abs_IGraph G) s 
-         (shortest_paths_locale_step1.pwalk (abs_IGraph G) s (abs_IPedge p) (abs_IDist d) v) ! i"
-  apply (induct k arbitrary:v, fastforce dest: head_iedges_awalk_math_base)
-  apply (clarsimp)
-  apply (case_tac "i = Suc k")
-   apply (frule head_iedges_awalk_math_step, blast, blast, simp, simp)  
-(*  apply (rule conjI; clarsimp)*)
-   apply(frule shortest_paths_locale_step1.parent_num_assms, simp_all, simp) 
-  apply clarsimp
-   apply (erule_tac x="fst (snd (snd G) e)" in meta_allE, clarsimp) 
-   apply (erule_tac x=i in allE, clarsimp) 
-   apply (case_tac "fst (snd (snd G) e) = s") 
-  apply (frule shortest_paths_locale_step1.s_assms(4), simp)
-  apply (subgoal_tac "i=0"; clarsimp) using shortest_paths_locale_step1.length_awalk subgoal sorry
-  
-  apply (erule_tac x="the (p v)" in meta_allE, clarsimp)
-    
-    sorry
-  subgoal
-    apply (metis  not_less_eq shortest_paths_locale_step1.s_assms(4) zero_less_Suc)
-    done
-  apply (erule_tac x=" (((\<lambda>v. snd (iedges G (p v)))^^ 1) v)" in meta_allE, clarsimp)
-  apply (erule meta_impE)
-  using shortest_paths_locale_step1.parent_num_assms
-  subgoal sorry
-  apply (erule_tac x=i in allE, clarsimp) 
-  apply clarsimp
-
-  apply(erule_tac x=v in meta_allE, clarsimp)
-  apply (rule allI)
-  apply (case_tac "v = s", fastforce simp: shortest_paths_locale_step1.s_assms(4))
-  apply (case_tac i)
-(*
-  apply (drule meta_spec, simp_all, drule meta_mp) prefer 2 apply fastforce
-   apply (erule_tac x=0 in allE)
-  apply (drule head_iedges_awalk_math_base, simp_all)
-   apply (clarsimp simp:  pre_digraph.awalk_verts_conv shortest_paths_locale_step1.pwalk_simps) 
-
-  subgoal sorry
-  apply (frule head_iedges_awalk_math_step, simp_all, simp)
-  apply clarsimp
-  apply (rename_tac k v i)
-  apply (case_tac "v = s", fastforce simp: shortest_paths_locale_step1.s_assms(4))
-  apply clarsimp  
-  apply (drule_tac x="p v" in meta_spec)
-  apply (drule meta_mp)
-  subgoal sorry
-
-  apply (drule_tac x=i in spec)
-  
-
-  using pre_digraph.awalk_verts_conv 
-
- 
-  
-  apply (case_tac "i=Suc k")
-   apply (drule head_iedges_awalk_math_step, simp_all, simp) 
-  apply (case_tac "v = s", fastforce simp: shortest_paths_locale_step1.s_assms(4))
-  apply clarsimp 
-  apply (drule_tac x="p v" in meta_spec)
-  apply (drule spec)
-
-  apply (frule shortest_paths_locale_step1.path_from_root_Vr_ex, simp+) 
-  apply clarsimp 
-  sorry
-
-
-  (* apply (case_tac "v=s")
-    apply (simp add: shortest_paths_locale_step1.pwalk_simps(1)  
-          shortest_paths_locale_step1.s_assms(4) pre_digraph.awalk_verts_conv)
-   apply (fastforce dest!: shortest_paths_locale_step1.num_s_is_min)
-  apply (case_tac "v=s", simp add: shortest_paths_locale_step1.s_assms(4))*)
-  apply (intro allI impI)
-  apply (frule shortest_paths_locale_step1.path_from_root_Vr_ex, fastforce, blast, simp)
-  apply (erule_tac x="tail (abs_IGraph G) ( (p v))" in meta_allE, simp add: abs_IPedge_def abs_INat_def)
-  apply safe
-  apply (case_tac "i\<le> unat (n (fst (snd (snd G) (p v))))") 
-   apply (case_tac "fst (snd (snd G) (p v)) = s") 
-    subgoal sorry
-   subgoal sorry
-  subgoal sorry
-  done*)
-  sorry
-
-
-lemma head_iedges_awalk_math:
-  "\<lbrakk> wf_digraph (abs_IGraph G);
-     shortest_paths_locale_step2_inv G s c n p d pred;
-     (v\<noteq>s \<and> v \<in> verts (abs_IGraph G) \<and> abs_IDist d v = - \<infinity>) \<or> v=s\<rbrakk> \<Longrightarrow> 
-    \<forall>i\<le> abs_INat n v.                                    
-      (((\<lambda>v. snd (iedges G (p v)))^^ i) v) = 
-      pre_digraph.awalk_verts (abs_IGraph G) s 
-       (shortest_paths_locale_step1.pwalk 
-            (abs_IGraph G) s (abs_IPedge p) (abs_IDist d) v) ! 
-        i"
-  using head_iedges_awalk_math'
-        shortest_paths_locale_step2_inv_eq_maths
-        shortest_paths_locale_step2_pred_def
-  oops
-(*
-  by fast*)
-(*  apply (simp add: shortest_paths_locale_step2_eq_maths)
-  apply (induct "abs_INat n v" arbitrary:v)
-   apply (case_tac "v=s")
-    apply (simp add: shortest_paths_locale_step1.pwalk_simps(1)  
-          shortest_paths_locale_step1.s_assms(4) pre_digraph.awalk_verts_conv)
-    apply (fastforce dest!: shortest_paths_locale_step1.num_s_is_min)
-  apply (case_tac "v=s"; clarsimp)
-   apply (simp add: shortest_paths_locale_step1.s_assms(4))
-  apply (drule_tac x="tail (abs_IGraph G) v" in meta_spec; clarsimp)
-  apply (subgoal_tac "abs_INat n v = abs_INat n (fst (snd (snd G) v)) + 1")
-  apply (case_tac "i \<le> (abs_INat n (fst (snd (snd G) v)))"; clarsimp)
-
-  apply (erule meta_impE) subgoal using wf_digraph.tail_in_verts sorry
-    apply (erule meta_impE)  subgoal using shortest_paths_locale_step2_pred.no_edge_Vm_Vf  sorry
-
-  try0 sledgehammer
-apply (erule_tac x=i in allE)
-  apply ()
-  apply (simp add: shortest_paths_locale_step1.pwalk_simps pre_digraph.awalk_verts_conv)
-  
-   apply clarsimp
-   
-  oops
-
- *)
-
-lemma parent_edges_exist: 
-  "shortest_paths_locale_step2_pred  G s c n p d pred \<Longrightarrow>
-   \<forall>i\<le>n v. ((\<lambda>v. (p v)) ^^ i) v \<noteq> None"
-
-  oops
-*)
-lemma (in shortest_paths_locale_step2_pred) parent_edges_exist_and_wellformed : 
-   "\<lbrakk> v\<in>verts G; v\<noteq>s ; dist v \<noteq> \<infinity>\<rbrakk> \<Longrightarrow> 
-    \<forall>i\<le>num v.
-      \<exists>e. ((\<lambda>v. (parent_edge v)) ^^ i) v = Some e \<and> 
-          e \<in> arcs G \<and> 
-          head G e \<in> verts G \<and> 
-          tail G e \<in> verts G"
-  apply (induct "num v" arbitrary: v)
-  apply (fastforce dest!: parent_num_assms)
-  apply(drule parent_num_assms, simp+)
-   apply (erule notE)
-  apply (case_tac "v=s"; clarsimp)
-
-  using s_assms parent_num_assms 
-
-  sorry
-
-lemma parent_edges_exist_and_wellformed': 
-  "shortest_paths_locale_step2_pred G s c n p d pred \<Longrightarrow>
-   \<forall>i\<le>n v. \<exists>e. ((\<lambda>v. (p v)) ^^ i) v = Some e \<and> e \<in> arcs G \<and> head e \<in> verts G \<and> tail e \<in> verts G "
-  sorry
-
+   length (awalk_verts s (pwalk v)) =  Suc (num v)"
+by (metis length_awalk_verts length_pwalk)
 
 lemma (in shortest_paths_locale_step1) pwalk_verts_in_verts:
   "v \<in> pwalk_verts u \<Longrightarrow> v\<in> verts G"
@@ -4039,101 +3385,85 @@ by (metis awalk_decomp awalk_hd_in_verts awalk_verts.simps(1)
 lemma (in shortest_paths_locale_step1) pwalk_in_arcs:
   "e \<in> set (pwalk v) \<Longrightarrow> e\<in> arcs G"
 by (metis awalkE  empty_set equals0D  pwalk.simps pwalk_awalk  subsetD)
-(*
-lemma (in shortest_paths_locale_step2) parents_in_graph_math:
-  "\<And>v i. \<lbrakk>wf_digraph G; v \<in> verts G; v \<noteq> s; dist v \<noteq> \<infinity>; i \<le> num v\<rbrakk> \<Longrightarrow> 
-   parent_edge (((\<lambda>v. parent_edge v) ^^ i) v) \<in> arcs G"
-  oops
-*)
-(*((\<lambda>v. (parent_edge v)) ^^ i) v*)
-(*
-lemma  parents_in_graph':
-  " \<And>s v i.
-       wf_digraph G \<Longrightarrow>
-       v \<in> verts G \<Longrightarrow> v \<noteq> s \<Longrightarrow> dist v \<noteq> \<infinity> \<Longrightarrow> i \<le> num v \<Longrightarrow> 
-   iP (((\<lambda>v. snd (snd (snd G) (parent_edge v))) ^^ i) v) < arcs G"
-  unfolding shortest_paths_locale_step2_inv_eq_maths
-  apply (frule_tac v=v in shortest_paths_locale_step2_pred.parent_edges_exist_and_wellformed, simp_all)
-  apply (clarsimp simp: abs_INat_def)
-  apply (drule_tac x="unat i" in spec) 
-  apply (drule mp) 
-   apply (blast dest: unat_le_mono) 
-  apply (case_tac "unat i = 0")apply clarsimp apply (clarsimp simp: abs_IPedge_def ) 
-   apply (case_tac "\<not>msb (iP v)")
-    apply (subgoal_tac "Some (iP v) = Some e", simp)
-
-   find_theorems "_ ^^ 0"
-  apply (clarsimp simp: abs_IPedge_def)
-  apply (case_tac " msb (iP v)")
-oops
-*)
-
-
-lemma parents_in_graph:
-  " \<And>r s v i.
-       P s \<Longrightarrow>
-       wf_digraph (abs_IGraph iG) \<Longrightarrow>
-       is_graph s iG g \<Longrightarrow>
-       is_pedge s iG iP p \<Longrightarrow>
-       shortest_paths_locale_step2_inv iG sc iC iN iP iD iPred \<Longrightarrow>
-       C_se_inv iG (abs_ICycles' s iCS') iC iD (length (abs_ICycles' s iCS')) \<Longrightarrow>
-       r \<noteq> 0 \<Longrightarrow> v \<le> fst iG \<Longrightarrow> i \<le> iN v \<Longrightarrow> 
-       iP (((\<lambda>v. snd (snd (snd iG) (iP v))) ^^ unat i) v) < fst (snd iG)"
-  oops
-(* \<And>r s v i.
-       P s \<Longrightarrow>
-       wf_digraph (abs_IGraph iG) \<Longrightarrow>
-       is_graph s iG g \<Longrightarrow>
-       is_dist s iG iD d \<Longrightarrow>
-       is_numm s iG iN n \<Longrightarrow>
-       is_cost s iG iC c \<Longrightarrow>
-       is_pedge s iG iP p \<Longrightarrow>
-       is_pedge s iG iPred pred \<Longrightarrow>
-       are_cycles'' s iCS' cse \<Longrightarrow>
-       iCS = abs_ICycles' s iCS' \<Longrightarrow>
-       shortest_paths_locale_step2_inv iG sc iC iN iP iD iPred \<Longrightarrow>
-       C_se_inv iG (abs_ICycles' s iCS') iC iD (length (abs_ICycles' s iCS')) \<Longrightarrow>
-       r \<noteq> 0 \<Longrightarrow> v \<le> fst iG \<Longrightarrow> i \<le> iN v \<Longrightarrow> 
-       iP (((\<lambda>v. snd (snd (snd iG) (iP v))) ^^ unat i) v) < fst (snd iG)*)
 
 (* set lemma not really in this locale just need to move  *)
 lemma (in shortest_paths_locale_step1) not_in_nth_eq_disjoint:
   "\<lbrakk> n = length W'; W = set W'\<rbrakk> \<Longrightarrow> (\<forall>i<n. W' ! i \<notin> C) \<equiv> (C \<inter> W = {})" 
   using disjoint_iff_not_equal in_set_conv_nth by smt 
 
-lemma (in shortest_paths_locale_step1) head_parent_nth_eq_pwalk_nth:
+lemma (in shortest_paths_locale_step1) rev_awalk_verts_pwalk_at_zero_eq:
+  assumes " v\<noteq>s"
+  assumes "dist v \<noteq> \<infinity>"
+  assumes " v \<in> verts G"
+  shows "rev (awalk_verts s (pwalk v)) ! 0 = v"
+  apply (subst pwalk.simps)
+  apply (simp del: pwalk.simps)
+  apply safe
+  using assms(2) apply blast
+  using assms(3) apply blast 
+  apply (insert shortest_paths_locale_step1_axioms)
+  apply (simp only: shortest_paths_locale_step1_def; safe)
+  apply (erule_tac x=v in allE)
+  apply safe
+  apply (simp del: pwalk.simps)
+  by (smt append.assoc append.left_neutral append.right_neutral append_Cons append_Nil 
+      append_eq_append_conv append_is_Nil_conv assms(3) awalkE' awalkI rev.simps(2)
+      awalk_decomp_verts awalk_verts_conv length_awalk_verts nat.inject nth_Cons_0 
+      option.sel pwalk_awalk pwalk_simps(2) rev_append singleton_rev_conv)
+
+lemma (in pre_digraph) rev_awalk_verts_conv:
+  "rev (awalk_verts u p) = 
+    (if p = [] then [u] else head G (last p) # (map (tail G) (rev p)))"
+  by (fastforce simp: awalk_verts_conv rev_map)
+
+lemma (in pre_digraph) rev_awalk_verts_conv':
+  assumes "cas u p v"
+  shows "rev (awalk_verts u p) = (if p = [] then [u] else (map (head G) (rev p)) @[tail G (hd p)])"
+  using assms awalk_verts_conv' rev_map by fastforce 
+
+lemma (in shortest_paths_locale_step1) rev_awalk_verts_pwalk_conv:
+  notes pwalk.simps[simp del]
+  shows "rev (awalk_verts s (pwalk v)) = 
+          (if (pwalk v) = [] then [s] else head G (the (parent_edge v)) # 
+             (rev (awalk_verts s (pwalk (tail G (the (parent_edge v)))))))" 
+by (smt append_Cons append_Nil2 awalkE cas.simps(2) list.simps(8) list.simps(9)
+        nth_Cons_0 option.sel pwalk.simps pwalk_awalk rev.simps(1) rev_append 
+        rev_awalk_verts_conv rev_singleton_conv rev_awalk_verts_pwalk_at_zero_eq 
+        parent_num_assms shortest_paths_locale_step1_axioms)
+
+(*pwalk (tail G (the (parent_edge v)))*)
+
+lemma (in shortest_paths_locale_step1) rev_awalk_verts_pwalk_Suc_nth_eq:
+  notes pwalk.simps[simp del]
   assumes " v \<in> verts G"
   assumes "dist v \<noteq> \<infinity>"
   assumes " v\<noteq>s"
-  assumes "i \<le> num v"
-  shows "((\<lambda>v. pre_digraph.head G (the (parent_edge v))) ^^ i) v = 
-          awalk_verts s (pwalk v) ! Suc i"
- (* apply (subst awalk_verts_conv)*)
+  assumes "i < num v"   
+  shows 
+    "rev (awalk_verts s (pwalk v)) ! Suc i =
+      tail G (the (parent_edge (rev (awalk_verts s (pwalk v)) ! i)))" 
+  using assms 
+  apply (induct i arbitrary: v)
+   apply (subst rev_awalk_verts_pwalk_conv, clarsimp)
+   apply (smt nth_Cons_Suc rev_awalk_verts_pwalk_conv rev_awalk_verts_pwalk_at_zero_eq cas.simps(2) 
+              nth_Cons_0 pwalk_simps pwalk_awalk self_append_conv2 awalkE)
+  apply (smt rev_awalk_verts_pwalk_conv Suc_less_eq length_append_singleton less_nat_zero_code 
+             nth_Cons_Suc length_pwalk list.size(3) shortest_paths_locale_step1_axioms pwalk_simps)
+  done
+
+lemma (in shortest_paths_locale_step1) head_parent_nth_eq_pwalk_nth:
+  notes pwalk.simps[simp del]
+  assumes " v \<in> verts G"
+  assumes "dist v \<noteq> \<infinity>"
+  assumes " v\<noteq>s"
+  assumes "i \<le> num v"   
+  shows "((\<lambda>v. tail G (the (parent_edge v))) ^^ i) v = 
+          rev (awalk_verts s (pwalk v)) ! i"
   using assms
-  apply (induct "num v" arbitrary: v i)
-   apply (metis length_greater_0_conv list.size(3) num_s_is_min)
-  apply (frule parent_num_assms, simp, simp, elim bexE conjE)
-  apply (subst (asm) length_pwalk[symmetric, where v="tail G e" for e], 
-         (case_tac "tail G e = s"; clarsimp simp only:))+
-apply (subst (asm) length_pwalk[symmetric, where v="head G e" for e], blast)+
-   apply (simp del: pwalk.simps)
-  apply (frule pwalk_awalk[simplified awalk_def], (clarsimp simp del: pwalk.simps)+)
-  apply (frule awalk_verts_conv', simp del:pwalk.simps) 
-  apply (case_tac "pwalk (head G e) = []", metis cas.simps(1), simp del:pwalk.simps) 
-  apply (subst pwalk_simps(2), (blast intro: head_in_verts)+)
-
-  apply (drule_tac x="tail G e" in meta_spec)
-  apply (simp del:pwalk.simps)
-  apply (case_tac "i")
-  sorry
-(*
-  apply (clarsimp simp del: pwalk.simps simp add: )
-  apply (drule_tac x="tail G e" in meta_spec)
-
-  apply (case_tac "pwalk (tail G e) = []") 
-  oops
- 
-*)
+  apply (induct i arbitrary: v) 
+   apply (fastforce dest: rev_awalk_verts_pwalk_at_zero_eq)
+  apply (simp add: rev_awalk_verts_pwalk_Suc_nth_eq)
+  done
 
 lemma (in shortest_paths_locale_step1) cycle_does_not_intersect_path_eq':
   " \<lbrakk> wf_digraph G; v \<in> verts G; v\<noteq>s;
@@ -4144,6 +3474,25 @@ lemma (in shortest_paths_locale_step1) cycle_does_not_intersect_path_eq':
         head_parent_nth_eq_pwalk_nth pwalk_verts_def less_Suc_eq_le disjoint_iff_not_equal     
   by smt
 
+definition (in shortest_paths_locale_step1) pwalk_verts_rev :: "'a  \<Rightarrow> 'a set" where 
+  "pwalk_verts_rev v = {u. u \<in> set (rev (awalk_verts s (pwalk v)))}" 
+
+lemma (in shortest_paths_locale_step1) pwalks_verts_rev_same: 
+  "pwalk_verts v = pwalk_verts_rev v"
+  unfolding shortest_paths_locale_step1.pwalk_verts_rev_def[OF shortest_paths_locale_step1_axioms]
+    shortest_paths_locale_step1.pwalk_verts_def[OF shortest_paths_locale_step1_axioms]
+  by simp
+
+lemma (in shortest_paths_locale_step1) cycle_does_not_intersect_path_eq'':
+  " \<lbrakk> wf_digraph G; v \<in> verts G; v\<noteq>s;
+    dist v \<noteq> \<infinity>\<rbrakk> \<Longrightarrow>
+    (\<forall>i\<le>num v. rev (awalk_verts s (pwalk v)) ! i \<notin> S) =
+    (S \<inter> pwalk_verts v = {})" 
+  apply (simp only: pwalks_verts_rev_same)
+  using length_awalk_verts length_pwalk n_not_Suc_n mem_Collect_eq in_set_conv_nth
+        head_parent_nth_eq_pwalk_nth pwalk_verts_rev_def less_Suc_eq_le disjoint_iff_not_equal
+  by (smt length_rev)
+
 lemma cycle_does_not_intersect_path_eq:
   "\<lbrakk> v\<noteq>s; wf_digraph (abs_IGraph G);
      v \<in> verts (abs_IGraph G);
@@ -4151,12 +3500,12 @@ lemma cycle_does_not_intersect_path_eq:
      C_se_inv G cse c d (length cse); 
      shortest_paths_locale_step2_inv G s c n p d pred;
      \<forall>i\<le>abs_INat n v.
-         ((\<lambda>v. snd (snd (snd G) (p v))) ^^ i) v =
+         ((\<lambda>v. fst (snd (snd G) (p v))) ^^ i) v =
          pre_digraph.awalk_verts (abs_IGraph G) s
           (shortest_paths_locale_step1.pwalk (abs_IGraph G) s (abs_IPedge p)
             (abs_IDist d) v) ! i \<rbrakk> \<Longrightarrow>
     (\<forall>i\<le>abs_INat n v.
-        ((\<lambda>v. snd (snd (snd G) (p v))) ^^ i) v \<notin> fst ` set cse) =
+        ((\<lambda>v. fst (snd (snd G) (p v))) ^^ i) v \<notin> fst ` set cse) =
     (fst ` set cse \<inter>
      shortest_paths_locale_step1.pwalk_verts (abs_IGraph G) s (abs_IPedge p)
       (abs_IDist d) v =
@@ -4165,115 +3514,136 @@ lemma cycle_does_not_intersect_path_eq:
                 shortest_paths_locale_step1_inv_eq_maths 
                 shortest_paths_locale_step2_inv_def)
 
+lemma cycle_does_not_intersect_path_eq':
+  "\<lbrakk> v\<noteq>s; wf_digraph (abs_IGraph G);
+     v \<in> verts (abs_IGraph G);
+     abs_IDist d v \<noteq> \<infinity>; 
+     C_se_inv G cse c d (length cse); 
+     shortest_paths_locale_step1 (abs_IGraph G) s (abs_INat n) (abs_IPedge p) (abs_IDist d);
+     \<forall>i\<le>abs_INat n v.
+         ((\<lambda>v. fst (snd (snd G) (p v))) ^^ i) v =
+         rev (pre_digraph.awalk_verts (abs_IGraph G) s
+          (shortest_paths_locale_step1.pwalk (abs_IGraph G) s (abs_IPedge p)
+            (abs_IDist d) v)) ! i \<rbrakk> \<Longrightarrow>
+    (\<forall>i\<le>abs_INat n v.
+        ((\<lambda>v. fst (snd (snd G) (p v))) ^^ i) v \<notin> fst ` set cse) =
+    (fst ` set cse \<inter>
+     shortest_paths_locale_step1.pwalk_verts (abs_IGraph G) s (abs_IPedge p)
+      (abs_IDist d) v =
+     {})"
+  by (simp add: shortest_paths_locale_step1.cycle_does_not_intersect_path_eq''
+                shortest_paths_locale_step1_inv_eq_maths)
+
+lemma the_abs_IPedge_simp: 
+  "\<lbrakk> v < fst G ; v\<noteq>s ; d v \<noteq> \<infinity> ;
+     shortest_paths_locale_step1 (abs_IGraph G) s n (abs_IPedge p) d\<rbrakk> \<Longrightarrow> 
+   the (abs_IPedge p v) = p v"
+by (fastforce dest!: shortest_paths_locale_step1.parent_num_assms simp: abs_IPedge_def) 
+
+lemma msb_abs_IPedgeI:
+  "\<lbrakk> shortest_paths_locale_step1 G s n (abs_IPedge p) d \<rbrakk> \<Longrightarrow> 
+   msb (p s)" 
+by (meson None_abs_pedgeI shortest_paths_locale_step1.s_assms(3))
+
+lemma not_msb_abs_IPedgeD:
+  "\<lbrakk> shortest_paths_locale_step1 (abs_IGraph G) s n (abs_IPedge p) d; 
+    v < fst G ; d v \<noteq> \<infinity> ;  \<not> msb (p v)\<rbrakk> \<Longrightarrow> 
+   v\<noteq> s"   
+using msb_abs_IPedgeI by blast
+
+lemma msb_abs_IPedgeD:
+  "\<lbrakk> shortest_paths_locale_step1 (abs_IGraph G) s n (abs_IPedge p) d; 
+    v < fst G ; d v \<noteq> \<infinity> ; msb (p v)\<rbrakk> \<Longrightarrow> 
+   v= s" 
+by (fastforce dest: shortest_paths_locale_step1.parent_num_assms simp add: abs_IPedge_def)
+
+lemma not_msb_abs_IPedgeI:
+  "\<lbrakk> shortest_paths_locale_step1 (abs_IGraph G) s n (abs_IPedge p) d; 
+    v < fst G ; d v \<noteq> \<infinity> ; v\<noteq> s\<rbrakk> \<Longrightarrow> 
+    \<not> msb (p v)" 
+  using msb_abs_IPedgeD by blast
+
+lemma (in shortest_paths_locale_step1) nth_parent_facts:
+ notes pwalk.simps[simp del]
+ shows 
+  "\<lbrakk> v \<in>verts G ; v\<noteq>s ; dist v \<noteq> \<infinity> ; i < num v; 
+     f = (\<lambda>v. tail G (the (parent_edge v)))\<rbrakk> \<Longrightarrow> 
+      (f ^^ i) v \<in>verts G \<and> (f ^^ i) v \<noteq> s \<and> dist ((f ^^ i) v) \<noteq> \<infinity>"
+  apply (induct i arbitrary:v; simp) 
+  apply (rule conjI, fastforce dest: parent_num_assms)
+  apply (rule conjI)
+   apply (case_tac "i=num v"; clarsimp) 
+   apply (metis Suc_eq_plus1 Suc_lessD Zero_not_Suc funpow_swap1 path_from_root_Vr_ex
+                less_handy_casesE not_less_less_Suc_eq option.sel s_assms(4) tail_in_verts)
+  apply (fastforce dest: parent_num_assms)
+  done
+
+lemma nth_abs_IPedge_simp:
+  "\<lbrakk> v < fst G ; v\<noteq>s ; d v \<noteq> \<infinity> ; i \<le> n v;
+     shortest_paths_locale_step1 (abs_IGraph G) s n (abs_IPedge p) ( d)\<rbrakk> \<Longrightarrow> 
+  ((\<lambda>v. fst ((iedges G) (the (abs_IPedge p v)))) ^^ i) v = 
+  ((\<lambda>v. fst ((iedges G) (p v))) ^^ i) v " 
+  apply (induct i arbitrary:v; simp)
+  apply (frule_tac i=i in shortest_paths_locale_step1.nth_parent_facts, simp+, clarsimp) 
+  apply (auto simp: the_abs_IPedge_simp)
+  done
+
 lemma nth_parent_eq_math:
-  " wf_digraph (abs_IGraph G) \<Longrightarrow>
-    v < fst G \<Longrightarrow>
-    shortest_paths_locale_step2_inv G s c n p d pred \<Longrightarrow>
+  "v < fst G \<Longrightarrow>
+   shortest_paths_locale_step1 (abs_IGraph G) s (abs_INat n) (abs_IPedge p) (abs_IDist d)  \<Longrightarrow>
     abs_IDist d v = - \<infinity> \<Longrightarrow>
     v \<noteq> s \<Longrightarrow>
     \<forall>i\<le>abs_INat n v.
-       ((\<lambda>v. snd (snd (snd G) (p v))) ^^ i) v =
-       pre_digraph.awalk_verts (abs_IGraph G) s (shortest_paths_locale_step1.pwalk (abs_IGraph G) s 
-       (abs_IPedge p) (abs_IDist d) v) ! i"
-  apply (clarsimp simp: shortest_paths_locale_step2_inv_eq_maths shortest_paths_locale_step2_pred_def)
-  apply (frule shortest_paths_locale_step1.head_parent_nth_eq_pwalk_nth, simp+)
-  apply (frule shortest_paths_locale_step1.num_s_is_min, simp+)
-  sorry
-
-  
+       ((\<lambda>v. fst (snd (snd G) (p v))) ^^ i) v =
+       rev (pre_digraph.awalk_verts (abs_IGraph G) s (shortest_paths_locale_step1.pwalk (abs_IGraph G) s 
+       (abs_IPedge p) (abs_IDist d) v)) ! i"
+  apply (clarsimp simp: shortest_paths_locale_step2_inv_eq_maths )
+  apply (subst shortest_paths_locale_step1.head_parent_nth_eq_pwalk_nth[symmetric], simp_all)
+  apply (simp add: nth_abs_IPedge_simp [symmetric, where d="abs_IDist d"])
+  done
 
 lemma parents_not_in_cycles_start_inv_eq_math: 
-  "\<lbrakk> wf_digraph (abs_IGraph G);
-     v \<in> verts (abs_IGraph G);
+  "\<lbrakk>v \<in> verts (abs_IGraph G);
      abs_IDist d v \<noteq> \<infinity>;
      C_se_inv G cse c d (length cse); 
-     shortest_paths_locale_step2_inv G s c n p d pred;
+     shortest_paths_locale_step1 (abs_IGraph G) s (abs_INat n) (abs_IPedge p) (abs_IDist d);
      v\<noteq>s \<and> v \<in> verts (abs_IGraph G) \<and> abs_IDist d v = - \<infinity> \<or> v=s \<rbrakk> \<Longrightarrow>
    parents_not_in_cycles_start_inv G cse p v (abs_INat n v) = 
    (fst ` set cse \<inter> 
     shortest_paths_locale_step1.pwalk_verts 
      (abs_IGraph G) s (abs_IPedge p) (abs_IDist d) v = {})"
-(*TODO: make sure this lemma is actually true*)
   unfolding parents_not_in_cycles_start_inv_def
-            vertex_not_in_cycles_start_inv_eq_math 
+    vertex_not_in_cycles_start_inv_eq_math 
   apply (case_tac "v = s")
-    apply (clarsimp simp: 
-            shortest_paths_locale_step2_inv_eq_maths 
-            shortest_paths_locale_step2_pred_def shortest_paths_locale_step1.pwalk_verts_def
-            shortest_paths_locale_step1.pwalk.simps
-            shortest_paths_locale_step1.s_assms pre_digraph.awalk_verts.simps) 
-  apply(subst cycle_does_not_intersect_path_eq[symmetric], simp_all)
-  apply clarsimp
-  using nth_parent_eq_math 
+   apply (clarsimp simp: shortest_paths_locale_step1.pwalk_verts_def
+      shortest_paths_locale_step1.pwalk.simps
+      shortest_paths_locale_step1.s_assms pre_digraph.awalk_verts.simps) 
+  apply(subst cycle_does_not_intersect_path_eq'[symmetric], simp_all)
+   apply (metis shortest_paths_locale_step1.graphG  shortest_paths_locale_step1_def fin_digraph_def)
+  using nth_parent_eq_math by blast
 
-  apply (case_tac i)
-  subgoal sorry
-  apply clarsimp
-
-   
-  sorry
-
-(*
-  apply simp 
-  
- apply (clarsimp simp: 
-            shortest_paths_locale_step2_inv_eq_maths 
-            shortest_paths_locale_step2_pred_def ) using cycle_does_not_intersect_path_eq 
-  using iedges_walk_awalk_verts_math[where n="abs_INat n" and d="abs_IDist d" and v=v and s=s ]
-head_iedges_awalk_math
-apply (frule  [where v=v])
-
-  apply (frule head_iedges_awalk_math[where v=v], simp+) 
-  done
-*)
-(*
-lemma parents_not_in_cycles_start_inv_eq_math:
-  "\<lbrakk> wf_digraph (abs_IGraph G);
-     v \<in> verts (abs_IGraph G); 
-     abs_IDist d v = - \<infinity> ;
-     C_se_inv G cse c d (length cse);
-     shortest_paths_locale_step2_inv G s c n p d pred \<rbrakk> \<Longrightarrow> 
-   parents_not_in_cycles_start_inv G cse p v (abs_INat n v) = 
-     (fst ` set cse \<inter> 
-      shortest_paths_locale_step1.pwalk_verts 
-       (abs_IGraph G) s (abs_IPedge p) (abs_IDist d) v = 
-     {})"
-  unfolding parents_not_in_cycles_start_inv_def vertex_not_in_cycles_start_inv_eq_math
-  using head_iedges_awalk_math 
-  unfolding parents_not_in_cycles_start_inv_def vertex_not_in_cycles_start_inv_eq_math 
-  apply (subst (asm)C_se_inv_eq_math)
-   using wf_inv_is_wf_digraph shortest_paths_locale_step2_inv_def
-         shortest_paths_locale_step2_inv_eq_maths shortest_paths_locale_step1_inv_def  
-   apply blast 
-  apply (rule cycle_does_not_intersect_path_eq, simp_all)
-  using shortest_path_neg_checker.C_se_inv_eq_math 
-  apply auto 
-  done
-*)
 lemma int_neg_cyc_inv_eq_math:
   "\<lbrakk> wf_digraph (abs_IGraph G);
      C_se_inv G cse c d (length cse);
-     shortest_paths_locale_step1 (abs_IGraph G) s (abs_INat n) (abs_IPedge p) (abs_IDist d)\<rbrakk> \<Longrightarrow>
+     shortest_paths_locale_step1 (abs_IGraph G) s (abs_INat n) (abs_IPedge p) (abs_IDist d) \<rbrakk> \<Longrightarrow>
      int_neg_cyc_inv G d cse p n (fst G) =
      (\<forall>v<fst G. abs_IDist d v = - \<infinity> \<longrightarrow> 
         fst ` set cse \<inter> 
-        shortest_paths_locale_step1.pwalk_verts 
+        shortest_paths_locale_step1.pwalk_verts
           (abs_IGraph G) s (abs_IPedge p) (abs_IDist d) v \<noteq> {})"
-  unfolding int_neg_cyc_inv_def
-  apply (rule iffI; clarsimp) 
-  (*TODO: parents_not_in_cycles_start_inv_eq_math is still unproven, is it actually true? *)
+  unfolding int_neg_cyc_inv_def 
+  apply (rule iffI; clarsimp)
    apply(subst (asm) parents_not_in_cycles_start_inv_eq_math
-                   [unfolded abs_INat_def, symmetric], simp_all)
-     subgoal sorry
-     apply (fastforce simp: abs_IDist_def)
-    apply (erule_tac x=i in allE, clarsimp simp: abs_IDist_def)
+      [unfolded abs_INat_def, symmetric, where ?n=n], simp_all) 
+  unfolding abs_INat_def apply simp
+   apply (fastforce simp: abs_IDist_def)
+  apply (erule_tac x=i in allE, clarsimp simp: abs_IDist_def)
   apply(subst (asm) parents_not_in_cycles_start_inv_eq_math
-                  [unfolded abs_INat_def, symmetric], simp_all)
-        apply (fastforce simp: abs_IDist_def)
-   
-     subgoal sorry 
+      [unfolded abs_INat_def, symmetric, where ?n=n], simp)
+  unfolding abs_INat_def 
+  using shortest_paths_locale_step1_inv_eq_maths 
       apply (fastforce simp: abs_IDist_def)+
-     done
+  done
 
 lemma shortest_paths_locale_step3_eq_maths:
   "\<And>G s c n p d pred cse.
@@ -4347,9 +3717,15 @@ lemma shortest_paths_locale_step3_spc_intermediate:
     apply clarsimp
     apply (case_tac "r=0", fastforce, clarsimp) 
     apply (rule conjI, simp)+
-    apply clarsimp
-  (*"iP (((\<lambda>v. snd (snd (snd iG) (iP v))) ^^ unat i) v) < fst (snd iG)"*)
-  subgoal  sorry
+    apply (clarsimp simp: shortest_paths_locale_step2_inv_eq_maths)
+    apply (drule shortest_paths_locale_step2_pred.axioms(1))
+    apply (case_tac "v\<noteq>sc")
+     apply (subst nth_abs_IPedge_simp[symmetric, where n="abs_INat iN" and p=" iP"], simp+)
+       apply (fastforce dest: unat_mono simp: abs_INat_def, simp)
+     apply (frule shortest_paths_locale_step1.nth_parent_facts, simp+)
+       apply (fastforce intro!: unat_mono simp: abs_INat_def, simp+)
+     apply (fastforce dest!: shortest_paths_locale_step1.parent_num_assms simp: abs_IPedge_def)
+     apply (fastforce dest!:shortest_paths_locale_step1.s_assms(4) simp:unat_eq_zero abs_INat_def)
   apply (rule_tac P1=" P and 
     (\<lambda>s.  wf_digraph (abs_IGraph iG) \<and>
           is_graph s iG g \<and>
@@ -4361,12 +3737,11 @@ lemma shortest_paths_locale_step3_spc_intermediate:
           are_cycles'' s iCS' cse \<and>
           iCS = abs_ICycles' s iCS')" 
       in validNF_post_imp[OF _ shortest_paths_locale_step2_spc_intermediate]) 
-   
    apply fastforce
   apply fastforce
   done
 
-lemma shortest_paths_locale_step3_spc:
+theorem shortest_paths_locale_step3_spc:
   "\<lbrace> P and 
      (\<lambda>s. wf_digraph (abs_IGraph iG) \<and>
           is_graph s iG g \<and>
@@ -4384,6 +3759,32 @@ lemma shortest_paths_locale_step3_spc:
     (abs_IPedge iP) (abs_IDist iD) (abs_IPedge iPred) (set iCS))\<rbrace>!"
   by (fastforce intro!: validNF_post_imp[OF _ shortest_paths_locale_step3_spc_intermediate] 
                    simp: shortest_paths_locale_step3_eq_maths) 
+
+lemma shortest_paths_locale_step3_imp_correct:
+"\<And>G s c n p d pred C. 
+  shortest_paths_locale_step3_pred (abs_IGraph G) s c n p d pred C \<longrightarrow>
+   (\<forall>v \<in> verts (abs_IGraph G).
+   d v = wf_digraph.\<mu> (abs_IGraph G) c s v)"
+  using shortest_paths_locale_step3_pred.correct_shortest_path by fast
+
+corollary shortest_paths_checker_is_correct:
+    "\<lbrace> P and 
+     (\<lambda>s. wf_digraph (abs_IGraph iG) \<and>
+          is_graph s iG g \<and>
+          is_dist s iG iD d \<and>
+          is_numm s iG iN n \<and>
+          is_cost s iG iC c \<and>
+          is_pedge s iG iP p \<and>
+          is_pedge s iG iPred pred \<and>
+          are_cycles'' s iCS' cse \<and> iCS = abs_ICycles' s iCS')\<rbrace>
+   shortest_paths_locale_step3' g sc c n pred d cse p
+   \<lbrace> (\<lambda>_ s. P s) And 
+     (\<lambda>rr s. rr \<noteq> 0 \<longrightarrow> 
+  (\<forall>v \<in> verts (abs_IGraph iG).
+   (abs_IDist iD) v = wf_digraph.\<mu> (abs_IGraph iG) (abs_ICost iC) sc v))\<rbrace>!"
+  using validNF_post_imp[OF _ shortest_paths_locale_step3_spc] 
+         shortest_paths_locale_step3_imp_correct 
+  by auto
 
 end
 

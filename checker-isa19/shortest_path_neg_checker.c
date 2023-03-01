@@ -284,7 +284,7 @@ int parents_not_in_cycles_start(Graph *g, Cycle_set *cse, int *parent_edge, unsi
     unsigned int u = v;
     if (vert_not_in_cycles_start(cse, u) == 0) return 0;
     for(unsigned int j = 0; j < num[v]; j++) {
-        u = arcs(g, (unsigned int) parent_edge[u]).second;
+        u = arcs(g, (unsigned int) parent_edge[u]).first;
         if(vert_not_in_cycles_start(cse, u) == 0)
             return 0;
         // if(arcs(g, parent_edge[u]) < edge_cnt(g)) return 0;
