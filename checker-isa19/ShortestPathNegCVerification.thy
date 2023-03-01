@@ -3563,7 +3563,7 @@ lemma (in shortest_paths_locale_step1) not_in_nth_eq_disjoint:
   "\<lbrakk> n = length W'; W = set W'\<rbrakk> \<Longrightarrow> (\<forall>i<n. W' ! i \<notin> C) \<equiv> (C \<inter> W = {})" 
   using disjoint_iff_not_equal in_set_conv_nth by smt 
 
-lemma (in shortest_paths_locale_step1) asdf:
+lemma (in shortest_paths_locale_step1) rev_awalk_verts_pwalk_at_zero_eq:
   assumes " v\<noteq>s"
   assumes "dist v \<noteq> \<infinity>"
   assumes " v \<in> verts G"
@@ -3582,8 +3582,8 @@ lemma (in shortest_paths_locale_step1) asdf:
           append_eq_append_conv append_is_Nil_conv assms(3) awalkE' awalkI rev.simps(2)
           awalk_decomp_verts awalk_verts_conv length_awalk_verts nat.inject nth_Cons_0 
           option.sel pwalk_awalk pwalk_simps(2) rev_append singleton_rev_conv)
-
-lemma (in shortest_paths_locale_step2) asdf2:
+(*
+lemma (in shortest_paths_locale_step2) awalk_verts_pwalk_at_zero_eq:
   assumes " v\<noteq>s"
   assumes "dist v \<noteq> \<infinity>"
   assumes " v \<in> verts G"
@@ -3598,7 +3598,7 @@ lemma (in shortest_paths_locale_step2) asdf2:
   apply (simp del: pwalk.simps)
   by (smt assms(3) awalkE' awalk_verts_conv' cas_simp nth_Cons_0 option.sel pwalk.elims pwalk_awalk)
 
-lemma (in shortest_paths_locale_step1) asdf3:
+lemma (in shortest_paths_locale_step1) nth_head_parent_edge_eq:
   assumes " v\<noteq>s"
   assumes "dist v \<noteq> \<infinity>"
   assumes " v \<in> verts G"
@@ -3608,7 +3608,7 @@ lemma (in shortest_paths_locale_step1) asdf3:
   apply (erule_tac x=v in allE)
   by (metis assms id_funpow_id option.sel)
 
-lemma (in shortest_paths_locale_step1) asdf4:
+lemma (in shortest_paths_locale_step1) rev_awalk_verts_pwalk_in_verts:
   notes pwalk.simps[simp del]
   assumes " v \<in> verts G"
   assumes "dist v \<noteq> \<infinity>"
@@ -3617,11 +3617,11 @@ lemma (in shortest_paths_locale_step1) asdf4:
   shows "rev (awalk_verts s (pwalk v)) ! i \<in> verts G"
   using assms 
   apply (induct i arbitrary: v)
-   apply (simp add: asdf)
+   apply (simp add: rev_awalk_verts_pwalk_at_zero_eq)
   by (smt awalkE in_set_conv_nth length_rev less_Suc_eq_le length_awalk 
           pwalk_awalk shortest_paths_locale_step1_axioms subsetD set_rev)
 
-
+*)
 lemma (in pre_digraph) rev_awalk_verts_conv:
   "rev (awalk_verts u p) = 
     (if p = [] then [u] else head G (last p) # (map (tail G) (rev p)))"
@@ -3639,7 +3639,7 @@ lemma (in shortest_paths_locale_step1) rev_awalk_verts_pwalk_conv:
              (rev (awalk_verts s (pwalk (tail G (the (parent_edge v)))))))" 
 by (smt append_Cons append_Nil2 awalkE cas.simps(2) list.simps(8) list.simps(9)
         nth_Cons_0 option.sel pwalk.simps pwalk_awalk rev.simps(1) rev_append 
-        rev_awalk_verts_conv rev_singleton_conv asdf 
+        rev_awalk_verts_conv rev_singleton_conv rev_awalk_verts_pwalk_at_zero_eq 
         parent_num_assms shortest_paths_locale_step1_axioms)
 
 (*pwalk (tail G (the (parent_edge v)))*)
@@ -3656,7 +3656,7 @@ lemma (in shortest_paths_locale_step1) rev_awalk_verts_pwalk_Suc_nth_eq:
   using assms 
   apply (induct i arbitrary: v)
    apply (subst rev_awalk_verts_pwalk_conv, clarsimp)
-   apply (smt nth_Cons_Suc rev_awalk_verts_pwalk_conv asdf cas.simps(2) 
+   apply (smt nth_Cons_Suc rev_awalk_verts_pwalk_conv rev_awalk_verts_pwalk_at_zero_eq cas.simps(2) 
               nth_Cons_0 pwalk_simps pwalk_awalk self_append_conv2 awalkE)
   apply (smt rev_awalk_verts_pwalk_conv Suc_less_eq length_append_singleton less_nat_zero_code 
              nth_Cons_Suc length_pwalk list.size(3) shortest_paths_locale_step1_axioms pwalk_simps)
@@ -3672,7 +3672,7 @@ lemma (in shortest_paths_locale_step1) head_parent_nth_eq_pwalk_nth:
           rev (awalk_verts s (pwalk v)) ! i"
   using assms
   apply (induct i arbitrary: v) 
-   apply (fastforce dest: asdf)
+   apply (fastforce dest: rev_awalk_verts_pwalk_at_zero_eq)
   apply (simp add: rev_awalk_verts_pwalk_Suc_nth_eq)
   done
 
