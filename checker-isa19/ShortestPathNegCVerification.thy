@@ -2958,40 +2958,40 @@ lemma is_cost_eq:
   unfolding is_cost_def
   by (fastforce dest!: arrlist_heap simp: int_unat)
 
-lemma bar1:
+lemma INT_MIN_times_uint_plus_1:
   assumes "a < (max_word :: 32 word)"
   shows "INT_MIN * uint (a + 1) = INT_MIN + INT_MIN * uint a"
   using assms
   by (metis (no_types, hide_lams) add.commute distrib_left less_irrefl less_x_plus_1 mult.right_neutral not_le uint_1 uint_plus_simple_iff)
 
-lemma foo1:
+lemma INT_MIN_times_uint_plus_1_le:
   assumes "a < (max_word :: 32 word)"
     and "INT_MIN * uint a \<le> x"
     and "INT_MIN \<le> y"
   shows "INT_MIN * uint (a + 1) \<le> x + y"
   using assms
-  using bar1 by force
+  using INT_MIN_times_uint_plus_1 by force
 
-lemma bar:
+lemma INT_MAX_times_uint_plus_1:
   assumes "a < (max_word :: 32 word)"
   shows "INT_MAX * uint (a + 1) = INT_MAX + INT_MAX * uint a"
   using assms
   by (metis (no_types, hide_lams) add.commute distrib_left less_irrefl less_x_plus_1 mult.right_neutral not_le uint_1 uint_plus_simple_iff)
 
-lemma foo:
+lemma INT_MAX_times_uint_plus_1_le:
   assumes "a < (max_word :: 32 word)"
     and "x \<le> INT_MAX * uint a"
     and "y \<le> INT_MAX"
   shows "x + y \<le> INT_MAX * uint (a + 1)"
   using assms
-  using bar by force
+  using INT_MAX_times_uint_plus_1 by force
 
-lemma baz_max: 
+lemma INT_MAX_times_uint_max_word_le_LONG_MAX: 
   "INT_MAX * uint (max_word :: 32 word) \<le> LONG_MAX"
   unfolding INT_MAX_def LONG_MAX_def max_word_def
   by fastforce
 
-lemma baz1_min: 
+lemma INT_MIN_times_uint_max_word_ge_LONG_MIN: 
   "LONG_MIN \<le> INT_MIN * uint (max_word :: 32 word)"
   unfolding INT_MIN_def LONG_MIN_def max_word_def
   by fastforce
@@ -3004,18 +3004,18 @@ lemma test1:
 lemma test2:
   assumes "a < (max_word :: 32 word)"
   shows "INT_MIN * uint (a + 1) \<le> INT_MIN * uint a"
-  by (metis INT_MIN_MAX_lemmas(18) add.right_neutral assms le_less shortest_path_neg_checker.foo1)
+  by (metis INT_MIN_MAX_lemmas(18) add.right_neutral assms le_less INT_MIN_times_uint_plus_1_le)
 
-lemma baz:
+lemma INT_MAX_times_uint_plus_1_le_LONG_MAX:
   assumes "a < (max_word :: 32 word)"
   shows "INT_MAX * uint (a + 1) \<le> LONG_MAX"
-  using baz_max test1[OF assms(1)] 
+  using INT_MAX_times_uint_max_word_le_LONG_MAX test1[OF assms(1)] 
   by (metis (no_types, hide_lams) INT_MIN_MAX_lemmas(17) add.commute mult.commute mult_right_mono order_trans)
 
-lemma baz1: 
+lemma INT_MIN_times_uint_plus_1_ge_LONG_MIN: 
   assumes "a < (max_word :: 32 word)"
   shows "LONG_MIN \<le> INT_MIN * uint (a + 1)"
-  using baz1_min test1[OF assms(1)] test2[OF assms(1)]
+  using INT_MIN_times_uint_max_word_ge_LONG_MIN test1[OF assms(1)] test2[OF assms(1)]
   by (meson INT_MIN_MAX_lemmas(9) le_less mult_le_cancel_left mult_nonneg_nonneg order.trans uint_ge_0 un_ui_le)
 
 lemma awalk_cost_neg_spc':
@@ -3070,10 +3070,10 @@ lemma awalk_cost_neg_spc':
      apply (subgoal_tac "a < (max_word :: 32 word)")
   apply (fold LONG_MAX_def LONG_MIN_def)
       apply safe[1] 
-         apply (meson INT_MIN_MAX_lemmas(11) order.trans shortest_path_neg_checker.baz1 shortest_path_neg_checker.foo1)
-        apply (meson INT_MIN_MAX_lemmas(10) order.trans shortest_path_neg_checker.baz shortest_path_neg_checker.foo)
-       apply (metis INT_MIN_MAX_lemmas(10) add.commute add_mono_thms_linordered_semiring(1) shortest_path_neg_checker.bar)
-      apply (metis INT_MIN_MAX_lemmas(11) add.commute add_mono shortest_path_neg_checker.bar1 shortest_path_neg_checker.word_nat_simp)
+         apply (meson INT_MIN_MAX_lemmas(11) order.trans INT_MIN_times_uint_plus_1_ge_LONG_MIN INT_MIN_times_uint_plus_1_le)
+        apply (meson INT_MIN_MAX_lemmas(10) order.trans INT_MAX_times_uint_plus_1_le_LONG_MAX INT_MAX_times_uint_plus_1_le)
+       apply (metis INT_MIN_MAX_lemmas(10) add.commute add_mono_thms_linordered_semiring(1) INT_MAX_times_uint_plus_1)
+      apply (metis INT_MIN_MAX_lemmas(11) add.commute add_mono INT_MIN_times_uint_plus_1 shortest_path_neg_checker.word_nat_simp)
      apply (metis less_linear max_word_max word_le_not_less)
     apply wpsimp
     apply (clarsimp simp add: awalk_neg_cyc_cost_def is_cycle_def)  
