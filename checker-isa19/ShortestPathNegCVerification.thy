@@ -3701,7 +3701,7 @@ lemma int_neg_cyc_spc:
           is_dist s iG iD d \<and>
           is_numm s iG iN n \<and>
           is_pedge s iG iP p \<and>
-          (\<forall>v \<le>ivertex_cnt iG.  \<forall>i<iN v. 
+          (\<forall>v <ivertex_cnt iG.  \<forall>i<iN v. abs_IDist iD v \<noteq> \<infinity> \<longrightarrow>
              iP (((\<lambda>v. fst ((iedges iG) (iP v))) ^^ unat i) v) < iedge_cnt iG)) \<rbrace>
    int_neg_cyc' g d cse p n
    \<lbrace> (\<lambda>_ s. P s) And 
@@ -3734,7 +3734,7 @@ lemma int_neg_cyc_spc:
        apply (simp add: is_graph_valid_graph unat_minus_plus1_less word_less_nat_alt)
       apply wp+
      apply clarsimp
-     apply (rule conjI; clarsimp)
+     apply (rule conjI; clarsimp simp:abs_IDist_def)
       apply (fastforce dest: is_dist_arrlist_is_inf is_dist_valid simp: is_graph_def)
      apply (rule conjI, fastforce intro!: inc_le simp: is_graph_def) 
      apply (rule conjI)
@@ -4009,7 +4009,7 @@ lemma parent_edges_exist:
 *)
 lemma (in shortest_paths_locale_step2_pred) parent_edges_exist_and_wellformed : 
    "\<lbrakk> v\<in>verts G; v\<noteq>s ; dist v \<noteq> \<infinity>\<rbrakk> \<Longrightarrow> 
-    \<forall>i\<le>num v.
+    \<forall>i<num v.
       \<exists>e. ((\<lambda>v. (parent_edge v)) ^^ i) v = Some e \<and> 
           e \<in> arcs G \<and> 
           head G e \<in> verts G \<and> 
@@ -4024,9 +4024,12 @@ lemma (in shortest_paths_locale_step2_pred) parent_edges_exist_and_wellformed :
 
   sorry
 
-lemma parent_edges_exist_and_wellformed': 
-  "shortest_paths_locale_step2_pred G s c n p d pred \<Longrightarrow>
-   \<forall>i\<le>n v. \<exists>e. ((\<lambda>v. (p v)) ^^ i) v = Some e \<and> e \<in> arcs G \<and> head e \<in> verts G \<and> tail e \<in> verts G "
+lemma (in shortest_paths_locale_step2_pred) parent_edges_exist_and_wellformed': 
+  "\<forall>i<num v. 
+      \<exists>e. ((\<lambda>v. (parent_edge v)) ^^ i) v = Some e \<and> 
+          e \<in> arcs G \<and> 
+          head G e \<in> verts G \<and> 
+          tail G e \<in> verts G "
   sorry
 
 
@@ -4350,7 +4353,7 @@ lemma (in shortest_paths_locale_step1) nth_parent_facts:
 
 lemma nth_abs_IPedge_simp:
   "\<lbrakk> v < fst G ; v\<noteq>s ; d v \<noteq> \<infinity> ; i \<le> n v;
-     shortest_paths_locale_step1 (abs_IGraph G) s ( n) (abs_IPedge p) ( d)\<rbrakk> \<Longrightarrow> 
+     shortest_paths_locale_step1 (abs_IGraph G) s n (abs_IPedge p) ( d)\<rbrakk> \<Longrightarrow> 
   ((\<lambda>v. fst ((iedges G) (the (abs_IPedge p v)))) ^^ i) v = 
   ((\<lambda>v. fst ((iedges G) (p v))) ^^ i) v " 
   apply (induct i arbitrary:v; simp)
@@ -4495,10 +4498,15 @@ lemma shortest_paths_locale_step3_spc_intermediate:
     apply clarsimp
     apply (case_tac "r=0", fastforce, clarsimp) 
     apply (rule conjI, simp)+
-    apply clarsimp 
-  
-  (*"iP (((\<lambda>v. snd (snd (snd iG) (iP v))) ^^ unat i) v) < fst (snd iG)"*)
-  subgoal  sorry
+    apply (clarsimp simp: shortest_paths_locale_step2_inv_eq_maths)
+    apply (drule shortest_paths_locale_step2_pred.axioms(1))
+    apply (case_tac "v\<noteq>sc")
+     apply (subst nth_abs_IPedge_simp[symmetric, where n="abs_INat iN" and p=" iP"], simp+)
+       apply (fastforce dest: unat_mono simp: abs_INat_def, simp)
+     apply (frule shortest_paths_locale_step1.nth_parent_facts, simp+)
+       apply (fastforce intro!: unat_mono simp: abs_INat_def, simp+)
+     apply (fastforce dest!: shortest_paths_locale_step1.parent_num_assms simp: abs_IPedge_def)
+     apply (fastforce dest!:shortest_paths_locale_step1.s_assms(4) simp:unat_eq_zero abs_INat_def)
   apply (rule_tac P1=" P and 
     (\<lambda>s.  wf_digraph (abs_IGraph iG) \<and>
           is_graph s iG g \<and>
