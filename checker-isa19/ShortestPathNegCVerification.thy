@@ -933,21 +933,14 @@ lemma parent_head_in_verts:
 lemma parent_tail_in_verts:
   "\<lbrakk>wf_digraph (abs_IGraph iG); 
     v < ivertex_cnt iG;
-    \<forall>i\<le>n. iP (((\<lambda>v. fst (snd (snd iG) (iP v))) ^^ unat (i::32 word)) v) < iedge_cnt iG;
-    i\<le>n;
-    j=unat i -1  \<rbrakk> \<Longrightarrow> 
+    \<forall>i<n. iP (((\<lambda>v. fst (snd (snd iG) (iP v))) ^^ unat (i::32 word)) v) < iedge_cnt iG;
+    i\<le>n  \<rbrakk> \<Longrightarrow> 
     ((\<lambda>v. fst (iedges iG (iP v))) ^^ unat i) v < ivertex_cnt iG"
-  apply (case_tac "i=0", simp)
-   apply (frule_tac e1="iP (((\<lambda>v. fst (snd (snd iG) (iP v))) ^^ j) v) " in
-          wellformed_iGraph[THEN conjunct1])
-  apply (metis less_1_simp unat_minus_one word_le_less_eq)
-  apply clarsimp
-  apply (erule_tac x="i - 1" in allE)
-  apply (subst (asm) unat_minus_one, simp)
-  apply (frule_tac e1="iP (((\<lambda>v. fst (snd (snd iG) (iP v))) ^^ j) v) " in
-          wellformed_iGraph[THEN conjunct1])
-  apply (simp add: less_1_simp word_le_less_eq)
-  apply (metis (mono_tags, lifting) Suc_pred funpow_simp_l unat_gt_0)
+   apply (cases "unat i"; simp)
+   apply (rename_tac j)
+   apply (rule wellformed_iGraph[THEN conjunct1], simp)
+   apply (erule_tac x="i - 1" in allE)
+   apply (metis Zero_not_Suc diff_Suc_1 unat_0 unat_minus_one less_1_simp)
   done
 
 (*helpers for icycle intermediate abstraction *)
@@ -3504,32 +3497,6 @@ lemma C_se_spc':
    apply wp
   apply (clarsimp simp: C_se_inv_def are_cyclesD)
   done
-(*
-     apply (clarsimp simp: are_cyclesD)
-     apply (rule conjI; clarsimp simp: C_se_inv_def)
-      apply (rule conjI)
-       apply (rule exI)
-       apply (rule conjI, simp add: are_cycles''_def length_abs_ICycles')
-              apply clarsimp 
-       unfolding  is_dist_def 
-       apply (drule_tac i="int (unat (fst (iY! cc)))" in arrlist_nth_value; simp)
-        apply (fastforce simp: unat_mono awalk_spc'_def) 
-       subgoal sorry 
-
-      subgoal sorry *)
-    
-(*
-         apply (clarsimp dest!: are_cyclesD)
-         apply (rule conjI; clarsimp)+ 
-  
-           apply (case_tac "cc+1 \<le> length iY")
-            apply (fastforce dest!: C_se_inv_le simp only: C_se_inv_step)
-           apply simp 
-          apply (rule conjI) 
-using awalk_cost_neg_spc'[simplified ovalid_def]
-      *)
-
-(*TEMP FILE PROOFS GO HERE*)
 
 
 definition vertex_not_in_cycles_start_inv :: 
@@ -3638,7 +3605,7 @@ lemma parents_not_in_cycles_start_spc:
           is_numm s iG iN n \<and>
           is_pedge s iG iP p \<and>
           v < ivertex_cnt iG \<and>
-          (\<forall>i\<le>iN v. iP (((\<lambda>v. fst (iedges iG (iP v))) ^^ unat i) v) < iedge_cnt iG)) \<rbrace>
+          (\<forall>i<iN v. iP (((\<lambda>v. fst (iedges iG (iP v))) ^^ unat i) v) < iedge_cnt iG)) \<rbrace>
    parents_not_in_cycles_start' g cse p n v
    \<lbrace> (\<lambda>_ s. P s) And 
      (\<lambda>rr s. rr \<noteq> 0  \<longleftrightarrow> 
@@ -3654,7 +3621,19 @@ lemma parents_not_in_cycles_start_spc:
                             ?inv (unat i)" ])
       apply wpsimp
           apply (rename_tac u'' r i' u' s i ba u)
-          apply (rule_tac P1="(\<lambda>s.
+ apply (rule_tac P1="(\<lambda>s.
+                       ?pre s \<and>
+                        i + 1 \<le> ?numv \<and>
+                        i=i'\<and>
+                        i < ?numv \<and> 
+                        (if ?numv=0 
+                          then u = v 
+                          else 
+                               u = ((\<lambda>v. fst (iedges iG (iP v)))^^ (unat (i + 1))) v) \<and>
+                       ?inv (unat i))"
+                      and iCS1 ="iCS" and iCS'1="iCS'"
+              in validNF_post_imp[OF _ vertex_not_in_cycles_start_spc])
+         (* apply (rule_tac P1="(\<lambda>s.
                        ?pre s \<and>
                        i + 1 \<le> ?numv \<and>
                        i < ?numv \<and>
@@ -3662,33 +3641,30 @@ lemma parents_not_in_cycles_start_spc:
                        u = ((\<lambda>v. fst (iedges iG (iP v)))^^ (unat (i + 1))) v \<and>  
                        ?inv (unat i))"
                       and iCS1 ="iCS" and iCS'1="iCS'"
-              in validNF_post_imp[OF _ vertex_not_in_cycles_start_spc])
+              in validNF_post_imp[OF _ vertex_not_in_cycles_start_spc])*)
           apply clarsimp 
           apply (rename_tac i r s) 
-          apply (rule conjI; clarsimp) 
-           apply (frule unat_le_mono)
-           apply (frule parents_not_in_cycles_start_inv_le, simp) 
-           apply (subst(asm) unat_Suc2, fastforce)+  
-           apply (simp only:parents_not_in_cycles_start_inv_step, simp) 
-          apply (rule conjI)   
-           apply (metis Suc_eq_plus1 less_is_non_zero_p1 
-                  word_overflow_unat parents_not_in_cycles_start_inv_stepD)
-          apply (simp add: unat_minus_plus1_less word_less_nat_alt)
-          apply(fastforce dest!: arrlist_nth_valid simp: is_numm_def uint_nat word_less_def) 
+          apply (rule conjI; clarsimp simp: parents_not_in_cycles_start_inv_def)
+           apply (blast intro: unat_le_mono)
+          apply (rule conjI, clarsimp, metis nat_less_le not_le less_unat_plus1)
+          apply (rule conjI, simp add: unat_minus_plus1_less word_less_nat_alt)
+          apply(fastforce dest!: arrlist_nth_valid simp: is_numm_def uint_nat word_less_def)
          apply wp+
        apply clarsimp
        apply (rename_tac i s)
        apply(subgoal_tac "unat (i + 1) = unat i + 1", simp)
         apply (clarsimp simp: is_graph_valid_graph)
-        apply (rule conjI, simp add:is_numm_arrlist_heap inc_le) 
-        apply (rule conjI, simp add: is_numm_arrlist_heap)
-        apply (rule conjI, 
-               force dest!:parent_tail_in_verts is_graph_tail_arrlist_eq 
-                     simp: is_pedge_arrlist_eq)
+        apply (rule conjI; clarsimp simp: inc_le is_numm_arrlist_heap)
         apply (rule conjI)
-         apply (rule is_graph_valid_edge, simp)
-         apply (force dest!:parent_tail_in_verts is_graph_tail_arrlist_eq 
-                     simp: is_pedge_arrlist_eq)
+         apply (subst is_graph_tail_arrlist_eq, simp, simp)
+         apply (subst is_pedge_arrlist_eq[symmetric,where iP=iP], simp)
+           apply (blast intro!: parent_tail_in_verts)
+          apply simp+
+       apply (rule conjI)
+        apply (rule is_graph_valid_edge, simp)
+         apply (subst is_pedge_arrlist_eq[symmetric,where iP=iP], simp)
+           apply (blast intro!: parent_tail_in_verts)
+          apply simp+
         apply (fast intro: is_pedge_valid dest: parent_tail_in_verts)
        apply (fastforce simp:less_le_trans)
       apply clarsimp
@@ -3725,7 +3701,7 @@ lemma int_neg_cyc_spc:
           is_dist s iG iD d \<and>
           is_numm s iG iN n \<and>
           is_pedge s iG iP p \<and>
-          (\<forall>v \<le>ivertex_cnt iG.  \<forall>i\<le>iN v. 
+          (\<forall>v \<le>ivertex_cnt iG.  \<forall>i<iN v. 
              iP (((\<lambda>v. fst ((iedges iG) (iP v))) ^^ unat i) v) < iedge_cnt iG)) \<rbrace>
    int_neg_cyc' g d cse p n
    \<lbrace> (\<lambda>_ s. P s) And 
@@ -4520,6 +4496,7 @@ lemma shortest_paths_locale_step3_spc_intermediate:
     apply (case_tac "r=0", fastforce, clarsimp) 
     apply (rule conjI, simp)+
     apply clarsimp 
+  
   (*"iP (((\<lambda>v. snd (snd (snd iG) (iP v))) ^^ unat i) v) < fst (snd iG)"*)
   subgoal  sorry
   apply (rule_tac P1=" P and 
