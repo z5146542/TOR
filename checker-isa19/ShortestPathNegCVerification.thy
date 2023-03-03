@@ -802,11 +802,11 @@ lemma parent_head_in_verts:
   done
 
 lemma parent_tail_in_verts:
-  "\<lbrakk>wf_digraph (abs_IGraph iG); 
-    v < ivertex_cnt iG;
-    \<forall>i<n. iP (((\<lambda>v. fst (snd (snd iG) (iP v))) ^^ unat (i::32 word)) v) < iedge_cnt iG;
-    i\<le>n  \<rbrakk> \<Longrightarrow> 
-    ((\<lambda>v. fst (iedges iG (iP v))) ^^ unat i) v < ivertex_cnt iG"
+  "\<lbrakk> wf_digraph (abs_IGraph iG); 
+     v < ivertex_cnt iG;
+     \<forall>i<n. iP (((\<lambda>v. fst (snd (snd iG) (iP v))) ^^ unat (i::32 word)) v) < iedge_cnt iG;
+     i\<le>n  \<rbrakk> \<Longrightarrow> 
+   ((\<lambda>v. fst (iedges iG (iP v))) ^^ unat i) v < ivertex_cnt iG"
    apply (cases "unat i"; simp)
    apply (rename_tac j)
    apply (rule wellformed_iGraph[THEN conjunct1], simp)
@@ -3673,8 +3673,7 @@ qed
 
 lemma shortest_paths_locale_step3_spc_intermediate:
   "\<lbrace> P and 
-     (\<lambda>s. wf_digraph (abs_IGraph iG) \<and> 
-          is_graph s iG g \<and>
+     (\<lambda>s. is_graph s iG g \<and>
           is_dist s iG iD d \<and>
           is_numm s iG iN n \<and>
           is_cost s iG iC c \<and>
@@ -3688,19 +3687,19 @@ lemma shortest_paths_locale_step3_spc_intermediate:
         shortest_paths_locale_step3_inv iG sc iC iN iP iD iPred iCS)\<rbrace>!"
   apply (clarsimp simp: shortest_paths_locale_step3'_def shortest_paths_locale_step3_inv_def)
   apply wp
-      apply (rule_tac P1=" P and 
-    (\<lambda>s.  wf_digraph (abs_IGraph iG) \<and>
-          is_graph s iG g \<and>
-          is_dist s iG iD d \<and>
-          is_numm s iG iN n \<and>
-          is_cost s iG iC c \<and>
-          is_pedge s iG iP p \<and>
-          is_pedge s iG iPred pred \<and>
-          are_cycles'' s iCS' cse \<and>
-          iCS = abs_ICycles' s iCS' \<and>
-          shortest_paths_locale_step2_inv iG sc iC iN iP iD iPred \<and>
-          C_se_inv iG iCS iC iD (length iCS) )" 
-      in validNF_post_imp[OF _ int_neg_cyc_spc[where iCS=iCS]])
+      apply (rule_tac P1="P and 
+                          (\<lambda>s. wf_digraph (abs_IGraph iG) \<and>
+                               is_graph s iG g \<and>
+                               is_dist s iG iD d \<and>
+                               is_numm s iG iN n \<and>
+                               is_cost s iG iC c \<and>
+                               is_pedge s iG iP p \<and>
+                               is_pedge s iG iPred pred \<and>
+                               are_cycles'' s iCS' cse \<and>
+                               iCS = abs_ICycles' s iCS' \<and>
+                               shortest_paths_locale_step2_inv iG sc iC iN iP iD iPred \<and>
+                               C_se_inv iG iCS iC iD (length iCS) )" 
+                      in validNF_post_imp[OF _ int_neg_cyc_spc[where iCS=iCS]])
      apply fastforce
       apply (rule_tac P1=" P and 
     (\<lambda>s.  wf_digraph (abs_IGraph iG) \<and>
@@ -3726,25 +3725,25 @@ lemma shortest_paths_locale_step3_spc_intermediate:
        apply (fastforce intro!: unat_mono simp: abs_INat_def, simp+)
      apply (fastforce dest!: shortest_paths_locale_step1.parent_num_assms simp: abs_IPedge_def)
      apply (fastforce dest!:shortest_paths_locale_step1.s_assms(4) simp:unat_eq_zero abs_INat_def)
-  apply (rule_tac P1=" P and 
-    (\<lambda>s.  wf_digraph (abs_IGraph iG) \<and>
-          is_graph s iG g \<and>
-          is_dist s iG iD d \<and>
-          is_numm s iG iN n \<and>
-          is_cost s iG iC c \<and>
-          is_pedge s iG iP p \<and>
-          is_pedge s iG iPred pred \<and>
-          are_cycles'' s iCS' cse \<and>
-          iCS = abs_ICycles' s iCS')" 
-      in validNF_post_imp[OF _ shortest_paths_locale_step2_spc_intermediate]) 
-   apply fastforce
+  apply (rule_tac P1="P and 
+                     (\<lambda>s. is_graph s iG g \<and>
+                          is_dist s iG iD d \<and>
+                          is_numm s iG iN n \<and>
+                          is_cost s iG iC c \<and>
+                          is_pedge s iG iP p \<and>
+                          is_pedge s iG iPred pred \<and>
+                          are_cycles'' s iCS' cse \<and>
+                          iCS = abs_ICycles' s iCS')" 
+                  in validNF_post_imp[OF _ shortest_paths_locale_step2_spc_intermediate]) 
+   apply (fastforce dest: shortest_paths_locale_step1.graphG 
+                    simp: shortest_paths_locale_step2_inv_eq_maths 
+                          shortest_paths_locale_step2_pred_def fin_digraph_def)
   apply fastforce
   done
 
 theorem shortest_paths_locale_step3_spc:
   "\<lbrace> P and 
-     (\<lambda>s. wf_digraph (abs_IGraph iG) \<and>
-          is_graph s iG g \<and>
+     (\<lambda>s. is_graph s iG g \<and>
           is_dist s iG iD d \<and>
           is_numm s iG iN n \<and>
           is_cost s iG iC c \<and>
@@ -3760,30 +3759,23 @@ theorem shortest_paths_locale_step3_spc:
   by (fastforce intro!: validNF_post_imp[OF _ shortest_paths_locale_step3_spc_intermediate] 
                    simp: shortest_paths_locale_step3_eq_maths) 
 
-lemma shortest_paths_locale_step3_imp_correct:
-"\<And>G s c n p d pred C. 
-  shortest_paths_locale_step3_pred (abs_IGraph G) s c n p d pred C \<longrightarrow>
-   (\<forall>v \<in> verts (abs_IGraph G).
-   d v = wf_digraph.\<mu> (abs_IGraph G) c s v)"
-  using shortest_paths_locale_step3_pred.correct_shortest_path by fast
-
 corollary shortest_paths_checker_is_correct:
     "\<lbrace> P and 
-     (\<lambda>s. wf_digraph (abs_IGraph iG) \<and>
-          is_graph s iG g \<and>
+     (\<lambda>s. is_graph s iG g \<and>
           is_dist s iG iD d \<and>
           is_numm s iG iN n \<and>
           is_cost s iG iC c \<and>
           is_pedge s iG iP p \<and>
           is_pedge s iG iPred pred \<and>
-          are_cycles'' s iCS' cse \<and> iCS = abs_ICycles' s iCS')\<rbrace>
+          are_cycles'' s iCS' cse \<and> 
+          iCS = abs_ICycles' s iCS')\<rbrace>
    shortest_paths_locale_step3' g sc c n pred d cse p
    \<lbrace> (\<lambda>_ s. P s) And 
      (\<lambda>rr s. rr \<noteq> 0 \<longrightarrow> 
   (\<forall>v \<in> verts (abs_IGraph iG).
    (abs_IDist iD) v = wf_digraph.\<mu> (abs_IGraph iG) (abs_ICost iC) sc v))\<rbrace>!"
   using validNF_post_imp[OF _ shortest_paths_locale_step3_spc] 
-         shortest_paths_locale_step3_imp_correct 
+         shortest_paths_locale_step3_pred.correct_shortest_path[of "(abs_IGraph iG)"] 
   by auto
 
 end
