@@ -48,7 +48,7 @@ int main() {
 #ifdef CERTIFYING
     printf("Running certifying algorithm...\n");
     certifying_dijkstra(graph, dist, c, s, num, pred);
-    printf("Verifying output and checker...");
+    printf("Verifying output using checker...");
     printf("%s\n", check_sp(graph, dist, c, s, num, pred) ? "\033[0;32mtrue\033[0m" : "\033[0;31mfalse\033[0m");
 #else
     printf("Running dijkstra's algorithm...");
