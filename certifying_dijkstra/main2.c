@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#define NUM_VERTICES 2000
+#define NUM_VERTICES 17000
 #define NUM_EDGES (NUM_VERTICES * NUM_VERTICES)
 
 int main() {
