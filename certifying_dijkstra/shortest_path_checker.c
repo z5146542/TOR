@@ -11,6 +11,14 @@
 #define left_child(i) (2 * i + 1)
 #define right_child(i) (2 * i + 2)
 
+// adjacency list implementation
+
+typedef struct node {
+    unsigned int second;
+    unsigned int edge_id;
+    struct node *next;
+} Node;
+
 // Internal priority queue
 
 typedef struct pq_elem {
@@ -107,6 +115,31 @@ void dijkstra(Graph *g, EInt *dist, unsigned int *c, unsigned int s) {
         enqueue(queue, vd, &n);
     }
 
+    // construct adjacency list here
+    Node *elist[vertex_cnt(g)];
+    for(unsigned int v = 0; v < vertex_cnt(g); v++) elist[v] = NULL;
+    for(unsigned int e = 0; e < edge_cnt(g); e++) {
+        Node *n = malloc(sizeof(Node));
+        n->second = arcs(g, e).second;
+        n->edge_id = e;
+        n->next = elist[arcs(g, e).first];
+        elist[arcs(g, e).first] = n;
+    }
+
+    while(n != 0) {
+        PQ_Element u = dequeue(queue, &n);
+        for(Node *node = elist[u.index]; node != NULL; node = node->next) {
+            unsigned int v = node->second;
+            EInt alt = { .isInf = dist[u.index].isInf, .val = dist[u.index].val + c[node->edge_id]};
+            if(EInt_lt(alt, dist[v])) {
+                dist[v] = alt;
+                PQ_Element vn = { .index = v, .value = alt };
+                enqueue(queue, vn, &n);
+            }
+        }
+    }
+
+/*
     while(n != 0) {
 #ifdef DEBUG_TRUE
         printf("PQ size: %lu\n", n);
@@ -134,6 +167,7 @@ void dijkstra(Graph *g, EInt *dist, unsigned int *c, unsigned int s) {
             }
         }
     }
+*/
 }
 
 // certifying Dijkstra's algorithm implementation
@@ -158,6 +192,33 @@ void certifying_dijkstra(Graph *g, EInt *dist, unsigned int *c, unsigned int s, 
         enqueue(queue, vd, &n);
     }
 
+    // construct adjacency list here
+    Node *elist[vertex_cnt(g)];
+    for(unsigned int v = 0; v < vertex_cnt(g); v++) elist[v] = NULL;
+    for(unsigned int e = 0; e < edge_cnt(g); e++) {
+        Node *n = malloc(sizeof(Node));
+        n->second = arcs(g, e).second;
+        n->edge_id = e;
+        n->next = elist[arcs(g, e).first];
+        elist[arcs(g, e).first] = n;
+    }
+
+    while(n != 0) {
+        PQ_Element u = dequeue(queue, &n);
+        for(Node *node = elist[u.index]; node != NULL; node = node->next) {
+            unsigned int v = node->second;
+            EInt alt = { .isInf = dist[u.index].isInf, .val = dist[u.index].val + c[node->edge_id]};
+            if(EInt_lt(alt, dist[v])) {
+                dist[v] = alt;
+                enu[v].isInf = 0;
+                enu[v].val = enu[u.index].val + 1;
+                pred[v] = node->edge_id;
+                PQ_Element vn = { .index = v, .value = alt };
+                enqueue(queue, vn, &n);
+            }
+        }
+    }
+/*
     while(n != 0) {
 #ifdef DEBUG_TRUE
         printf("PQ size: %lu\n", n);
@@ -199,6 +260,7 @@ void certifying_dijkstra(Graph *g, EInt *dist, unsigned int *c, unsigned int s, 
             }
         }
     }
+*/
 }
 
 // Procedures
