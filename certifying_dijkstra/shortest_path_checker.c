@@ -138,36 +138,6 @@ void dijkstra(Graph *g, EInt *dist, unsigned int *c, unsigned int s) {
             }
         }
     }
-
-/*
-    while(n != 0) {
-#ifdef DEBUG_TRUE
-        printf("PQ size: %lu\n", n);
-#endif
-        PQ_Element u = dequeue(queue, &n);
-        for(int e = 0; e < edge_cnt(g); e++) {
-            if(arcs(g, e).first != u.index) continue;
-#ifdef DEBUG_TRUE
-            printf("->edge %lu: (%lu, %lu)\n", e, u.index, arcs(g, e).second);
-#endif
-            unsigned int v = arcs(g, e).second;
-            EInt alt;
-            alt.isInf = 0, alt.val = dist[u.index].val + c[e];
-            if(EInt_lt(alt, dist[v])) {
-#ifdef DEBUG_TRUE
-                printf("-->alt(dist[%lu] + c[%lu] (i.e. %lu)): { isInf = %lu, val = %lu }\n", u.index, e, c[e], alt.isInf, alt.val);
-                printf("-->dist[%lu]: { isInf = %lu, val = %lu }\n", v, dist[v].isInf, dist[v].val);
-#endif
-
-                dist[v] = alt;
-                PQ_Element vn;
-                vn.index = v;
-                vn.value = alt;
-                enqueue(queue, vn, &n);
-            }
-        }
-    }
-*/
 }
 
 // certifying Dijkstra's algorithm implementation
@@ -218,49 +188,6 @@ void certifying_dijkstra(Graph *g, EInt *dist, unsigned int *c, unsigned int s, 
             }
         }
     }
-/*
-    while(n != 0) {
-#ifdef DEBUG_TRUE
-        printf("PQ size: %lu\n", n);
-        print_PQ(queue, n);
-#endif
-        PQ_Element u = dequeue(queue, &n);
-        for(int e = 0; e < edge_cnt(g); e++) {
-#ifdef DEBUG_TRUE
-
-            printf("->edge %lu?: (%lu, %lu)\n", e, u.index, arcs(g, e).second);
-#endif
-            if(arcs(g, e).first != u.index) continue;
-#ifdef DEBUG_TRUE
-            printf("->edge %lu: (%lu, %lu)\n", e, u.index, arcs(g, e).second);
-#endif
-            unsigned int v = arcs(g, e).second;
-            EInt alt;
-            alt.isInf = dist[u.index].isInf, alt.val = dist[u.index].val + c[e];
-#ifdef DEBUG_TRUE
-            printf("-->dist[%lu] (before): { isInf = %lu, val = %lu }\n", v, dist[v].isInf, dist[v].val);
-            printf("-->alt: { isInf = %lu, val = %lu }\n", alt.isInf, alt.val);
-#endif
-            if(EInt_lt(alt, dist[v])) {
-                dist[v] = alt;
-                enu[v].isInf = 0;
-                enu[v].val = enu[u.index].val + 1;
-                pred[v] = e;
-                PQ_Element vn;
-                vn.index = v;
-                vn.value = alt;
-#ifdef DEBUG_TRUE
-                printf("-->dist[%lu] (after): { isInf = %lu, val = %lu }\n", v, dist[v].isInf, dist[v].val);
-#endif
-                enqueue(queue, vn, &n);
-#ifdef DEBUG_TRUE
-                printf("-->AFTER ENQUEUE:\n");
-                print_PQ(queue, n);
-#endif
-            }
-        }
-    }
-*/
 }
 
 // Procedures
