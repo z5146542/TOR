@@ -21,4 +21,4 @@ run_overflow:
 	@echo "Test overflow (should fail):"; time ./main3
 
 clean:
-	rm main main2 main3
+	rm -f main main2 main3
