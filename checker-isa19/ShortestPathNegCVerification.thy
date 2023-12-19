@@ -226,8 +226,6 @@ next
   qed
 qed
 
-
-
 lemma unat_simp: 
   "\<And>x y:: 32 word. unat (x + y) \<ge> unat x \<longleftrightarrow> 
       unat (x + y) = unat x + unat y"
@@ -2628,12 +2626,6 @@ lemma awalk_spc':
   apply fastforce
   done
 
-
-
-
-
-
-
 definition awalk_neg_cyc_cost ::
   "ICost \<Rightarrow> ICycle \<Rightarrow> nat \<Rightarrow> int"
 where
@@ -3075,7 +3067,6 @@ lemma C_se_spc':
   apply (clarsimp simp: C_se_inv_def are_cyclesD)
   done
 
-
 definition vertex_not_in_cycles_start_inv :: 
   "ICycle_Set \<Rightarrow> IVertex \<Rightarrow> nat \<Rightarrow> bool" 
 where
@@ -3375,13 +3366,13 @@ lemma (in shortest_paths_locale_step1)length_awalk:
   "\<lbrakk> v \<noteq> s \<and> v \<in> verts G \<and> dist v \<noteq> \<infinity> \<or> v = s \<rbrakk> \<Longrightarrow>
    length (awalk_verts s (pwalk v)) =  Suc (num v)"
 by (metis length_awalk_verts length_pwalk)
-
+(*
 lemma (in shortest_paths_locale_step1) pwalk_verts_in_verts:
   "v \<in> pwalk_verts u \<Longrightarrow> v\<in> verts G"
 by (metis awalk_decomp awalk_hd_in_verts awalk_verts.simps(1) 
           pwalk_awalk  pwalk.elims mem_Collect_eq s_assms(1)
           pwalk_verts_def vwalk_singleton vwalk_verts_in_verts)
-
+*)
 lemma (in shortest_paths_locale_step1) pwalk_in_arcs:
   "e \<in> set (pwalk v) \<Longrightarrow> e\<in> arcs G"
 by (metis awalkE  empty_set equals0D  pwalk.simps pwalk_awalk  subsetD)
@@ -3670,7 +3661,6 @@ proof -
 qed
 (**to be updated to step3 *)
 
-
 lemma shortest_paths_locale_step3_spc_intermediate:
   "\<lbrace> P and 
      (\<lambda>s. is_graph s iG g \<and>
@@ -3699,20 +3689,20 @@ lemma shortest_paths_locale_step3_spc_intermediate:
                                iCS = abs_ICycles' s iCS' \<and>
                                shortest_paths_locale_step2_inv iG sc iC iN iP iD iPred \<and>
                                C_se_inv iG iCS iC iD (length iCS) )" 
-                      in validNF_post_imp[OF _ int_neg_cyc_spc[where iCS=iCS]])
+             in validNF_post_imp[OF _ int_neg_cyc_spc[where iCS=iCS]])
      apply fastforce
-      apply (rule_tac P1=" P and 
-    (\<lambda>s.  wf_digraph (abs_IGraph iG) \<and>
-          is_graph s iG g \<and>
-          is_dist s iG iD d \<and>
-          is_numm s iG iN n \<and>
-          is_cost s iG iC c \<and>
-          is_pedge s iG iP p \<and>
-          is_pedge s iG iPred pred \<and>
-          are_cycles'' s iCS' cse \<and>
-          iCS = abs_ICycles' s iCS' \<and>
-          shortest_paths_locale_step2_inv iG sc iC iN iP iD iPred)" 
-      in validNF_post_imp[OF _ C_se_spc'[where iY=iCS]])
+      apply (rule_tac P1="P and 
+                         (\<lambda>s. wf_digraph (abs_IGraph iG) \<and>
+                              is_graph s iG g \<and>
+                              is_dist s iG iD d \<and>
+                              is_numm s iG iN n \<and>
+                              is_cost s iG iC c \<and>
+                              is_pedge s iG iP p \<and>
+                              is_pedge s iG iPred pred \<and>
+                              are_cycles'' s iCS' cse \<and>
+                              iCS = abs_ICycles' s iCS' \<and>
+                              shortest_paths_locale_step2_inv iG sc iC iN iP iD iPred)" 
+             in validNF_post_imp[OF _ C_se_spc'[where iY=iCS]])
     apply clarsimp
     apply (case_tac "r=0", fastforce, clarsimp) 
     apply (rule conjI, simp)+
@@ -3753,14 +3743,14 @@ theorem shortest_paths_locale_step3_spc:
    shortest_paths_locale_step3' g sc c n pred d cse p
    \<lbrace> (\<lambda>_ s. P s) And 
      (\<lambda>rr s. rr \<noteq> 0  \<longleftrightarrow> 
-        shortest_paths_locale_step3_pred
-    (abs_IGraph iG) sc (abs_ICost iC) (abs_INat iN)
-    (abs_IPedge iP) (abs_IDist iD) (abs_IPedge iPred) (set iCS))\<rbrace>!"
-  by (fastforce intro!: validNF_post_imp[OF _ shortest_paths_locale_step3_spc_intermediate] 
-                   simp: shortest_paths_locale_step3_eq_maths) 
+             shortest_paths_locale_step3_pred
+                 (abs_IGraph iG) sc (abs_ICost iC) (abs_INat iN)
+                 (abs_IPedge iP) (abs_IDist iD) (abs_IPedge iPred) (set iCS))\<rbrace>!"
+by (fastforce intro!: validNF_post_imp[OF _ shortest_paths_locale_step3_spc_intermediate] 
+              simp: shortest_paths_locale_step3_eq_maths) 
 
 corollary shortest_paths_checker_is_correct:
-    "\<lbrace> P and 
+  "\<lbrace> P and 
      (\<lambda>s. is_graph s iG g \<and>
           is_dist s iG iD d \<and>
           is_numm s iG iN n \<and>
@@ -3772,12 +3762,13 @@ corollary shortest_paths_checker_is_correct:
    shortest_paths_locale_step3' g sc c n pred d cse p
    \<lbrace> (\<lambda>_ s. P s) And 
      (\<lambda>rr s. rr \<noteq> 0 \<longrightarrow> 
-  (\<forall>v \<in> verts (abs_IGraph iG).
-   (abs_IDist iD) v = wf_digraph.\<mu> (abs_IGraph iG) (abs_ICost iC) sc v))\<rbrace>!"
+     (\<forall>v \<in> verts (abs_IGraph iG).
+       (abs_IDist iD) v = 
+       wf_digraph.\<mu> (abs_IGraph iG) (abs_ICost iC) sc v))\<rbrace>!"
   using validNF_post_imp[OF _ shortest_paths_locale_step3_spc] 
-         shortest_paths_locale_step3_pred.correct_shortest_path[of "(abs_IGraph iG)"] 
+      shortest_paths_locale_step3_pred.correct_shortest_path[of "(abs_IGraph iG)"] 
   by auto
-
+unused_thms
 end
 
 end

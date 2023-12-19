@@ -157,40 +157,24 @@ int no_edge_Vm_Vf(Graph *g, ENInt *dist) {
     return 1;
 }
 
-
-// the following functions are all related to locale 3, which will be dealt with later. 
-
 // helpers
 
 int awalk(Graph *g, Cycle *C) {
     // u \in verts G
     if(C->start >= vertex_cnt(g)) return 0;
-
     // set p \subsetof arcs G
     for(unsigned int z = 0; z < C->length; z++)
         if(C->path[z] >= edge_cnt(g)) return 0;
-
     // cas u p v 
     unsigned int u = C->start;
     Edge e;
-    // e[0].first != C->start
-    // base case cas is checked here
     for(unsigned int z = 0; z < C->length - 1; z++) {
-        // if(C->path[z] >= edge_cnt(g)) return 0;
         e = arcs(g, C->path[z]);
-        // e' = arcs(g, C->path[z+1]);
         if(e.first != u) return 0;
-
-        // if (e.second != e'.first) return 0;
-
         u = e.second;
-
-        // base case for cas
         if(z == C->length - 1)
             if(u != C->start) return 0;
-        // at this point, we have checked tail G e = u as a loop invariant. 
-    }
-    
+    } 
     return 1;
 }
 
@@ -251,19 +235,6 @@ int C_se(Graph *g, Cycle_set *cse, int *c, ENInt *dist) {
     return 1;
 }
 
-
-// checks if a vertex s is connected to the vertex v given a list of parent edges of each respective vertices
-/*
-int is_connected(Graph *g, unsigned int s, int *parent_edge, unsigned int v) {
-    unsigned int n = v;
-    // the while loop will eventually terminate given n is either the source vertex or some other disjoint vertex
-    while(parent_edge[n] >= 0) {
-        if(n == s) return 1;
-        n = arcs(g, parent_edge[n]).first;
-    }
-    return 0;
-}
-*/
 // pwalk: function from vertices to paths.
 // it is the path obtained by concatenating the edges defined by the parent-edge function form v to s for vertices in Vf union Vm different from s, otherwise it is the empty path.
 
@@ -287,8 +258,6 @@ int parents_not_in_cycles_start(Graph *g, Cycle_set *cse, int *parent_edge, unsi
         u = arcs(g, (unsigned int) parent_edge[u]).first;
         if(vert_not_in_cycles_start(cse, u) == 0)
             return 0;
-        // if(arcs(g, parent_edge[u]) < edge_cnt(g)) return 0;
-        // uncomment code above to simplify proof if short on time.  
      }
     return 1;
 }
