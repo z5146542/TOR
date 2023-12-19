@@ -1260,10 +1260,10 @@ proof -
     basic_just_sp_pred_def 
     basic_just_sp_pred_axioms_def 
     basic_sp_def basic_sp_axioms_def
-   by (auto simp: wf_inv_is_fin_digraph[where ?G=G]
+   by (auto simp add: wf_inv_is_fin_digraph[where ?G=G]
      src_dist_nonneg_valid[where ?d=d and ?s=s] 
      trian_inv_eq_math[where ?G=G and ?d=d and ?c=c]
-     just_inv_eq_math[where ?G=G and ?d=d and ?c=c and ?s=s and ?n=n and ?p=p])
+     just_inv_eq_math[where ?G=G and ?d=d and ?c=c and ?s=s and ?n=n and ?p=p]) 
 qed
 
 lemma shortest_path_pos_cost_pred_eq_invariants':
