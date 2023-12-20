@@ -1220,7 +1220,7 @@ lemma src_dist_nonneg_valid:
   "abs_IDist d s \<le> 0 \<longleftrightarrow> (is_inf d s = 0 \<and> val d s = 0)"
   unfolding abs_IDist_def
   by (simp add: unat_eq_zero)
-
+          
 lemma src_dist_zero_valid: 
   "abs_IDist d s = 0 \<longleftrightarrow> (is_inf d s = 0 \<and> val d s = 0)"
   unfolding abs_IDist_def
@@ -1260,10 +1260,10 @@ proof -
     basic_just_sp_pred_def 
     basic_just_sp_pred_axioms_def 
     basic_sp_def basic_sp_axioms_def
-   by (auto simp add: wf_inv_is_fin_digraph[where ?G=G]
+   by (auto simp: wf_inv_is_fin_digraph[where ?G=G]
      src_dist_nonneg_valid[where ?d=d and ?s=s] 
      trian_inv_eq_math[where ?G=G and ?d=d and ?c=c]
-     just_inv_eq_math[where ?G=G and ?d=d and ?c=c and ?s=s and ?n=n and ?p=p]) 
+     just_inv_eq_math[where ?G=G and ?d=d and ?c=c and ?s=s and ?n=n and ?p=p])
 qed
 
 lemma shortest_path_pos_cost_pred_eq_invariants':
@@ -1387,14 +1387,13 @@ apply (rule_tac P=" P and
        apply blast
       apply wp
       apply simp_all
-      apply (erule conjE)+
+      apply (erule conjE)
       apply safe[1]
              apply (subgoal_tac "fst (iD sc) = val_C (heap_EInt_C s (d +\<^sub>p uint sc))")
               apply fastforce
              apply (unfold is_dist_def is_graph_def is_wellformed_inv_def)[1]
-             apply (subst val_heap, force) prefer 2
-              apply blast
-             apply clarsimp
+             apply (subst val_heap, force, simp) 
+             apply blast
             apply (unfold is_dist_def is_graph_def is_wellformed_inv_def)[1]
             apply (erule conjE)+
             apply (clarsimp simp: if_bool_eq_conj)+
@@ -1413,9 +1412,8 @@ apply (rule_tac P=" P and
          apply (subgoal_tac "fst (iD sc) = val_C (heap_EInt_C s (d +\<^sub>p unat sc))")
      using word_neq_0_conv apply auto[1]
          apply (unfold is_dist_def is_graph_def is_wellformed_inv_def)[1]
-         apply (subst val_heap, force) prefer 2
+         apply (subst val_heap, force, simp) 
           apply (simp add: int_unat)
-         apply clarsimp
         apply (subgoal_tac "snd (iD sc) = isInf_C (heap_EInt_C s (d +\<^sub>p uint sc))")
      using word_neq_0_conv apply auto[1]
         apply (unfold is_dist_def is_graph_def is_wellformed_inv_def)[1] 
