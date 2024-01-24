@@ -2593,8 +2593,8 @@ lemma cas_spc':
    apply (rule conjI)
     apply (clarsimp simp: cas_inv'_def cas_inv_def)
     apply  (case_tac "i=r"; clarsimp) 
-  apply (metis nat_int.Rep_inverse of_nat_Suc)
-  apply (fastforce intro: diff_less_mono2)
+    apply (metis nat_int.Rep_inverse of_nat_Suc)
+   apply (fastforce intro: diff_less_mono2)
   apply (rule conjI; clarsimp)
   apply (metis (no_types, hide_lams) INT_MIN_MAX_lemmas(12) diff_commute diff_is_0_eq' diff_less_mono not_less0 not_less_eq_eq zero_diff)
   apply (metis nat_int of_nat_Suc)
@@ -2627,12 +2627,6 @@ lemma awalk_spc':
    apply fastforce
   apply fastforce
   done
-
-
-
-
-
-
 
 definition awalk_neg_cyc_cost ::
   "ICost \<Rightarrow> ICycle \<Rightarrow> nat \<Rightarrow> int"
