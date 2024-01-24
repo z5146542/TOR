@@ -353,7 +353,7 @@ ListNode *BF_delete_subtree(ListNode *w_item, List *Q, List *T, int t_degree[], 
     return child;
 }
 
-void BF_add_to_Vm(Graph *g, Node *elist[], unsigned int z, bool in_Vm[], int *pred, List *Q, List *T, int t_degree[], ListNode *pos_in_Q[], ListNode *pos_in_T[]) {
+void BF_add_to_Vm(Graph *g, Node *elist[], unsigned int z, bool in_Vm[], int *pred, List *Q, List *T, int t_degree[], ListNode *pos_in_Q[], ListNode *pos_in_T[], ENInt *dist) {
     for(Node *node = elist[z]; node != NULL; node = node->next) {
         unsigned int e = node->edge_id;
         unsigned int w = node->second;
@@ -364,7 +364,8 @@ void BF_add_to_Vm(Graph *g, Node *elist[], unsigned int z, bool in_Vm[], int *pr
             }
             pred[w] = e;
             in_Vm[w] = true;
-            BF_add_to_Vm(g, elist, w, in_Vm, pred, Q, T, t_degree, pos_in_Q, pos_in_T);
+            dist[w].isInf = -1;
+            BF_add_to_Vm(g, elist, w, in_Vm, pred, Q, T, t_degree, pos_in_Q, pos_in_T, dist);
         }
     }
 }
@@ -402,6 +403,7 @@ void certifying_bellmanford_LEDA(Graph *g, unsigned int s, int *c, ENInt *dist, 
         pos_in_Q[v] = NULL;
         t_degree[v] = 0;
         pos_in_T[v] = NULL;
+        dist[v].isInf = 1;
     }
 
     for(unsigned int v = 0; v < vertex_cnt(g); v++) pred[v] = -1;
@@ -432,7 +434,7 @@ void certifying_bellmanford_LEDA(Graph *g, unsigned int s, int *c, ENInt *dist, 
             d.val = dist[v].val + c[e];
             if( (pred[w] == -1 && w != s) || (d.isInf < dist[w].isInf) || 
                 (d.isInf == 0 && dist[w].isInf == 0 && d.val < dist[w].val) ) {
-                dist[w] = d;
+                dist[w] = d;    
                 // remove the subtree rooted at w from T and Q
                 // if w has a parent, decrease its degree 
 
@@ -449,12 +451,103 @@ void certifying_bellmanford_LEDA(Graph *g, unsigned int s, int *c, ENInt *dist, 
                     unsigned int z = v;
                     do {
                         in_Vm[z] = true;
+                        dist[z].isInf = -1;
                         z = arcs(g, pred[z]).first;
                     } while(z != v);
                     do {
-                        BF_add_to_Vm(g, elist, z, in_Vm, pred, Q, T, t_degree, pos_in_Q, pos_in_T);
+                        BF_add_to_Vm(g, elist, z, in_Vm, pred, Q, T, t_degree, pos_in_Q, pos_in_T, dist);
                         z = arcs(g,pred[z]).first;
                     } while(z != v);
+                } else {
+                    pos_in_T[w] = list_insert(T, w, pos_in_T[v]);
+                    t_degree[v]++;
+                    pos_in_Q[w] = list_append(Q, w);
+                }
+            }
+        }
+    }
+
+    free_adjacency_list(g, elist);
+}
+
+void certifying_bellmanford(Graph *g, unsigned int s, int *c, unsigned int *num, int *pred, ENInt *dist, Cycle_set *cse, int *parent_edge) {
+    // node_array<list_item> pos_in_Q(G, nil);
+    // node_array<int>       t_degree(G, 0);
+    // node_array<list_item> pos_in_T(G, nil);
+    ListNode *pos_in_Q[vertex_cnt(g)]; // noting -1 denotes the position does not exist
+    int t_degree[vertex_cnt(g)];
+    ListNode *pos_in_T[vertex_cnt(g)];
+    for(unsigned int v = 0; v < vertex_cnt(g); v++) {
+        pos_in_Q[v] = NULL;
+        t_degree[v] = 0;
+        pos_in_T[v] = NULL;
+        dist[v].isInf = 1;
+    }
+
+    for(unsigned int v = 0; v < vertex_cnt(g); v++) { pred[v] = -1; parent_edge[v] = -1; }
+    dist[s].isInf = 0; dist[s].val = 0;
+    num[s] = 0;
+
+    // list<node> Q; pos_in_Q[s] = Q.append(s);
+    // list<node> T; pos_in_T[s] = T.append(s);
+
+    List *Q = create_list(); pos_in_Q[s] = list_append(Q, s);
+    List *T = create_list(); pos_in_T[s] = list_append(T, s);
+
+    bool in_Vm[vertex_cnt(g)];
+    for(unsigned int v = 0; v < vertex_cnt(g); v++) in_Vm[v] = false;
+    bool no_negative_cycle = true;
+
+    // construct adjacency list here (needed for efficiency)
+    Node *elist[vertex_cnt(g)];
+    create_adjacency_list(g, elist);
+
+    while(!list_empty(Q)) {
+        unsigned int v = list_pop(Q); pos_in_Q[v] = NULL;
+        for(Node *node = elist[v]; node != NULL; node = node->next) {
+            unsigned int e = node->edge_id;
+            unsigned int w = node->second;
+            if(in_Vm[w]) continue;
+            ENInt d;
+            unsigned int n;
+            d.isInf = dist[v].isInf;
+            d.val = dist[v].val + c[e];
+            n = num[v] + 1;
+            if( (pred[w] == -1 && w != s) || (d.isInf < dist[w].isInf) || 
+                (d.isInf == 0 && dist[w].isInf == 0 && d.val < dist[w].val) ) {
+                dist[w] = d;
+                
+                // remove the subtree rooted at w from T and Q
+                // if w has a parent, decrease its degree 
+
+                if(pos_in_T[w]) {
+                    BF_delete_subtree(pos_in_T[w], Q, T, t_degree, pos_in_Q, pos_in_T);
+                    if(pred[w] != -1) t_degree[arcs(g,pred[w]).first]--;
+                }
+
+                pred[w] = e;
+                if(pos_in_T[v] != NULL) { num[w] = n; parent_edge[w] = e; }
+
+                if(pos_in_T[v] == NULL) {
+                    no_negative_cycle = false;
+                    unsigned int cyc_length = 0;
+                    unsigned int z = v;
+                    do {
+                        in_Vm[z] = true;
+                        dist[z].isInf = -1;
+                        cyc_length++;
+                        z = arcs(g, pred[z]).first;
+                    } while(z != v);
+                    cse->cyc_obj[cse->no_cycles].start = z;
+                    cse->cyc_obj[cse->no_cycles].length = cyc_length;
+                    cse->cyc_obj[cse->no_cycles].path = malloc(sizeof(unsigned int) * cyc_length);
+                    
+                    do {
+                        BF_add_to_Vm(g, elist, z, in_Vm, pred, Q, T, t_degree, pos_in_Q, pos_in_T, dist);
+                        cse->cyc_obj[cse->no_cycles].path[--cyc_length] = pred[z];
+                        z = arcs(g,pred[z]).first;
+                    } while(z != v);
+                    cse->no_cycles++;
                 } else {
                     pos_in_T[w] = list_insert(T, w, pos_in_T[v]);
                     t_degree[v]++;

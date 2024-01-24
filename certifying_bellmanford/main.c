@@ -54,8 +54,12 @@ int main() {
 
     ENInt *dist = malloc(sizeof(ENInt) * NUM_VERTICES);
 #ifdef CERTIFYING
-    ENInt *num = malloc(sizeof(ENInt) * NUM_VERTICES);
+    unsigned int *num = malloc(sizeof(unsigned int) * NUM_VERTICES);
     int *pred = malloc(sizeof(int) * NUM_VERTICES);
+    int *parent_edge = malloc(sizeof(int) * NUM_VERTICES);
+    Cycle_set *cse = malloc(sizeof(Cycle_set));
+    cse->no_cycles = 0;
+    cse->cyc_obj = malloc(sizeof(Cycle) * NUM_VERTICES);
 #endif
 
 #ifdef CERTIFYING
@@ -87,4 +91,8 @@ int main() {
     printf("Verifying output using LEDA checker...");
     check_sp_LEDA(graph, s, c, dist, pred);
     printf("done.\n");
+    printf("Running certifying Bellman--Ford algorithm again...\n");
+    certifying_bellmanford(graph, s, c, num, pred, dist, cse, parent_edge);
+    printf("Verifying output using new checker...");
+    printf("%s\n", check_sp(graph, s, c, num, pred, dist, cse, parent_edge) ? "\033[0;32mtrue\033[0m" : "\033[0;31mfalse\033[0m");
 }
